@@ -1,14 +1,18 @@
+#!/usr/bin/env python3
 import os
+import math
 import argparse
+
 import numpy as np
+import cv2
 from PIL import Image, ImageFile
 import pyexr
-import cv2
-import math
 from colorama import init, Fore, Back, Style
 
-init(autoreset=True) # allow loading huge TARGA images
+init(autoreset=True)
+ImageFile.LOAD_TRUNCATED_IMAGES = True  # разрешает загрузку повреждённых TARGA-изображений
 
+# Стили для вывода
 STYLES = {
     'header': f"{Style.BRIGHT}{Fore.LIGHTCYAN_EX}{Back.LIGHTBLACK_EX}",
     'warning': f"{Style.DIM}{Fore.RED}",
@@ -19,32 +23,44 @@ STYLES = {
     'bad': f"{Fore.RED}",
 }
 
-ImageFile.LOAD_TRUNCATED_IMAGES = True # allow loading truncated images
 
-def calculate_psnr(original, processed, max_val):
+def calculate_psnr(original: np.ndarray, processed: np.ndarray, max_val: float) -> float:
+    """
+    Вычисляет PSNR для всего изображения.
+    """
     mse = np.mean((original - processed) ** 2)
     return 20 * math.log10(max_val) - 10 * math.log10(mse) if mse != 0 else float('inf')
 
-def calculate_channel_psnr(original, processed, max_val, channels):
+
+def calculate_channel_psnr(original: np.ndarray, processed: np.ndarray, max_val: float, channels: list) -> dict:
+    """
+    Вычисляет PSNR для каждого канала отдельно.
+    """
     results = {}
     for i, channel in enumerate(channels):
-        orig = original[..., i]
-        proc = processed[..., i]
-        mse = np.mean((orig - proc) ** 2)
-        psnr = 20 * math.log10(max_val) - 10 * math.log10(mse) if mse !=0 else float('inf')
-        results[channel] = psnr
+        mse = np.mean((original[..., i] - processed[..., i]) ** 2)
+        results[channel] = 20 * math.log10(max_val) - 10 * math.log10(mse) if mse != 0 else float('inf')
     return results
 
-def get_hint(psnr):
+
+def get_hint(psnr: float) -> str:
+    """
+    Возвращает строку-подсказку качества изображения на основе PSNR.
+    """
     if psnr >= 50:
         return f"{STYLES['good']}практически идентичные изображения"
-    elif psnr >= 40:
+    if psnr >= 40:
         return f"{STYLES['ok']}очень хорошее качество"
-    elif psnr >= 30:
+    if psnr >= 30:
         return f"{STYLES['medium']}приемлемое качество"
     return f"{STYLES['bad']}заметные потери"
 
-def process_image(image_path, analyze_channels):
+
+def process_image(image_path: str, analyze_channels: bool):
+    """
+    Загружает изображение, подготавливает необходимые данные и выполняет анализ качества при масштабировании.
+    Возвращает результаты измерений, максимальное значение (для .exr) и список каналов (при анализе по каналам).
+    """
     try:
         if image_path.lower().endswith('.exr'):
             img = pyexr.read(image_path).astype(np.float32)
@@ -60,15 +76,15 @@ def process_image(image_path, analyze_channels):
         else:
             return [], None, None
     except Exception as e:
-        print(f"Ошибка чтения {image_path}: {str(e)}")
+        print(f"Ошибка чтения {image_path}: {e}")
         return [], None, None
 
     original_h, original_w = img.shape[:2]
-    results = []
     orig_res_str = f"{original_w}x{original_h}"
 
+    results = []
     if analyze_channels:
-        # Добавляем оригинал с "бесконечными" значениями для каналов
+        # Для оригинала указываем бесконечное PSNR для каждого канала
         results.append((
             orig_res_str,
             {c: float('inf') for c in channels},
@@ -76,18 +92,19 @@ def process_image(image_path, analyze_channels):
             f'{Fore.CYAN}оригинал{Style.RESET_ALL}'
         ))
     else:
-        # Обычный режим
         results.append((
             orig_res_str,
             float('inf'),
             f'{Fore.CYAN}оригинал{Style.RESET_ALL}'
         ))
 
+    # Вычисляем набор разрешений масштабирования
     resolutions = []
     current_w, current_h = original_w, original_h
     while (current_w := current_w // 2) >= 16 and (current_h := current_h // 2) >= 16:
         resolutions.append((current_w, current_h))
 
+    # Проходим по каждому разрешению, выполняем даунскейлинг и апскейлинг
     for target_w, target_h in resolutions:
         downscaled = cv2.resize(img, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
         upscaled = cv2.resize(downscaled, (original_w, original_h), interpolation=cv2.INTER_LINEAR)
@@ -115,11 +132,10 @@ def process_image(image_path, analyze_channels):
 def main():
     parser = argparse.ArgumentParser(description='Анализ потерь качества текстур')
     parser.add_argument('paths', nargs='+', help='Пути к файлам текстур')
-    parser.add_argument('--channels', '-c', action='store_true',
-                       help='Анализировать отдельные цветовые каналы')
+    parser.add_argument('--channels', '-c', action='store_true', help='Анализировать отдельные цветовые каналы')
     args = parser.parse_args()
 
-    col_sep = f"{Style.DIM}|{Style.NORMAL}"
+    separ = f"{Style.DIM}|{Style.NORMAL}"
 
     for path in args.paths:
         if not os.path.isfile(path):
@@ -137,21 +153,21 @@ def main():
 
         if args.channels:
             if channels is not None:
-                print(f"\n{Style.BRIGHT}{'Разрешение':<12} | {'R':^6} | {'G':^6} | {'B':^6} | {'A':^6} | {'Min':^6} | {'Качество (min)':<36}{Style.RESET_ALL}")
-                channel_hor_bottom = f"{'-'*6}-+-"
-                print(f"{'-'*12}-+-{channel_hor_bottom*4}{'-'*6}-+-{'-'*32}")
-
+                print(
+                    f"\n{Style.BRIGHT}{'Разрешение':<12} | {'R':^6} | {'G':^6} | {'B':^6} | {'A':^6} | {'Min':^6} | {'Качество (min)':<36}{Style.RESET_ALL}"
+                )
+                header_line = f"{'-'*12}-+-" + " ".join(["-"*6 + "-+-"]*4) + f"{'-'*6}-+-{'-'*32}"
+                print(header_line)
                 for res, ch_psnr, min_psnr, hint in results:
-                    ch_values = ' | '.join([f"{ch_psnr[c]:6.2f}" if c in ch_psnr else ' '*6 for c in ['R','G','B','A']])
+                    ch_values = ' | '.join([f"{ch_psnr.get(c, 0):6.2f}" for c in ['R', 'G', 'B', 'A']])
                     print(f"{res:<12} | {ch_values} | {min_psnr:6.2f} | {hint:<36}")
-
         else:
             print(f"\n{Style.BRIGHT}{'Разрешение':<12} | {'PSNR (dB)':^10} | {'Качество':<36}{Style.RESET_ALL}")
             print(f"{'-'*12}-+-{'-'*10}-+-{'-'*30}")
-
             for res, psnr, hint in results:
-                psnr_str = '{:^10}'.format('+∞') if math.isinf(psnr) else f"{psnr:^10.2f}"
-                print(f"{res:<12} {col_sep:<0} {psnr_str} {col_sep:<0} {hint:<36}")
+                psnr_str = '+∞' if math.isinf(psnr) else f"{psnr:^10.2f}"
+                print(f"{res:<12} {separ} {psnr_str} {separ} {hint:<36}")
+
 
 if __name__ == "__main__":
     main()
