@@ -1,13 +1,12 @@
 import os
 import argparse
-from re import S
 import numpy as np
 from PIL import Image, ImageFile
 import pyexr
 import cv2
 import math
-
 from colorama import init, Fore, Back, Style
+from tqdm import tqdm
 
 init(autoreset=True) # allow loading huge TARGA images
 
@@ -29,13 +28,12 @@ def calculate_psnr(original, processed, max_val):
 
 def get_hint(psnr):
     if psnr >= 50:
-        return f"{Fore.LIGHTGREEN_EX}практически идентичные изображения{Style.RESET_ALL}"
-        # return 'практически идентичные изображения'
+        return f"{STYLES['good']}практически идентичные изображения"
     elif psnr >= 40:
-        return f"{Fore.GREEN}очень хорошее качество{Style.RESET_ALL}"
+        return f"{STYLES['ok']}очень хорошее качество"
     elif psnr >= 30:
-        return f"{Fore.YELLOW}приемлемое качество{Style.RESET_ALL}"
-    return f"{Fore.RED}заметные потери{Style.RESET_ALL}"
+        return f"{STYLES['medium']}приемлемое качество"
+    return f"{STYLES['bad']}заметные потери"
 
 def process_image(image_path):
     try:
@@ -83,24 +81,19 @@ def main():
             print(f"Файл не найден: {path}")
             continue
 
-        print(f"\n\n{Style.BRIGHT}{Fore.LIGHTCYAN_EX}{Back.LIGHTBLACK_EX}--- {os.path.basename(path):^50} ---{Style.RESET_ALL}")
-        print(Style.RESET_ALL, end='', flush=True)
+        print(f"\n\n{STYLES['header']}--- {os.path.basename(path):^50} ---{Style.RESET_ALL}")
+
         results, exr_max = process_image(path)
         if not results:
             continue
 
         if exr_max is not None and exr_max < 0.001:
-            print(Style.DIM, Fore.RED, end='', flush=True)
-            print(f"АХТУНГ: Максимальное значение текстуры всего {exr_max:.6f}!")
-            print("           PSNR-метрика может быть некорректной для таких значений")
-            print(Style.RESET_ALL, end='', flush=True)
+            print(f"{STYLES['warning']}АХТУНГ: Максимальное значение {exr_max:.3e}!{Style.RESET_ALL}")
 
         col_sep = f"{Style.DIM}|{Style.NORMAL}"
-        header = '\n{:<12} | {:^10} | {:<36}'.format('Разрешение', 'PSNR (dB)', 'Словами')
-        separator = '-' * 12 + '-+-' + '-' * 10 + '-+-' + '-' * 30
 
-        print(f'{Style.BRIGHT}{header}{Style.RESET_ALL}')
-        print(f'{Style.NORMAL}{separator}{Style.RESET_ALL}')
+        print(f"\n{Style.BRIGHT}{'Разрешение':<12} | {'PSNR (dB)':^10} | {'Качество':<36}{Style.RESET_ALL}")
+        print(f"{'-'*12}-+-{'-'*10}-+-{'-'*30}")
 
         for res, psnr, hint in results:
             psnr_str = '{:^10}'.format('+∞') if math.isinf(psnr) else f"{psnr:^10.2f}"
