@@ -24,6 +24,8 @@ STYLES = {
     'bad': f"{Fore.RED}",
 }
 
+SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png']
+
 def calculate_psnr(original: np.ndarray, processed: np.ndarray, max_val: float) -> float:
     """
     Вычисляет PSNR между двумя изображениями.
@@ -67,12 +69,12 @@ def load_image(image_path: str) -> tuple:
             img = pyexr.read(image_path).astype(np.float32)
             max_val = np.max(np.abs(img))
             max_val = max(max_val, 1e-6)
-            channels = ['R', 'G', 'B', 'A'][:img.shape[2]]
+            channels = ['R', 'G', 'B', 'A'][:img.shape[2]] if img.ndim > 2 else ['L'] # Handle grayscale EXR
             return img, max_val, channels
         elif image_path.lower().endswith(('.png', '.tga')):
             img = np.array(Image.open(image_path)).astype(np.float32)
             max_val = 255.0
-            channels = ['R', 'G', 'B', 'A'][:img.shape[2]]
+            channels = ['R', 'G', 'B', 'A'][:img.shape[2]] if img.ndim > 2 else ['L'] # Handle grayscale PNG/TGA
             return img, max_val, channels
         else:
             print(f"Неподдерживаемый формат файла: {image_path}")
@@ -106,7 +108,7 @@ def process_image(image_path: str, analyze_channels: bool):
     orig_res_str = f"{original_w}x{original_h}"
 
     results = []
-    if analyze_channels:
+    if analyze_channels and channels and len(channels) > 1: # Only show channel info if analyzing channels and image is not grayscale
         # Для оригинала указываем бесконечное PSNR для каждого канала
         results.append((
             orig_res_str,
@@ -130,7 +132,7 @@ def process_image(image_path: str, analyze_channels: bool):
         downscaled = cv2.resize(img, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
         upscaled = cv2.resize(downscaled, (original_w, original_h), interpolation=cv2.INTER_LINEAR)
 
-        if analyze_channels:
+        if analyze_channels and channels and len(channels) > 1: # Channel analysis only for color images
             channel_psnr = calculate_channel_psnr(img, upscaled, max_val, channels)
             min_psnr = min(channel_psnr.values())
             results.append((
@@ -147,21 +149,33 @@ def process_image(image_path: str, analyze_channels: bool):
                 get_quality_hint(psnr)
             ))
 
-    return results, max_val if image_path.lower().endswith('.exr') else None, channels if analyze_channels else None
+    return results, max_val if image_path.lower().endswith('.exr') else None, channels if analyze_channels and channels and len(channels) > 1 else None # Return channels only when relevant
 
 def main():
     parser = argparse.ArgumentParser(description='Анализ потерь качества текстур')
-    parser.add_argument('paths', nargs='+', help='Пути к файлам текстур')
+    parser.add_argument('paths', nargs='+', help='Пути к файлам текстур или директориям')
     parser.add_argument('--channels', '-c', action='store_true', help='Анализировать отдельные цветовые каналы')
     args = parser.parse_args()
 
     separator = f"{Style.DIM}|{Style.NORMAL}"
 
+    files_to_process = []
     for path in args.paths:
-        if not os.path.isfile(path):
-            print(f"Файл не найден: {path}")
-            continue
+        if os.path.isfile(path):
+            files_to_process.append(path)
+        elif os.path.isdir(path):
+            for dirpath, _, filenames in os.walk(path):
+                for filename in filenames:
+                    if filename.lower().endswith(tuple(SUPPORTED_EXTENSIONS)):
+                        files_to_process.append(os.path.join(dirpath, filename))
+        else:
+            print(f"Путь не является файлом или директорией, или не существует: {path}")
 
+    if not files_to_process:
+        print("Не найдено поддерживаемых файлов для обработки.")
+        return
+
+    for path in files_to_process:
         print(f"\n\n{STYLES['header']}--- {os.path.basename(path):^50} ---{Style.RESET_ALL}")
 
         results, max_val, channels = process_image(path, args.channels)
@@ -171,15 +185,14 @@ def main():
         if max_val is not None and max_val < 0.001:
             print(f"{STYLES['warning']}АХТУНГ: Максимальное значение {max_val:.3e}!{Style.RESET_ALL}")
 
-        if args.channels:
-            if channels is not None:
-                header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(6) for c in channels])} | {'Min':^6} | {'Качество (min)':<36}{Style.RESET_ALL}"
-                print(header)
-                header_line = f"{'-'*12}-+-" + "-+-".join(["-"*6]*len(channels)) + f"-+-{'-'*6}-+-{'-'*32}"
-                print(header_line)
-                for res, ch_psnr, min_psnr, hint in results:
-                    ch_values = ' | '.join([f"{ch_psnr.get(c, 0):6.2f}" for c in channels])
-                    print(f"{res:<12} | {ch_values} | {min_psnr:6.2f} | {hint:<36}")
+        if args.channels and channels and len(channels) > 1: # Display channel info only if relevant
+            header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(6) for c in channels])} | {'Min':^6} | {'Качество (min)':<36}{Style.RESET_ALL}"
+            print(header)
+            header_line = f"{'-'*12}-+-" + "-+-".join(["-"*6]*len(channels)) + f"-+-{'-'*6}-+-{'-'*32}"
+            print(header_line)
+            for res, ch_psnr, min_psnr, hint in results:
+                ch_values = ' | '.join([f"{ch_psnr.get(c, 0):6.2f}" for c in channels])
+                print(f"{res:<12} | {ch_values} | {min_psnr:6.2f} | {hint:<36}")
         else:
             print(f"\n{Style.BRIGHT}{'Разрешение':<12} | {'PSNR (dB)':^10} | {'Качество':<36}{Style.RESET_ALL}")
             print(f"{'-'*12}-+-{'-'*10}-+-{'-'*30}")
