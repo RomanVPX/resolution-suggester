@@ -108,7 +108,7 @@ def process_image(image_path: str, analyze_channels: bool):
     orig_res_str = f"{original_w}x{original_h}"
 
     results = []
-    if analyze_channels and channels and len(channels) > 1: # Only show channel info if analyzing channels and image is not grayscale
+    if analyze_channels and channels and len(channels) > 1: # Channel analysis for color images
         # Для оригинала указываем бесконечное PSNR для каждого канала
         results.append((
             orig_res_str,
@@ -116,7 +116,14 @@ def process_image(image_path: str, analyze_channels: bool):
             float('inf'),
             f'{STYLES["original"]}оригинал{Style.RESET_ALL}'
         ))
-    else:
+    elif analyze_channels and channels and len(channels) == 1: # Handle grayscale in channel mode
+        results.append((
+            orig_res_str,
+            {c: float('inf') for c in channels}, # Still use dict for consistent output structure
+            float('inf'),
+            f'{STYLES["original"]}оригинал{Style.RESET_ALL}'
+        ))
+    else: # No channel analysis or grayscale in non-channel mode
         results.append((
             orig_res_str,
             float('inf'),
@@ -132,7 +139,7 @@ def process_image(image_path: str, analyze_channels: bool):
         downscaled = cv2.resize(img, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
         upscaled = cv2.resize(downscaled, (original_w, original_h), interpolation=cv2.INTER_LINEAR)
 
-        if analyze_channels and channels and len(channels) > 1: # Channel analysis only for color images
+        if analyze_channels and channels and len(channels) > 1: # Channel analysis for color images
             channel_psnr = calculate_channel_psnr(img, upscaled, max_val, channels)
             min_psnr = min(channel_psnr.values())
             results.append((
@@ -141,7 +148,15 @@ def process_image(image_path: str, analyze_channels: bool):
                 min_psnr,
                 get_quality_hint(min_psnr)
             ))
-        else:
+        elif analyze_channels and channels and len(channels) == 1: # Handle grayscale in channel mode
+            psnr = calculate_psnr(img, upscaled, max_val) # Calculate overall PSNR for grayscale
+            results.append((
+                f"{target_w}x{target_h}",
+                {'L': psnr}, # Use dict to maintain output structure, but only with 'L' and overall PSNR
+                psnr, # min_psnr is same as overall PSNR for single channel
+                get_quality_hint(psnr)
+            ))
+        else: # No channel analysis or grayscale in non-channel mode
             psnr = calculate_psnr(img, upscaled, max_val)
             results.append((
                 f"{target_w}x{target_h}",
@@ -149,7 +164,7 @@ def process_image(image_path: str, analyze_channels: bool):
                 get_quality_hint(psnr)
             ))
 
-    return results, max_val if image_path.lower().endswith('.exr') else None, channels if analyze_channels and channels and len(channels) > 1 else None # Return channels only when relevant
+    return results, max_val if image_path.lower().endswith('.exr') else None, channels if analyze_channels else None # Return channels only when relevant
 
 def main():
     parser = argparse.ArgumentParser(description='Анализ потерь качества текстур')
@@ -185,14 +200,16 @@ def main():
         if max_val is not None and max_val < 0.001:
             print(f"{STYLES['warning']}АХТУНГ: Максимальное значение {max_val:.3e}!{Style.RESET_ALL}")
 
-        if args.channels and channels and len(channels) > 1: # Display channel info only if relevant
-            header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(6) for c in channels])} | {'Min':^6} | {'Качество (min)':<36}{Style.RESET_ALL}"
-            print(header)
-            header_line = f"{'-'*12}-+-" + "-+-".join(["-"*6]*len(channels)) + f"-+-{'-'*6}-+-{'-'*32}"
-            print(header_line)
-            for res, ch_psnr, min_psnr, hint in results:
-                ch_values = ' | '.join([f"{ch_psnr.get(c, 0):6.2f}" for c in channels])
-                print(f"{res:<12} | {ch_values} | {min_psnr:6.2f} | {hint:<36}")
+        if args.channels: # Now handle channel output for both color and grayscale
+            if channels is not None:
+                channel_header_labels = channels if len(channels) > 1 else channels # Use channels if available, otherwise default
+                header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(6) for c in channel_header_labels])} | {'Min':^6} | {'Качество (min)':<36}{Style.RESET_ALL}"
+                print(header)
+                header_line = f"{'-'*12}-+-" + "-+-".join(["-"*6]*len(channel_header_labels)) + f"-+-{'-'*6}-+-{'-'*32}"
+                print(header_line)
+                for res, ch_psnr, min_psnr, hint in results:
+                    ch_values = ' | '.join([f"{ch_psnr.get(c, 0):6.2f}" for c in channel_header_labels]) # Use channel_header_labels here as well
+                    print(f"{res:<12} | {ch_values} | {min_psnr:6.2f} | {hint:<36}")
         else:
             print(f"\n{Style.BRIGHT}{'Разрешение':<12} | {'PSNR (dB)':^10} | {'Качество':<36}{Style.RESET_ALL}")
             print(f"{'-'*12}-+-{'-'*10}-+-{'-'*30}")
