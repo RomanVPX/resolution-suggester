@@ -9,14 +9,15 @@ from typing import Union, Tuple, List, Optional, Dict
 
 import numpy as np
 import cv2
-from PIL import Image, ImageFile
 import pyexr
+from PIL import Image, ImageFile
 from colorama import init, Fore, Back, Style
 
 # Initialize colorama and PIL settings
 init(autoreset=True)
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
+# Constants and Configurations
 SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png']
 QUALITY_HINTS = {
     50: "практически идентичные изображения",
@@ -34,7 +35,12 @@ STYLES = {
     'medium': f"{Fore.YELLOW}",
     'bad': f"{Fore.RED}",
 }
-CSV_SEPARATOR = ";"
+CSV_SEPARATOR = ";"  # Explicitly define CSV separator
+INTERPOLATION_METHODS = {
+    'bilinear': 'cv2.INTER_LINEAR',
+    'bicubic': 'cv2.INTER_CUBIC',
+}
+DEFAULT_INTERPOLATION = 'INTER_CUBIC'
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -174,13 +180,14 @@ def compute_resolutions(original_width: int, original_height: int, min_size: int
     return resolutions
 
 
-def process_image(file_path: str, analyze_channels: bool) -> Tuple[List, Optional[float], Optional[List[str]]]:
+def process_image(file_path: str, analyze_channels: bool, interpolation: str) -> Tuple[List, Optional[float], Optional[List[str]]]:
     """
     Обрабатывает изображение, вычисляя PSNR для различных уменьшенных и увеличенных разрешений.
 
     Аргументы:
         file_path (str): Путь к файлу изображения.
         analyze_channels (bool): Флаг, указывающий, нужно ли анализировать каналы раздельно.
+        interpolation (str): Метод интерполяции для масштабирования ('bilinear' или 'bicubic').
 
     Возвращает:
         tuple: (results, max_value, channels), где results - список результатов анализа,
@@ -201,10 +208,16 @@ def process_image(file_path: str, analyze_channels: bool) -> Tuple[List, Optiona
         results.append((original_resolution_str, float('inf'), f"{STYLES['original']}Оригинал{Style.RESET_ALL}"))
 
     resolutions = compute_resolutions(original_width, original_height)
+    interpolation_flag = INTERPOLATION_METHODS.get(interpolation, DEFAULT_INTERPOLATION)
 
     for target_width, target_height in resolutions:
-        downscaled_img = cv2.resize(img, (target_width, target_height), interpolation=cv2.INTER_LINEAR)
-        upscaled_img = cv2.resize(downscaled_img, (original_width, original_height), interpolation=cv2.INTER_LINEAR)
+        if interpolation_flag == 'mitchell':
+            downscaled_img = resize_mitchell(img.copy(), (target_width, target_height))
+            upscaled_img = resize_mitchell(downscaled_img.copy(), (original_width, original_height))
+        else:
+            cv2_interpolation_flag = getattr(cv2, interpolation_flag, cv2.INTER_LINEAR)
+            downscaled_img = cv2.resize(img, (target_width, target_height), interpolation=cv2_interpolation_flag)
+            upscaled_img = cv2.resize(downscaled_img, (original_width, original_height), interpolation=cv2_interpolation_flag)
 
         if analyze_channels and channels:
             channel_psnr = calculate_channel_psnr(img, upscaled_img, max_val, channels)
@@ -326,14 +339,25 @@ def output_results_csv(file_path: str, results: list, analyze_channels: bool, ch
 
 
 def parse_arguments():
+    """
+    Настраивает разбор аргументов командной строки.
+
+    Возвращает:
+        argparse.Namespace: Объект, содержащий аргументы командной строки.
+    """
     parser = argparse.ArgumentParser(description='Анализ потерь качества текстур при масштабировании.')
     parser.add_argument('paths', nargs='+', help='Пути к файлам текстур или директориям для анализа.')
     parser.add_argument('--channels', '-c', action='store_true', help='Включить анализ по цветовым каналам.')
     parser.add_argument('--csv-output', action='store_true', help='Выводить результаты в CSV файл.')
+    parser.add_argument('--interpolation', '-i', default=DEFAULT_INTERPOLATION, choices=INTERPOLATION_METHODS.keys(), help=f"Метод интерполяции для масштабирования. По умолчанию: {DEFAULT_INTERPOLATION}")
+
     return parser.parse_args()
 
 
 def main():
+    """
+    Главная функция скрипта, координирующая процесс анализа изображений и вывода результатов.
+    """
     args = parse_arguments()
     files_to_process = collect_files_to_process(args.paths)
 
@@ -353,7 +377,7 @@ def main():
             csv_writer.writerow(general_csv_header)
 
             for file_path in files_to_process:
-                results, max_val, channels = process_image(file_path, args.channels)
+                results, max_val, channels = process_image(file_path, args.channels, args.interpolation)
                 if results:  # Process results only if not empty
                     output_results_csv(file_path, results, args.channels, channels, csv_writer)
                     output_results_console(file_path, results, args.channels, channels, max_val)  # Still output to console for user feedback
@@ -361,7 +385,7 @@ def main():
 
     else:
         for file_path in files_to_process:
-            results, max_val, channels = process_image(file_path, args.channels)
+            results, max_val, channels = process_image(file_path, args.channels, args.interpolation)
             if results:  # Process results only if not empty
                 output_results_console(file_path, results, args.channels, channels, max_val)
 
