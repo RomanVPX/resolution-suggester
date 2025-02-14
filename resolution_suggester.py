@@ -16,10 +16,11 @@ from colorama import init, Fore, Back, Style
 init(autoreset=True)
 ImageFile.LOAD_TRUNCATED_IMAGES = True  # Разрешает загрузку повреждённых изображений
 
-# Стили для вывода
+# Constants
+SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png']
 STYLES = {
     'header': f"{Style.BRIGHT}{Fore.LIGHTCYAN_EX}{Back.LIGHTBLACK_EX}",
-    'warning': f"{Style.DIM}{Fore.RED}",
+    'warning': f"{Style.DIM}{Fore.YELLOW}",
     'original': f"{Fore.CYAN}",
     'good': f"{Fore.LIGHTGREEN_EX}",
     'ok': f"{Fore.GREEN}",
@@ -27,11 +28,46 @@ STYLES = {
     'bad': f"{Fore.RED}",
 }
 
-SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png']
+def load_image(file_path: str) -> tuple:
+    """
+    Loads an image and returns the numpy array, max value, and channels.
+
+    Args:
+    file_path (str): Path to the image file.
+
+    Returns:
+    tuple: (image_array, max_value, channels)
+    """
+    try:
+        if file_path.lower().endswith('.exr'):
+            img = pyexr.read(file_path).astype(np.float32)
+            max_val = np.max(np.abs(img))
+            max_val = max(max_val, 1e-6)
+            channels = ['R', 'G', 'B', 'A'][:img.shape[2]] if img.ndim > 2 else ['L']
+            return img, max_val, channels
+        elif file_path.lower().endswith(('.png', '.tga')):
+            img = np.array(Image.open(file_path)).astype(np.float32)
+            max_val = 255.0
+            channels = ['R', 'G', 'B', 'A'][:img.shape[2]] if img.ndim > 2 else ['L']
+            return img, max_val, channels
+        else:
+            print(f"Unsupported file format: {file_path}")
+            return None, None, None
+    except Exception as e:
+        print(f"Error reading {file_path}: {e}")
+        return None, None, None
 
 def calculate_psnr(original: np.ndarray, processed: np.ndarray, max_val: float) -> float:
     """
-    Вычисляет PSNR между двумя изображениями.
+    Calculates PSNR between two images.
+
+    Args:
+    original (np.ndarray): Original image array.
+    processed (np.ndarray): Processed image array.
+    max_val (float): Maximum value in the image.
+
+    Returns:
+    float: PSNR value.
     """
     mse = np.mean((original - processed) ** 2)
     if mse == 0:
@@ -41,7 +77,16 @@ def calculate_psnr(original: np.ndarray, processed: np.ndarray, max_val: float) 
 
 def calculate_channel_psnr(original: np.ndarray, processed: np.ndarray, max_val: float, channels: list) -> dict:
     """
-    Вычисляет PSNR для каждого канала отдельно.
+    Calculates PSNR for each channel separately.
+
+    Args:
+    original (np.ndarray): Original image array.
+    processed (np.ndarray): Processed image array.
+    max_val (float): Maximum value in the image.
+    channels (list): List of channel names.
+
+    Returns:
+    dict: Channel PSNR values.
     """
     results = {}
     for i, channel in enumerate(channels):
@@ -50,9 +95,16 @@ def calculate_channel_psnr(original: np.ndarray, processed: np.ndarray, max_val:
         results[channel] = psnr
     return results
 
-def get_quality_hint(psnr: float, for_csv=False) -> str:
+def get_quality_hint(psnr: float, for_csv: bool = False) -> str:
     """
-    Возвращает строку с подсказкой о качестве изображения на основе PSNR.
+    Returns a quality hint string based on the PSNR value.
+
+    Args:
+    psnr (float): PSNR value.
+    for_csv (bool, optional): Flag for CSV output. Defaults to False.
+
+    Returns:
+    str: Quality hint string.
     """
     if psnr >= 50:
         hint = "практически идентичные изображения"
@@ -67,32 +119,19 @@ def get_quality_hint(psnr: float, for_csv=False) -> str:
         hint = "заметные потери"
         return hint if for_csv else f"{STYLES['bad']}{hint}"
 
-def load_image(image_path: str) -> tuple:
-    """
-    Загружает изображение и возвращает numpy-массив, максимальное значение и каналы.
-    """
-    try:
-        if image_path.lower().endswith('.exr'):
-            img = pyexr.read(image_path).astype(np.float32)
-            max_val = np.max(np.abs(img))
-            max_val = max(max_val, 1e-6)
-            channels = ['R', 'G', 'B', 'A'][:img.shape[2]] if img.ndim > 2 else ['L'] # Handle grayscale EXR
-            return img, max_val, channels
-        elif image_path.lower().endswith(('.png', '.tga')):
-            img = np.array(Image.open(image_path)).astype(np.float32)
-            max_val = 255.0
-            channels = ['R', 'G', 'B', 'A'][:img.shape[2]] if img.ndim > 2 else ['L'] # Handle grayscale PNG/TGA
-            return img, max_val, channels
-        else:
-            print(f"Неподдерживаемый формат файла: {image_path}")
-            return None, None, None
-    except Exception as e:
-        print(f"Ошибка чтения {image_path}: {e}")
-        return None, None, None
+### Image Analysis Functions ###
 
 def compute_resolutions(original_w: int, original_h: int, min_size: int = 16) -> list:
     """
-    Вычисляет список разрешений для масштабирования.
+    Computes a list of resolutions for scaling.
+
+    Args:
+    original_w (int): Original image width.
+    original_h (int): Original image height.
+    min_size (int, optional): Minimum size. Defaults to 16.
+
+    Returns:
+    list: List of resolutions.
     """
     resolutions = []
     current_w, current_h = original_w, original_h
@@ -102,12 +141,18 @@ def compute_resolutions(original_w: int, original_h: int, min_size: int = 16) ->
         resolutions.append((current_w, current_h))
     return resolutions
 
-def process_image(image_path: str, analyze_channels: bool):
+def process_image(file_path: str, analyze_channels: bool) -> tuple:
     """
-    Обрабатывает изображение и вычисляет PSNR при различных масштабированиях.
-    Возвращает результаты, максимальное значение и каналы.
+    Processes an image and calculates PSNR at various scales.
+
+    Args:
+    file_path (str): Path to the image file.
+    analyze_channels (bool): Flag to analyze channels separately.
+
+    Returns:
+    tuple: (results, max_value, channels)
     """
-    img, max_val, channels = load_image(image_path)
+    img, max_val, channels = load_image(file_path)
     if img is None:
         return [], None, None
 
@@ -115,59 +160,35 @@ def process_image(image_path: str, analyze_channels: bool):
     orig_res_str = f"{original_w}x{original_h}"
 
     results = []
-    processed_channels = channels if analyze_channels and channels else [] # Determine channels to process for consistent logic
+    if analyze_channels and channels:
+        channel_psnr_original = {c: float('inf') for c in channels}
+        results.append((orig_res_str, channel_psnr_original, float('inf'), f"{STYLES['original']}Оригинал{Style.RESET_ALL}"))
+    else:
+        results.append((orig_res_str, float('inf'), f"{STYLES['original']}Оригинал{Style.RESET_ALL}"))
 
-    if processed_channels: # Channel analysis is enabled and channels are available
-        channel_psnr_original = {c: float('inf') for c in processed_channels}
-        results.append((
-            orig_res_str,
-            channel_psnr_original,
-            float('inf'),
-            f'{STYLES["original"]}оригинал{Style.RESET_ALL}'
-        ))
-    else: # No channel analysis or no channels available
-        results.append((
-            orig_res_str,
-            float('inf'),
-            f'{STYLES["original"]}оригинал{Style.RESET_ALL}'
-        ))
-
-    # Вычисляем набор разрешений для масштабирования
     resolutions = compute_resolutions(original_w, original_h)
 
-    # Обрабатываем каждое разрешение
     for target_w, target_h in resolutions:
-        # Масштабирование вниз и вверх
         downscaled = cv2.resize(img, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
         upscaled = cv2.resize(downscaled, (original_w, original_h), interpolation=cv2.INTER_LINEAR)
 
-        if processed_channels: # Channel analysis
-            channel_psnr = calculate_channel_psnr(img, upscaled, max_val, processed_channels)
+        if analyze_channels and channels:
+            channel_psnr = calculate_channel_psnr(img, upscaled, max_val, channels)
             min_psnr = min(channel_psnr.values())
-            results.append((
-                f"{target_w}x{target_h}",
-                channel_psnr,
-                min_psnr,
-                get_quality_hint(min_psnr)
-            ))
-        else: # No channel analysis
+            results.append((f"{target_w}x{target_h}", channel_psnr, min_psnr, get_quality_hint(min_psnr)))
+        else:
             psnr = calculate_psnr(img, upscaled, max_val)
-            results.append((
-                f"{target_w}x{target_h}",
-                psnr,
-                get_quality_hint(psnr)
-            ))
+            results.append((f"{target_w}x{target_h}", psnr, get_quality_hint(psnr)))
 
-    return results, max_val if image_path.lower().endswith('.exr') else None, processed_channels # Return processed channels
+    return results, max_val if file_path.lower().endswith('.exr') else None, channels
+
 
 def main():
     parser = argparse.ArgumentParser(description='Анализ потерь качества текстур')
     parser.add_argument('paths', nargs='+', help='Пути к файлам текстур или директориям')
     parser.add_argument('--channels', '-c', action='store_true', help='Анализировать отдельные цветовые каналы')
-    parser.add_argument('--csv-output', action='store_true', help='Выводить метрики в CSV файл') # Добавлен аргумент для CSV вывода
+    parser.add_argument('--csv-output', action='store_true', help='Выводить метрики в CSV файл')
     args = parser.parse_args()
-
-    separator = f"{Style.DIM}|{Style.NORMAL}"
 
     files_to_process = []
     for path in args.paths:
@@ -185,93 +206,87 @@ def main():
         print("Не найдено поддерживаемых файлов для обработки.")
         return
 
-    if args.csv_output: # Если указан флаг --csv-output, начинаем работу с CSV
+    if args.csv_output:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         csv_filename = f"{timestamp}.csv"
-        csv_filepath = os.path.join(os.getcwd(), csv_filename) # CSV файл в текущей директории
+        csv_filepath = os.path.join(os.getcwd(), csv_filename)
 
-        with open(csv_filepath, 'w', newline='', encoding='utf-8') as csvfile:
+        with open(csv_filepath, "w", newline="", encoding="utf-8") as csvfile:
             csv_writer = csv.writer(csvfile)
 
-            csv_header_written = False # Флаг для записи заголовка только один раз
-            general_csv_header = ['File', 'Resolution', 'R(L) PSNR', 'G PSNR', 'B PSNR', 'A PSNR', 'Min PSNR', 'Quality Hint (min)']
+            general_csv_header = ["Файл", "Разрешение", "R(L) PSNR", "G PSNR", "B PSNR", "A PSNR", "Min PSNR", "Качество (min)"]
+            csv_writer.writerow(general_csv_header)
 
+            for file_path in files_to_process:
+                print(f"\n\n{STYLES['header']}--- {os.path.basename(file_path):^50} ---{Style.RESET_ALL}")
 
-            for path in files_to_process:
-                print(f"\n\n{STYLES['header']}--- {os.path.basename(path):^50} ---{Style.RESET_ALL}")
-
-                results, max_val, channels = process_image(path, args.channels)
+                results, max_val, channels = process_image(file_path, args.channels)
                 if not results:
                     continue
 
                 if max_val is not None and max_val < 0.001:
                     print(f"{STYLES['warning']}АХТУНГ: Максимальное значение {max_val:.3e}!{Style.RESET_ALL}")
 
-                # Общий заголовок CSV, пишем только один раз
-                if not csv_header_written:
-                    csv_writer.writerow(general_csv_header)
-                    csv_header_written = True
-
-                if args.channels and channels: # CSV output with channels
-                    channel_header_labels = channels # Use directly detected channels for console output
-                    header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(9) for c in [f'{channels[0]}(L)' if channels[0] in ('R','L') else 'R', 'G', 'B', 'A'][:len(channels)]])} | {'Min':^9} | {'Качество (min)':<36}{Style.RESET_ALL}" # Adjusted header for console
+                if args.channels and channels:
+                    channel_header_labels = channels
+                    header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(9) for c in ['R(L)', 'G', 'B', 'A'][:len(channels)]])} | {'Min':^9} | {'Качество (min)':<36}{Style.RESET_ALL})"
                     print(header)
                     header_line = f"{'-'*12}-+-" + "-+-".join(["-"*9]*len([f'{channels[0]}(L)' if channels[0] in ('R','L') else 'R', 'G', 'B', 'A'][:len(channels)])) + f"-+-{'-'*9}-+-{'-'*32}" # Adjusted line for console
                     print(header_line)
 
                     for res, ch_psnr, min_psnr, hint in results:
-                        ch_values_console = ' | '.join([f"{ch_psnr.get(c, 0):9.2f}" for c in channels]) # Adjusted values for console
-                        print(f"{res:<12} | {ch_values_console} | {min_psnr:9.2f} | {hint:<36}") # Adjusted output for console
+                        ch_values_console = ' | '.join([f"{ch_psnr.get(c, 0):9.2f}" for c in ['R', 'G', 'B', 'A'][:len(channels)]])
+                        print(f"{res:<12} | {ch_values_console} | {min_psnr:9.2f} | {hint:<36}")
 
-                        # CSV row output for channels, always outputting R, G, B, A, even if not all present, for consistent columns
-                        csv_row_values = [os.path.basename(path), res]
-                        csv_row_values.append(f"{ch_psnr.get('R', ch_psnr.get('L', float('inf'))):.2f}") # R or L channel, default to inf if not found
-                        csv_row_values.append(f"{ch_psnr.get('G', float('inf')):.2f}") # G channel, default to inf if not found
-                        csv_row_values.append(f"{ch_psnr.get('B', float('inf')):.2f}") # B channel, default to inf if not found
-                        csv_row_values.append(f"{ch_psnr.get('A', float('inf')):.2f}") # A channel, default to inf if not found
+                        csv_row_values = [os.path.basename(file_path), res]
+                        csv_row_values.append(f"{ch_psnr.get('R', ch_psnr.get('L', float('inf'))):.2f}")
+                        csv_row_values.append(f"{ch_psnr.get('G', float('inf')):.2f}")
+                        csv_row_values.append(f"{ch_psnr.get('B', float('inf')):.2f}")
+                        csv_row_values.append(f"{ch_psnr.get('A', float('inf')):.2f}")
                         csv_row_values.append(f'{min_psnr:.2f}')
                         csv_row_values.append(get_quality_hint(min_psnr, for_csv=True))
                         csv_writer.writerow(csv_row_values)
-                else: # CSV output without channels
+                else:
                     print(f"\n{Style.BRIGHT}{'Разрешение':<12} | {'PSNR (dB)':^10} | {'Качество':<36}{Style.RESET_ALL}")
                     print(f"{'-'*12}-+-{'-'*10}-+-{'-'*30}")
+
                     for res, psnr, hint in results:
-                        print(f"{res:<12} {separator} {psnr:^10.2f} {separator} {hint:<36}")
-                        # CSV row output without channels
-                        csv_writer.writerow([os.path.basename(path), res, f'{psnr:.2f}', get_quality_hint(psnr, for_csv=True), '', '', '', '']) # Pad empty columns for channel PSNRs
+                        print(f"{res:<12} {Style.DIM}|{Style.NORMAL} {psnr:^10.2f} {Style.DIM}|{Style.NORMAL} {hint:<36}")
+                        csv_writer.writerow([os.path.basename(file_path), res, f'{psnr:.2f}', get_quality_hint(psnr, for_csv=True), '', '', '', ''])
 
-                print() # Пустая строка после каждого файла
+                print()
 
-        print(f"\nМетрики сохранены в: {csv_filepath}") # Сообщение о сохранении CSV
+        print(f"\nМетрики сохранены в: {csv_filepath}")
 
-    else: # Стандартный вывод в консоль, если --csv-output не указан
-        for path in files_to_process:
-            print(f"\n\n{STYLES['header']}--- {os.path.basename(path):^50} ---{Style.RESET_ALL}")
+    else:
+        for file_path in files_to_process:
+            print(f"\n\n{STYLES['header']}--- {os.path.basename(file_path):^50} ---{Style.RESET_ALL}")
 
-            results, max_val, channels = process_image(path, args.channels)
+            results, max_val, channels = process_image(file_path, args.channels)
             if not results:
                 continue
 
             if max_val is not None and max_val < 0.001:
-                print(f"{STYLES['warning']}АХТУНГ: Максимальное значение {max_val:.3e}!{Style.RESET_ALL}")
+                print(f"{STYLES['warning']}Warning: Max value {max_val:.3e}!{Style.RESET_ALL}")
 
-            if args.channels: # Console output with channels
-                if channels is not None:
-                    channel_header_labels = channels if len(channels) > 1 else channels
-                    header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(6) for c in channel_header_labels])} | {'Min':^6} | {'Качество (min)':<36}{Style.RESET_ALL}"
-                    print(header)
-                    header_line = f"{'-'*12}-+-" + "-+-".join(["-"*6]*len(channel_header_labels)) + f"-+-{'-'*6}-+-{'-'*32}"
-                    print(header_line)
-                    for res, ch_psnr, min_psnr, hint in results:
-                        ch_values = ' | '.join([f"{ch_psnr.get(c, 0):6.2f}" for c in channel_header_labels])
-                        print(f"{res:<12} | {ch_values} | {min_psnr:6.2f} | {hint:<36}")
-            else: # Console output without channels
+            if args.channels and channels:
+                channel_header_labels = channels
+                header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(6) for c in channel_header_labels])} | {'Min':^6} | {'Качество (min)':<36}{Style.RESET_ALL}"
+                print(header)
+                header_line = f"{'-'*12}-+-" + "-+-".join(["-"*6]*len(channel_header_labels)) + f"-+-{'-'*6}-+-{'-'*32}"
+                print(header_line)
+
+                for res, ch_psnr, min_psnr, hint in results:
+                    ch_values = ' | '.join([f"{ch_psnr.get(c, 0):6.2f}" for c in channel_header_labels])
+                    print(f"{res:<12} | {ch_values} | {min_psnr:6.2f} | {hint:<36}")
+            else:
                 print(f"\n{Style.BRIGHT}{'Разрешение':<12} | {'PSNR (dB)':^10} | {'Качество':<36}{Style.RESET_ALL}")
                 print(f"{'-'*12}-+-{'-'*10}-+-{'-'*30}")
-                for res, psnr, hint in results:
-                    print(f"{res:<12} {separator} {psnr:^10.2f} {separator} {hint:<36}")
-            print() # Пустая строка после каждого файла
 
+                for res, psnr, hint in results:
+                    print(f"{res:<12} {Style.DIM}|{Style.NORMAL} {psnr:^10.2f} {Style.DIM}|{Style.NORMAL} {hint:<36}")
+
+            print()
 
 if __name__ == "__main__":
     main()
