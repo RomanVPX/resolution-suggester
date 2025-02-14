@@ -8,6 +8,8 @@ import logging
 from typing import Union, Tuple, List, Optional, Dict
 
 import numpy as np
+from numba import njit, prange
+from typing import Tuple
 import cv2
 import pyexr
 from PIL import Image, ImageFile
@@ -39,12 +41,70 @@ CSV_SEPARATOR = ";"  # Explicitly define CSV separator
 INTERPOLATION_METHODS = {
     'bilinear': 'cv2.INTER_LINEAR',
     'bicubic': 'cv2.INTER_CUBIC',
+    'mitchell': 'mitchell',
 }
-DEFAULT_INTERPOLATION = 'INTER_CUBIC'
+DEFAULT_INTERPOLATION = 'bicubic'
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
+@njit(cache=True)
+def mitchell_netravali(x, B=1/3, C=1/3):
+    x = np.abs(x)
+    if x < 1:
+        return (12 - 9 * B - 6 * C) * x**3 + (-18 + 12 * B + 6 * C) * x**2 + (6 - 2 * B)
+    if x < 2:
+        return (-B - 6 * C) * x**3 + (6 * B + 30 * C) * x**2 + (-12 * B - 48 * C) * x + (8 * B + 24 * C)
+    return 0.0
+
+@njit(parallel=True)
+def _resize_mitchell_impl(img, target_width, target_height, B=1/3, C=1/3):
+    height, width = img.shape[:2]
+    channels = img.shape[2] if img.ndim == 3 else 1  # Обработка Grayscale изображений
+
+    # Создаем трехмерный массив в любом случае
+    resized_img = np.zeros((target_height, target_width, channels), dtype=img.dtype)
+
+    x_ratio = width / target_width
+    y_ratio = height / target_height
+
+    for i in prange(target_height):  # Используем prange для распараллеливания
+        for j in range(target_width):
+            x = j * x_ratio
+            y = i * y_ratio
+
+            x_floor = np.floor(x)
+            y_floor = np.floor(y)
+
+            x_frac = x - x_floor
+            y_frac = y - y_floor
+
+            accumulator = np.zeros(channels, dtype=np.float64)
+            weight_sum = 0.0
+
+            for m in range(-2, 2):
+                for n in range(-2, 2):
+                    x_index = int(x_floor + n)
+                    y_index = int(y_floor + m)
+
+                    if 0 <= x_index < width and 0 <= y_index < height:
+                        weight = mitchell_netravali(x_frac - n, B, C) * mitchell_netravali(y_frac - m, B, C)
+                        accumulator += weight * img[y_index, x_index] if channels > 1 else weight * img[y_index, x_index]
+                        weight_sum += weight
+
+            if weight_sum > 0:
+                resized_img[i, j] = accumulator / weight_sum
+            else:
+                resized_img[i, j] = 0
+
+    return resized_img
+
+def resize_mitchell(img, target_width, target_height, B=1/3, C=1/3):
+    resized_img = _resize_mitchell_impl(img, target_width, target_height, B, C)
+    if img.ndim == 2:
+        return resized_img[:, :, 0]
+    return resized_img
 
 def load_image(file_path: str) -> Union[Tuple[np.ndarray, float, List[str]], Tuple[None, None, None]]:
     """
@@ -187,7 +247,7 @@ def process_image(file_path: str, analyze_channels: bool, interpolation: str) ->
     Аргументы:
         file_path (str): Путь к файлу изображения.
         analyze_channels (bool): Флаг, указывающий, нужно ли анализировать каналы раздельно.
-        interpolation (str): Метод интерполяции для масштабирования ('bilinear' или 'bicubic').
+        interpolation (str): Метод интерполяции для масштабирования ('bilinear', 'mitchell' или 'bicubic').
 
     Возвращает:
         tuple: (results, max_value, channels), где results - список результатов анализа,
@@ -212,8 +272,8 @@ def process_image(file_path: str, analyze_channels: bool, interpolation: str) ->
 
     for target_width, target_height in resolutions:
         if interpolation_flag == 'mitchell':
-            downscaled_img = resize_mitchell(img.copy(), (target_width, target_height))
-            upscaled_img = resize_mitchell(downscaled_img.copy(), (original_width, original_height))
+            downscaled_img = resize_mitchell(img.copy(), target_width, target_height)
+            upscaled_img = resize_mitchell(downscaled_img.copy(), original_width, original_height)
         else:
             cv2_interpolation_flag = getattr(cv2, interpolation_flag, cv2.INTER_LINEAR)
             downscaled_img = cv2.resize(img, (target_width, target_height), interpolation=cv2_interpolation_flag)
@@ -339,25 +399,16 @@ def output_results_csv(file_path: str, results: list, analyze_channels: bool, ch
 
 
 def parse_arguments():
-    """
-    Настраивает разбор аргументов командной строки.
-
-    Возвращает:
-        argparse.Namespace: Объект, содержащий аргументы командной строки.
-    """
     parser = argparse.ArgumentParser(description='Анализ потерь качества текстур при масштабировании.')
     parser.add_argument('paths', nargs='+', help='Пути к файлам текстур или директориям для анализа.')
     parser.add_argument('--channels', '-c', action='store_true', help='Включить анализ по цветовым каналам.')
     parser.add_argument('--csv-output', action='store_true', help='Выводить результаты в CSV файл.')
-    parser.add_argument('--interpolation', '-i', default=DEFAULT_INTERPOLATION, choices=INTERPOLATION_METHODS.keys(), help=f"Метод интерполяции для масштабирования. По умолчанию: {DEFAULT_INTERPOLATION}")
+    parser.add_argument('--interpolation', '-i', default=DEFAULT_INTERPOLATION, choices=INTERPOLATION_METHODS.keys(), help=f"Метод интерполяции для масштабирования. По умолчанию: {DEFAULT_INTERPOLATION}.")
 
     return parser.parse_args()
 
 
 def main():
-    """
-    Главная функция скрипта, координирующая процесс анализа изображений и вывода результатов.
-    """
     args = parse_arguments()
     files_to_process = collect_files_to_process(args.paths)
 
