@@ -1,0 +1,6 @@
+colorama
+numba
+numpy
+opencv-python
+Pillow
+pyexr>=0.5.0
