@@ -105,7 +105,7 @@ def resize_mitchell(img, target_width, target_height, B=1/3, C=1/3):
         return resized_img[:, :, 0]
     return resized_img
 
-def load_image(file_path: str) -> tuple[np.ndarray, float, list[str]] | tuple[None, None, None]:
+def load_image(file_path: str) -> Union[Tuple[np.ndarray, float, List[str]], Tuple[None, None, None]]:
     """
     Загружает изображение из файла и возвращает массив numpy, максимальное значение и каналы.
 
@@ -239,7 +239,7 @@ def compute_resolutions(original_width: int, original_height: int, min_size: int
     return resolutions
 
 
-def process_image(file_path: str, analyze_channels: bool, interpolation: str) -> tuple[list, float | None, list[str] | None]:
+def process_image(file_path: str, analyze_channels: bool, interpolation: str) -> Tuple[List, Optional[float], Optional[List[str]]]:
     """
     Обрабатывает изображение, вычисляя PSNR для различных уменьшенных и увеличенных разрешений.
 
@@ -255,9 +255,6 @@ def process_image(file_path: str, analyze_channels: bool, interpolation: str) ->
     img, max_val, channels = load_image(file_path)
     if img is None:
         return [], None, None
-
-    if max_val is None:
-        max_val = 1.0 # just to shut up the PyLance warning
 
     original_height, original_width = img.shape[:2]
     original_resolution_str = f"{original_width}x{original_height}"
@@ -433,14 +430,14 @@ def main():
         csv_filepath = os.path.join(os.getcwd(), csv_filename)
 
         with open(csv_filepath, "w", newline="", encoding="utf-8") as csvfile:
-            csv_writer = csv.writer(csvfile, delimiter=CSV_SEPARATOR)
+            csv_writer = csv.writer(csvfile, delimiter=CSV_SEPARATOR)  # Explicitly set delimiter
 
             general_csv_header = ["Файл", "Разрешение", "R(L) PSNR", "G PSNR", "B PSNR", "A PSNR", "Min PSNR", "Качество (min)"]
             csv_writer.writerow(general_csv_header)
 
             for file_path in files_to_process:
                 results, max_val, channels = process_image(file_path, args.channels, args.interpolation)
-                if results:
+                if results:  # Process results only if not empty
                     output_results_csv(file_path, results, args.channels, channels, csv_writer)
                     output_results_console(file_path, results, args.channels, channels, max_val)  # Still output to console for user feedback
         print(f"\nМетрики сохранены в: {csv_filepath}")
@@ -448,7 +445,7 @@ def main():
     else:
         for file_path in files_to_process:
             results, max_val, channels = process_image(file_path, args.channels, args.interpolation)
-            if results:
+            if results:  # Process results only if not empty
                 output_results_console(file_path, results, args.channels, channels, max_val)
 
 
