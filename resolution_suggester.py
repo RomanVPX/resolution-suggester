@@ -1,17 +1,16 @@
-#!/usr/bin/env python3
 import os
 import math
 import argparse
 import csv
-from datetime import datetime
 import logging
-from typing import Union, Tuple, List, Optional, Dict
-
-import numpy as np
-from numba import njit, prange
-from typing import Tuple
 import cv2
 import pyexr
+import numpy as np
+
+from datetime import datetime
+from typing import Union, Tuple, List, Optional, Dict
+from numba import njit, prange
+from typing import Tuple
 from PIL import Image, ImageFile
 from colorama import init, Fore, Back, Style
 
@@ -37,13 +36,13 @@ STYLES = {
     'medium': f"{Fore.YELLOW}",
     'bad': f"{Fore.RED}",
 }
-CSV_SEPARATOR = ";"  # Explicitly define CSV separator
+CSV_SEPARATOR = ";"
 INTERPOLATION_METHODS = {
-    'bilinear': 'cv2.INTER_LINEAR',
-    'bicubic': 'cv2.INTER_CUBIC',
-    'mitchell': 'mitchell',
+    'bilinear': ('cv2.INTER_LINEAR', 'Билинейная интерполяция'),
+    'bicubic': ('cv2.INTER_CUBIC', 'Бикубическая интерполяция'),
+    'mitchell': ('mitchell', 'Фильтр Митчелла-Нетравали'),
 }
-DEFAULT_INTERPOLATION = 'bicubic'
+DEFAULT_INTERPOLATION = 'mitchell'
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -61,7 +60,7 @@ def mitchell_netravali(x, B=1/3, C=1/3):
 @njit(parallel=True)
 def _resize_mitchell_impl(img, target_width, target_height, B=1/3, C=1/3):
     height, width = img.shape[:2]
-    channels = img.shape[2] if img.ndim == 3 else 1  # Обработка Grayscale изображений
+    channels = img.shape[2] if img.ndim == 3 else 1
 
     # Создаем трехмерный массив в любом случае
     resized_img = np.zeros((target_height, target_width, channels), dtype=img.dtype)
@@ -69,7 +68,7 @@ def _resize_mitchell_impl(img, target_width, target_height, B=1/3, C=1/3):
     x_ratio = width / target_width
     y_ratio = height / target_height
 
-    for i in prange(target_height):  # Используем prange для распараллеливания
+    for i in prange(target_height):
         for j in range(target_width):
             x = j * x_ratio
             y = i * y_ratio
@@ -275,7 +274,7 @@ def process_image(file_path: str, analyze_channels: bool, interpolation: str) ->
             downscaled_img = resize_mitchell(img.copy(), target_width, target_height)
             upscaled_img = resize_mitchell(downscaled_img.copy(), original_width, original_height)
         else:
-            cv2_interpolation_flag = getattr(cv2, interpolation_flag, cv2.INTER_LINEAR)
+            cv2_interpolation_flag = getattr(cv2, interpolation_flag[0], cv2.INTER_LINEAR)
             downscaled_img = cv2.resize(img, (target_width, target_height), interpolation=cv2_interpolation_flag)
             upscaled_img = cv2.resize(downscaled_img, (original_width, original_height), interpolation=cv2_interpolation_flag)
 
@@ -334,7 +333,6 @@ def output_results_console(file_path: str, results: list, analyze_channels: bool
         print(f"{STYLES['warning']}Предупреждение: Максимальное значение {max_val:.3e}!{Style.RESET_ALL}")
 
     if analyze_channels and channels:
-        channel_header_labels = channels
         header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(9) for c in ['R(L)', 'G', 'B', 'A'][:len(channels)]])} | {'Min':^9} | {'Качество (min)':<36}{Style.RESET_ALL}"
         print(header)
         header_line = f"{'-'*12}-+-" + "-+-".join(["-" * 9] * len(['R(L)', 'G', 'B', 'A'][:len(channels)])) + f"-+-{'-'*9}-+-{'-'*32}"
@@ -398,12 +396,22 @@ def output_results_csv(file_path: str, results: list, analyze_channels: bool, ch
             csv_writer.writerow(csv_row_values)  # Only write for channel analysis case
 
 
+def format_interpolation_help():
+    methods = [f"{m:<8}{' (default)' if m == DEFAULT_INTERPOLATION else '':<15} {INTERPOLATION_METHODS[m][1]}."
+               for m in INTERPOLATION_METHODS.keys()]
+    return ("Метод интерполяции для масштабирования.  Вариантики:\n" +
+            '\n'.join(methods))
+
+
 def parse_arguments():
-    parser = argparse.ArgumentParser(description='Анализ потерь качества текстур при масштабировании.')
+    parser = argparse.ArgumentParser(
+        description='Анализ потерь качества текстур при масштабировании.',
+        formatter_class=argparse.RawTextHelpFormatter
+    )
     parser.add_argument('paths', nargs='+', help='Пути к файлам текстур или директориям для анализа.')
-    parser.add_argument('--channels', '-c', action='store_true', help='Включить анализ по цветовым каналам.')
-    parser.add_argument('--csv-output', action='store_true', help='Выводить результаты в CSV файл.')
-    parser.add_argument('--interpolation', '-i', default=DEFAULT_INTERPOLATION, choices=INTERPOLATION_METHODS.keys(), help=f"Метод интерполяции для масштабирования. По умолчанию: {DEFAULT_INTERPOLATION}.")
+    parser.add_argument('-c', '--channels', action='store_true', help='Включить анализ по цветовым каналам.')
+    parser.add_argument('-o', '--csv-output', action='store_true', help='Выводить результаты в CSV файл.')
+    parser.add_argument('-i', '--interpolation', default=DEFAULT_INTERPOLATION, choices=INTERPOLATION_METHODS.keys(), metavar='МЕТОД', help=format_interpolation_help())
 
     return parser.parse_args()
 
