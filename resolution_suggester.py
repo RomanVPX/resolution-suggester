@@ -257,6 +257,7 @@ def main():
                     print(f"\n{Style.BRIGHT}{'Resolution':<12} | {'PSNR (dB)':^10} | {'Quality':<36}{Style.RESET_ALL}")
                     print(f"{'-'*12}-+-{'-'*10}-+-{'-'*30}")
 
+                    first_row = True
                     for res, psnr, hint in results:
                         if first_row:
                             csv_writer.writerow([os.path.basename(file_path), res, "", "", "", "", "", ""])
