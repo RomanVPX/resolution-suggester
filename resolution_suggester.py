@@ -37,10 +37,16 @@ STYLES = {
     'bad': f"{Fore.RED}",
 }
 CSV_SEPARATOR = ";"
-INTERPOLATION_METHODS = {
+INTERPOLATION_METHODS_DOC = {
     'bilinear': ('cv2.INTER_LINEAR', 'Билинейная интерполяция'),
     'bicubic': ('cv2.INTER_CUBIC', 'Бикубическая интерполяция'),
     'mitchell': ('mitchell', 'Фильтр Митчелла-Нетравали'),
+}
+
+INTERPOLATION_METHODS = {
+    'bilinear': ('cv2.INTER_LINEAR'),
+    'bicubic': ('cv2.INTER_CUBIC'),
+    'mitchell': ('mitchell'),
 }
 DEFAULT_INTERPOLATION = 'mitchell'
 
@@ -105,7 +111,7 @@ def resize_mitchell(img, target_width, target_height, B=1/3, C=1/3):
         return resized_img[:, :, 0]
     return resized_img
 
-def load_image(file_path: str) -> Union[Tuple[np.ndarray, float, List[str]], Tuple[None, None, None]]:
+def load_image(file_path: str) -> tuple[np.ndarray, float, list[str]] | tuple[None, None, None]:
     """
     Загружает изображение из файла и возвращает массив numpy, максимальное значение и каналы.
 
@@ -239,7 +245,7 @@ def compute_resolutions(original_width: int, original_height: int, min_size: int
     return resolutions
 
 
-def process_image(file_path: str, analyze_channels: bool, interpolation: str) -> Tuple[List, Optional[float], Optional[List[str]]]:
+def process_image(file_path: str, analyze_channels: bool, interpolation: str) -> tuple[list, float | None, list[str] | None]:
     """
     Обрабатывает изображение, вычисляя PSNR для различных уменьшенных и увеличенных разрешений.
 
@@ -255,6 +261,9 @@ def process_image(file_path: str, analyze_channels: bool, interpolation: str) ->
     img, max_val, channels = load_image(file_path)
     if img is None:
         return [], None, None
+
+    if max_val is None:
+        max_val = 1.0 # just to shut up the PyLance warning
 
     original_height, original_width = img.shape[:2]
     original_resolution_str = f"{original_width}x{original_height}"
@@ -274,7 +283,7 @@ def process_image(file_path: str, analyze_channels: bool, interpolation: str) ->
             downscaled_img = resize_mitchell(img.copy(), target_width, target_height)
             upscaled_img = resize_mitchell(downscaled_img.copy(), original_width, original_height)
         else:
-            cv2_interpolation_flag = getattr(cv2, interpolation_flag[0], cv2.INTER_LINEAR)
+            cv2_interpolation_flag = getattr(cv2, interpolation_flag, cv2.INTER_LINEAR)
             downscaled_img = cv2.resize(img, (target_width, target_height), interpolation=cv2_interpolation_flag)
             upscaled_img = cv2.resize(downscaled_img, (original_width, original_height), interpolation=cv2_interpolation_flag)
 
@@ -360,7 +369,7 @@ def output_results_csv(file_path: str, results: list, analyze_channels: bool, ch
         channels (list|None): Список каналов изображения, если проводился анализ каналов.
         csv_writer: Объект csv.writer для записи в CSV файл.
     """
-    first_row = True  # Flag to indicate the first data row for a file
+    first_row = True  # First data row for a file flag
 
     for res, psnr_values, quality_hint, *rest in results:  # Unpack results tuple
         if first_row:
@@ -388,7 +397,7 @@ def output_results_csv(file_path: str, results: list, analyze_channels: bool, ch
                     "",  # Empty column for Min PSNR - remove this
                     get_quality_hint(psnr, for_csv=True)  # Quality hint for overall PSNR
                 ])
-                # Corrected: Insert PSNR value in "R(L) PSNR" column and quality hint in "Качество (min)"
+
                 csv_row_values_corrected = [csv_row_values[0], csv_row_values[1], csv_row_values[2]] + [""] * 4 + [csv_row_values[-1]]
                 csv_writer.writerow(csv_row_values_corrected)
                 continue  # Skip original writerow to avoid duplicate write
@@ -397,7 +406,7 @@ def output_results_csv(file_path: str, results: list, analyze_channels: bool, ch
 
 
 def format_interpolation_help():
-    methods = [f"{m:<8}{' (default)' if m == DEFAULT_INTERPOLATION else '':<15} {INTERPOLATION_METHODS[m][1]}."
+    methods = [f"{m:<8}{' (default)' if m == DEFAULT_INTERPOLATION else '':<15} {INTERPOLATION_METHODS_DOC[m][1]}."
                for m in INTERPOLATION_METHODS.keys()]
     return ("Метод интерполяции для масштабирования.  Вариантики:\n" +
             '\n'.join(methods))
@@ -411,7 +420,7 @@ def parse_arguments():
     parser.add_argument('paths', nargs='+', help='Пути к файлам текстур или директориям для анализа.')
     parser.add_argument('-c', '--channels', action='store_true', help='Включить анализ по цветовым каналам.')
     parser.add_argument('-o', '--csv-output', action='store_true', help='Выводить результаты в CSV файл.')
-    parser.add_argument('-i', '--interpolation', default=DEFAULT_INTERPOLATION, choices=INTERPOLATION_METHODS.keys(), metavar='МЕТОД', help=format_interpolation_help())
+    parser.add_argument('-i', '--interpolation', default=DEFAULT_INTERPOLATION, choices=INTERPOLATION_METHODS_DOC.keys(), metavar='METHOD', help=format_interpolation_help())
 
     return parser.parse_args()
 
@@ -430,14 +439,14 @@ def main():
         csv_filepath = os.path.join(os.getcwd(), csv_filename)
 
         with open(csv_filepath, "w", newline="", encoding="utf-8") as csvfile:
-            csv_writer = csv.writer(csvfile, delimiter=CSV_SEPARATOR)  # Explicitly set delimiter
+            csv_writer = csv.writer(csvfile, delimiter=CSV_SEPARATOR)
 
             general_csv_header = ["Файл", "Разрешение", "R(L) PSNR", "G PSNR", "B PSNR", "A PSNR", "Min PSNR", "Качество (min)"]
             csv_writer.writerow(general_csv_header)
 
             for file_path in files_to_process:
                 results, max_val, channels = process_image(file_path, args.channels, args.interpolation)
-                if results:  # Process results only if not empty
+                if results:
                     output_results_csv(file_path, results, args.channels, channels, csv_writer)
                     output_results_console(file_path, results, args.channels, channels, max_val)  # Still output to console for user feedback
         print(f"\nМетрики сохранены в: {csv_filepath}")
@@ -445,7 +454,7 @@ def main():
     else:
         for file_path in files_to_process:
             results, max_val, channels = process_image(file_path, args.channels, args.interpolation)
-            if results:  # Process results only if not empty
+            if results:
                 output_results_console(file_path, results, args.channels, channels, max_val)
 
 
