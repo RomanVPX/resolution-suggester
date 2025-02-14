@@ -2,6 +2,9 @@
 import os
 import math
 import argparse
+import csv
+from datetime import datetime
+import re
 
 import numpy as np
 import cv2
@@ -47,18 +50,22 @@ def calculate_channel_psnr(original: np.ndarray, processed: np.ndarray, max_val:
         results[channel] = psnr
     return results
 
-def get_quality_hint(psnr: float) -> str:
+def get_quality_hint(psnr: float, for_csv=False) -> str:
     """
     Возвращает строку с подсказкой о качестве изображения на основе PSNR.
     """
     if psnr >= 50:
-        return f"{STYLES['good']}практически идентичные изображения"
+        hint = "практически идентичные изображения"
+        return hint if for_csv else f"{STYLES['good']}{hint}"
     elif psnr >= 40:
-        return f"{STYLES['ok']}очень хорошее качество"
+        hint = "очень хорошее качество"
+        return hint if for_csv else f"{STYLES['ok']}{hint}"
     elif psnr >= 30:
-        return f"{STYLES['medium']}приемлемое качество"
+        hint = "приемлемое качество"
+        return hint if for_csv else f"{STYLES['medium']}{hint}"
     else:
-        return f"{STYLES['bad']}заметные потери"
+        hint = "заметные потери"
+        return hint if for_csv else f"{STYLES['bad']}{hint}"
 
 def load_image(image_path: str) -> tuple:
     """
@@ -108,22 +115,17 @@ def process_image(image_path: str, analyze_channels: bool):
     orig_res_str = f"{original_w}x{original_h}"
 
     results = []
-    if analyze_channels and channels and len(channels) > 1: # Channel analysis for color images
-        # Для оригинала указываем бесконечное PSNR для каждого канала
+    processed_channels = channels if analyze_channels and channels else [] # Determine channels to process for consistent logic
+
+    if processed_channels: # Channel analysis is enabled and channels are available
+        channel_psnr_original = {c: float('inf') for c in processed_channels}
         results.append((
             orig_res_str,
-            {c: float('inf') for c in channels},
+            channel_psnr_original,
             float('inf'),
             f'{STYLES["original"]}оригинал{Style.RESET_ALL}'
         ))
-    elif analyze_channels and channels and len(channels) == 1: # Handle grayscale in channel mode
-        results.append((
-            orig_res_str,
-            {c: float('inf') for c in channels}, # Still use dict for consistent output structure
-            float('inf'),
-            f'{STYLES["original"]}оригинал{Style.RESET_ALL}'
-        ))
-    else: # No channel analysis or grayscale in non-channel mode
+    else: # No channel analysis or no channels available
         results.append((
             orig_res_str,
             float('inf'),
@@ -139,8 +141,8 @@ def process_image(image_path: str, analyze_channels: bool):
         downscaled = cv2.resize(img, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
         upscaled = cv2.resize(downscaled, (original_w, original_h), interpolation=cv2.INTER_LINEAR)
 
-        if analyze_channels and channels and len(channels) > 1: # Channel analysis for color images
-            channel_psnr = calculate_channel_psnr(img, upscaled, max_val, channels)
+        if processed_channels: # Channel analysis
+            channel_psnr = calculate_channel_psnr(img, upscaled, max_val, processed_channels)
             min_psnr = min(channel_psnr.values())
             results.append((
                 f"{target_w}x{target_h}",
@@ -148,15 +150,7 @@ def process_image(image_path: str, analyze_channels: bool):
                 min_psnr,
                 get_quality_hint(min_psnr)
             ))
-        elif analyze_channels and channels and len(channels) == 1: # Handle grayscale in channel mode
-            psnr = calculate_psnr(img, upscaled, max_val) # Calculate overall PSNR for grayscale
-            results.append((
-                f"{target_w}x{target_h}",
-                {'L': psnr}, # Use dict to maintain output structure, but only with 'L' and overall PSNR
-                psnr, # min_psnr is same as overall PSNR for single channel
-                get_quality_hint(psnr)
-            ))
-        else: # No channel analysis or grayscale in non-channel mode
+        else: # No channel analysis
             psnr = calculate_psnr(img, upscaled, max_val)
             results.append((
                 f"{target_w}x{target_h}",
@@ -164,12 +158,13 @@ def process_image(image_path: str, analyze_channels: bool):
                 get_quality_hint(psnr)
             ))
 
-    return results, max_val if image_path.lower().endswith('.exr') else None, channels if analyze_channels else None # Return channels only when relevant
+    return results, max_val if image_path.lower().endswith('.exr') else None, processed_channels # Return processed channels
 
 def main():
     parser = argparse.ArgumentParser(description='Анализ потерь качества текстур')
     parser.add_argument('paths', nargs='+', help='Пути к файлам текстур или директориям')
     parser.add_argument('--channels', '-c', action='store_true', help='Анализировать отдельные цветовые каналы')
+    parser.add_argument('--csv-output', action='store_true', help='Выводить метрики в CSV файл') # Добавлен аргумент для CSV вывода
     args = parser.parse_args()
 
     separator = f"{Style.DIM}|{Style.NORMAL}"
@@ -190,31 +185,93 @@ def main():
         print("Не найдено поддерживаемых файлов для обработки.")
         return
 
-    for path in files_to_process:
-        print(f"\n\n{STYLES['header']}--- {os.path.basename(path):^50} ---{Style.RESET_ALL}")
+    if args.csv_output: # Если указан флаг --csv-output, начинаем работу с CSV
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        csv_filename = f"{timestamp}.csv"
+        csv_filepath = os.path.join(os.getcwd(), csv_filename) # CSV файл в текущей директории
 
-        results, max_val, channels = process_image(path, args.channels)
-        if not results:
-            continue
+        with open(csv_filepath, 'w', newline='', encoding='utf-8') as csvfile:
+            csv_writer = csv.writer(csvfile)
 
-        if max_val is not None and max_val < 0.001:
-            print(f"{STYLES['warning']}АХТУНГ: Максимальное значение {max_val:.3e}!{Style.RESET_ALL}")
+            csv_header_written = False # Флаг для записи заголовка только один раз
+            general_csv_header = ['File', 'Resolution', 'R(L) PSNR', 'G PSNR', 'B PSNR', 'A PSNR', 'Min PSNR', 'Quality Hint (min)']
 
-        if args.channels: # Now handle channel output for both color and grayscale
-            if channels is not None:
-                channel_header_labels = channels if len(channels) > 1 else channels # Use channels if available, otherwise default
-                header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(6) for c in channel_header_labels])} | {'Min':^6} | {'Качество (min)':<36}{Style.RESET_ALL}"
-                print(header)
-                header_line = f"{'-'*12}-+-" + "-+-".join(["-"*6]*len(channel_header_labels)) + f"-+-{'-'*6}-+-{'-'*32}"
-                print(header_line)
-                for res, ch_psnr, min_psnr, hint in results:
-                    ch_values = ' | '.join([f"{ch_psnr.get(c, 0):6.2f}" for c in channel_header_labels]) # Use channel_header_labels here as well
-                    print(f"{res:<12} | {ch_values} | {min_psnr:6.2f} | {hint:<36}")
-        else:
-            print(f"\n{Style.BRIGHT}{'Разрешение':<12} | {'PSNR (dB)':^10} | {'Качество':<36}{Style.RESET_ALL}")
-            print(f"{'-'*12}-+-{'-'*10}-+-{'-'*30}")
-            for res, psnr, hint in results:
-                print(f"{res:<12} {separator} {psnr:^10.2f} {separator} {hint:<36}")
+
+            for path in files_to_process:
+                print(f"\n\n{STYLES['header']}--- {os.path.basename(path):^50} ---{Style.RESET_ALL}")
+
+                results, max_val, channels = process_image(path, args.channels)
+                if not results:
+                    continue
+
+                if max_val is not None and max_val < 0.001:
+                    print(f"{STYLES['warning']}АХТУНГ: Максимальное значение {max_val:.3e}!{Style.RESET_ALL}")
+
+                # Общий заголовок CSV, пишем только один раз
+                if not csv_header_written:
+                    csv_writer.writerow(general_csv_header)
+                    csv_header_written = True
+
+                if args.channels and channels: # CSV output with channels
+                    channel_header_labels = channels # Use directly detected channels for console output
+                    header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(9) for c in [f'{channels[0]}(L)' if channels[0] in ('R','L') else 'R', 'G', 'B', 'A'][:len(channels)]])} | {'Min':^9} | {'Качество (min)':<36}{Style.RESET_ALL}" # Adjusted header for console
+                    print(header)
+                    header_line = f"{'-'*12}-+-" + "-+-".join(["-"*9]*len([f'{channels[0]}(L)' if channels[0] in ('R','L') else 'R', 'G', 'B', 'A'][:len(channels)])) + f"-+-{'-'*9}-+-{'-'*32}" # Adjusted line for console
+                    print(header_line)
+
+                    for res, ch_psnr, min_psnr, hint in results:
+                        ch_values_console = ' | '.join([f"{ch_psnr.get(c, 0):9.2f}" for c in channels]) # Adjusted values for console
+                        print(f"{res:<12} | {ch_values_console} | {min_psnr:9.2f} | {hint:<36}") # Adjusted output for console
+
+                        # CSV row output for channels, always outputting R, G, B, A, even if not all present, for consistent columns
+                        csv_row_values = [os.path.basename(path), res]
+                        csv_row_values.append(f"{ch_psnr.get('R', ch_psnr.get('L', float('inf'))):.2f}") # R or L channel, default to inf if not found
+                        csv_row_values.append(f"{ch_psnr.get('G', float('inf')):.2f}") # G channel, default to inf if not found
+                        csv_row_values.append(f"{ch_psnr.get('B', float('inf')):.2f}") # B channel, default to inf if not found
+                        csv_row_values.append(f"{ch_psnr.get('A', float('inf')):.2f}") # A channel, default to inf if not found
+                        csv_row_values.append(f'{min_psnr:.2f}')
+                        csv_row_values.append(get_quality_hint(min_psnr, for_csv=True))
+                        csv_writer.writerow(csv_row_values)
+                else: # CSV output without channels
+                    print(f"\n{Style.BRIGHT}{'Разрешение':<12} | {'PSNR (dB)':^10} | {'Качество':<36}{Style.RESET_ALL}")
+                    print(f"{'-'*12}-+-{'-'*10}-+-{'-'*30}")
+                    for res, psnr, hint in results:
+                        print(f"{res:<12} {separator} {psnr:^10.2f} {separator} {hint:<36}")
+                        # CSV row output without channels
+                        csv_writer.writerow([os.path.basename(path), res, f'{psnr:.2f}', get_quality_hint(psnr, for_csv=True), '', '', '', '']) # Pad empty columns for channel PSNRs
+
+                print() # Пустая строка после каждого файла
+
+        print(f"\nМетрики сохранены в: {csv_filepath}") # Сообщение о сохранении CSV
+
+    else: # Стандартный вывод в консоль, если --csv-output не указан
+        for path in files_to_process:
+            print(f"\n\n{STYLES['header']}--- {os.path.basename(path):^50} ---{Style.RESET_ALL}")
+
+            results, max_val, channels = process_image(path, args.channels)
+            if not results:
+                continue
+
+            if max_val is not None and max_val < 0.001:
+                print(f"{STYLES['warning']}АХТУНГ: Максимальное значение {max_val:.3e}!{Style.RESET_ALL}")
+
+            if args.channels: # Console output with channels
+                if channels is not None:
+                    channel_header_labels = channels if len(channels) > 1 else channels
+                    header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(6) for c in channel_header_labels])} | {'Min':^6} | {'Качество (min)':<36}{Style.RESET_ALL}"
+                    print(header)
+                    header_line = f"{'-'*12}-+-" + "-+-".join(["-"*6]*len(channel_header_labels)) + f"-+-{'-'*6}-+-{'-'*32}"
+                    print(header_line)
+                    for res, ch_psnr, min_psnr, hint in results:
+                        ch_values = ' | '.join([f"{ch_psnr.get(c, 0):6.2f}" for c in channel_header_labels])
+                        print(f"{res:<12} | {ch_values} | {min_psnr:6.2f} | {hint:<36}")
+            else: # Console output without channels
+                print(f"\n{Style.BRIGHT}{'Разрешение':<12} | {'PSNR (dB)':^10} | {'Качество':<36}{Style.RESET_ALL}")
+                print(f"{'-'*12}-+-{'-'*10}-+-{'-'*30}")
+                for res, psnr, hint in results:
+                    print(f"{res:<12} {separator} {psnr:^10.2f} {separator} {hint:<36}")
+            print() # Пустая строка после каждого файла
+
 
 if __name__ == "__main__":
     main()
