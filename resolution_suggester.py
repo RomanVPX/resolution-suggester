@@ -228,28 +228,24 @@ def main():
 
                 if args.channels and channels:
                     channel_header_labels = channels
-                    header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(9) for c in ['R(L)', 'G', 'B', 'A'][:len(channels)]])} | {'Min':^9} | {'Качество (min)':<36}{Style.RESET_ALL})"
-                    print(header)
-                    header_line = f"{'-'*12}-+-" + "-+-".join(["-"*9]*len(['R(L)', 'G', 'B', 'A'][:len(channels)])) + f"-+-{'-'*9}-+-{'-'*32}"
-                    print(header_line)
+                    print (f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(9) for c in ['R(L)', 'G', 'B', 'A'][:len(channels)]])} | {'Min':^9} | {'Качество (min)':<36}{Style.RESET_ALL})")
+                    print (f"{'-'*12}-+-" + "-+-".join(["-"*9]*len(['R(L)', 'G', 'B', 'A'][:len(channels)])) + f"-+-{'-'*9}-+-{'-'*32}")
 
                     first_row = True
-                    for res, ch_psnr, min_psnr, hint in results[1:]:
+                    for res, ch_psnr, min_psnr, hint in results:
                         if first_row:
-                            csv_row_values = [os.path.basename(file_path), results[0][0]]
-                            csv_row_values.extend([""] * 5)
-                            csv_row_values.append("")
-                            csv_writer.writerow(csv_row_values)
+                            csv_writer.writerow([os.path.basename(file_path), res, "", "", "", "", "", ""])
                             first_row = False
 
-                        csv_row_values = ["", res]
-                        csv_row_values.append(f"{ch_psnr.get('R', ch_psnr.get('L', float('inf'))):.2f}")
-                        csv_row_values.append(f"{ch_psnr.get('G', float('inf')):.2f}")
-                        csv_row_values.append(f"{ch_psnr.get('B', float('inf')):.2f}")
-                        csv_row_values.append(f"{ch_psnr.get('A', float('inf')):.2f}")
-                        csv_row_values.append(f'{min_psnr:.2f}')
-                        csv_row_values.append(get_quality_hint(min_psnr, for_csv=True))
-                        csv_writer.writerow(csv_row_values)
+                        else:
+                            csv_row_values = ["", res]
+                            csv_row_values.append(f"{ch_psnr.get('R', ch_psnr.get('L', float('inf'))):.2f}")
+                            csv_row_values.append(f"{ch_psnr.get('G', float('inf')):.2f}")
+                            csv_row_values.append(f"{ch_psnr.get('B', float('inf')):.2f}")
+                            csv_row_values.append(f"{ch_psnr.get('A', float('inf')):.2f}")
+                            csv_row_values.append(f'{min_psnr:.2f}')
+                            csv_row_values.append(get_quality_hint(min_psnr, for_csv=True))
+                            csv_writer.writerow(csv_row_values)
 
                         ch_values_console = ' | '.join([f"{ch_psnr.get(c, 0):9.2f}" for c in ['R', 'G', 'B', 'A'][:len(channels)]])
                         print(f"{res:<12} | {ch_values_console} | {min_psnr:9.2f} | {hint:<36}")
