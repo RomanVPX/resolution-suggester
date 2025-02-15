@@ -8,9 +8,8 @@ import pyexr
 import numpy as np
 
 from datetime import datetime
-from typing import Union, Tuple, List, Optional, Dict
+from typing import Tuple, List, Optional, Dict
 from numba import njit, prange
-from typing import Tuple
 from PIL import Image, ImageFile
 from colorama import init, Fore, Back, Style
 
@@ -448,7 +447,7 @@ def main():
                 results, max_val, channels = process_image(file_path, args.channels, args.interpolation)
                 if results:
                     output_results_csv(file_path, results, args.channels, channels, csv_writer)
-                    output_results_console(file_path, results, args.channels, channels, max_val)  # Still output to console for user feedback
+                    output_results_console(file_path, results, args.channels, channels, max_val)
         print(f"\nМетрики сохранены в: {csv_filepath}")
 
     else:
