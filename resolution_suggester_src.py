@@ -13,20 +13,20 @@ from numba import njit, prange
 from PIL import Image, ImageFile
 from colorama import init, Fore, Back, Style
 
-# Colorama & PIL setup
+# Initialize colorama and PIL settings
 init(autoreset=True)
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-# Constants
-_EXTS = ['.exr', '.tga', '.png']
-_HINTS = {
+# Constants and Configurations
+SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png']
+QUALITY_HINTS = {
     50: "практически идентичные изображения",
     40: "очень хорошее качество",
     30: "приемлемое качество",
     0: "заметные потери",
 }
-_THRESHOLDS = sorted(_HINTS.keys(), reverse=True)
-_STYLES = {
+PSNR_QUALITY_THRESHOLDS = sorted(QUALITY_HINTS.keys(), reverse=True)
+STYLES = {
     'header': f"{Style.BRIGHT}{Fore.LIGHTCYAN_EX}{Back.LIGHTBLACK_EX}",
     'warning': f"{Style.DIM}{Fore.YELLOW}",
     'original': f"{Fore.CYAN}",
@@ -35,26 +35,26 @@ _STYLES = {
     'medium': f"{Fore.YELLOW}",
     'bad': f"{Fore.RED}",
 }
-_CSV_SEP = ";"
-_INTERP_DOC = {
+CSV_SEPARATOR = ";"
+INTERPOLATION_METHODS_DOC = {
     'bilinear': ('cv2.INTER_LINEAR', 'Билинейная интерполяция'),
     'bicubic': ('cv2.INTER_CUBIC', 'Бикубическая интерполяция'),
     'mitchell': ('mitchell', 'Фильтр Митчелла-Нетравали'),
 }
 
-_INTERP_METHODS = {
+INTERPOLATION_METHODS = {
     'bilinear': ('cv2.INTER_LINEAR'),
     'bicubic': ('cv2.INTER_CUBIC'),
     'mitchell': ('mitchell'),
 }
-_DEFAULT_INTERP = 'mitchell'
+DEFAULT_INTERPOLATION = 'mitchell'
 
-# Logging setup
+# Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 @njit(cache=True)
-def _mn(x, B=1/3, C=1/3):
+def mitchell_netravali(x, B=1/3, C=1/3):
     x = np.abs(x)
     if x < 1:
         return (12 - 9 * B - 6 * C) * x**3 + (-18 + 12 * B + 6 * C) * x**2 + (6 - 2 * B)
@@ -63,100 +63,154 @@ def _mn(x, B=1/3, C=1/3):
     return 0.0
 
 @njit(parallel=True)
-def _resize_mn_impl(img, tw, th, B=1/3, C=1/3):
-    h, w = img.shape[:2]
-    ch = img.shape[2] if img.ndim == 3 else 1
+def _resize_mitchell_impl(img, target_width, target_height, B=1/3, C=1/3):
+    height, width = img.shape[:2]
+    channels = img.shape[2] if img.ndim == 3 else 1
 
-    r_img = np.zeros((th, tw, ch), dtype=img.dtype)
+    # Создаем трехмерный массив в любом случае
+    resized_img = np.zeros((target_height, target_width, channels), dtype=img.dtype)
 
-    xr = w / tw
-    yr = h / th
+    x_ratio = width / target_width
+    y_ratio = height / target_height
 
-    for i in prange(th):
-        for j in range(tw):
-            x = j * xr
-            y = i * yr
+    for i in prange(target_height):
+        for j in range(target_width):
+            x = j * x_ratio
+            y = i * y_ratio
 
-            xf = np.floor(x)
-            yf = np.floor(y)
+            x_floor = np.floor(x)
+            y_floor = np.floor(y)
 
-            x_f = x - xf
-            y_f = y - yf
+            x_frac = x - x_floor
+            y_frac = y - y_floor
 
-            acc = np.zeros(ch, dtype=np.float64)
-            ws = 0.0
+            accumulator = np.zeros(channels, dtype=np.float64)
+            weight_sum = 0.0
 
             for m in range(-2, 2):
                 for n in range(-2, 2):
-                    xi = int(xf + n)
-                    yi = int(yf + m)
+                    x_index = int(x_floor + n)
+                    y_index = int(y_floor + m)
 
-                    if 0 <= xi < w and 0 <= yi < h:
-                        weight = _mn(x_f - n, B, C) * _mn(y_f - m, B, C)
-                        acc += weight * img[yi, xi] if ch > 1 else weight * img[yi, xi]
-                        ws += weight
+                    if 0 <= x_index < width and 0 <= y_index < height:
+                        weight = mitchell_netravali(x_frac - n, B, C) * mitchell_netravali(y_frac - m, B, C)
+                        accumulator += weight * img[y_index, x_index] if channels > 1 else weight * img[y_index, x_index]
+                        weight_sum += weight
 
-            if ws > 0:
-                r_img[i, j] = acc / ws
+            if weight_sum > 0:
+                resized_img[i, j] = accumulator / weight_sum
             else:
-                r_img[i, j] = 0
+                resized_img[i, j] = 0
 
-    return r_img
+    return resized_img
 
-def resize_mn(img, tw, th, B=1/3, C=1/3):
-    r_img = _resize_mn_impl(img, tw, th, B, C)
+def resize_mitchell(img, target_width, target_height, B=1/3, C=1/3):
+    resized_img = _resize_mitchell_impl(img, target_width, target_height, B, C)
     if img.ndim == 2:
-        return r_img[:, :, 0]
-    return r_img
+        return resized_img[:, :, 0]
+    return resized_img
 
-def load_img(fp: str) -> tuple[np.ndarray, float, list[str]] | tuple[None, None, None]:
-    fe = fp.lower().split('.')[-1]
+def load_image(file_path: str) -> tuple[np.ndarray, float, list[str]] | tuple[None, None, None]:
+    """
+    Загружает изображение из файла и возвращает массив numpy, максимальное значение и каналы.
+
+    Поддерживает форматы EXR, PNG и TGA.
+
+    Аргументы:
+        file_path (str): Путь к файлу изображения.
+
+    Возвращает:
+        tuple: (image_array, max_value, channels) или (None, None, None) в случае ошибки.
+    """
+    file_extension = file_path.lower().split('.')[-1]
 
     try:
-        if fe == 'exr':
-            img = pyexr.read(fp).astype(np.float32)
-            mv = np.max(np.abs(img))
-            mv = max(mv, 1e-6)
-            chs = ['R', 'G', 'B', 'A'][:img.shape[2]] if img.ndim > 2 and img.shape[2] > 1 else ['L']
-        elif fe in ('png', 'tga'):
-            img = np.array(Image.open(fp)).astype(np.float32) / 255.0
-            mv = 1.0
-            chs = ['R', 'G', 'B', 'A'][:img.shape[2]] if img.ndim > 2 and img.shape[2] > 1 else ['L']
+        if file_extension == 'exr':
+            img = pyexr.read(file_path).astype(np.float32)  # Automatically detect EXR version
+            max_val = np.max(np.abs(img))
+            max_val = max(max_val, 1e-6)  # Prevent division by zero
+            channels = ['R', 'G', 'B', 'A'][:img.shape[2]] if img.ndim > 2 and img.shape[2] > 1 else ['L']  # Handle grayscale EXR correctly
+        elif file_extension in ('png', 'tga'):
+            img = np.array(Image.open(file_path)).astype(np.float32) / 255.0  # Normalize to 0-1 range for consistency
+            max_val = 1.0  # Max value is 1.0 after normalization
+            channels = ['R', 'G', 'B', 'A'][:img.shape[2]] if img.ndim > 2 and img.shape[2] > 1 else ['L']  # Handle grayscale PNG/TGA
         else:
-            logging.warning(f"Неподдерживаемый формат: {fp}")
+            logging.warning(f"Неподдерживаемый формат файла: {file_path}")
             return None, None, None
-        return img, mv, chs
+        return img, max_val, channels
     except Exception as e:
-        logging.error(f"Ошибка чтения {fp}: {e}")
+        logging.error(f"Ошибка чтения файла {file_path}: {e}")
         return None, None, None
 
 
-def calc_psnr(orig: np.ndarray, proc: np.ndarray, mv: float) -> float:
-    mse = np.mean((orig - proc) ** 2)
+def calculate_psnr(original: np.ndarray, processed: np.ndarray, max_val: float) -> float:
+    """
+    Вычисляет пиковое отношение сигнал/шум (PSNR) между двумя изображениями.
+
+    Аргументы:
+        original (np.ndarray): Оригинальное изображение в виде массива numpy.
+        processed (np.ndarray): Обработанное изображение в виде массива numpy.
+        max_val (float): Максимальное значение пикселя в изображении.
+
+    Возвращает:
+        float: Значение PSNR в децибелах. Возвращает float('inf'), если MSE равно 0.
+    """
+    mse = np.mean((original - processed) ** 2)
     if mse == 0:
         return float('inf')
-    psnr = 20 * math.log10(mv) - 10 * math.log10(mse)
+    psnr = 20 * math.log10(max_val) - 10 * math.log10(mse)
     return psnr
 
 
-def calc_ch_psnr(orig: np.ndarray, proc: np.ndarray, mv: float, chs: List[str]) -> Dict[str, float]:
-    ch_psnrs = {}
-    for i, ch in enumerate(chs):
-        mse = np.mean((orig[..., i] - proc[..., i]) ** 2)
-        psnr = 20 * math.log10(mv) - 10 * math.log10(mse) if mse != 0 else float('inf')
-        ch_psnrs[ch] = psnr
-    return ch_psnrs
+def calculate_channel_psnr(original: np.ndarray, processed: np.ndarray, max_val: float, channels: List[str]) -> Dict[str, float]:
+    """
+    Вычисляет PSNR для каждого канала изображения отдельно.
+
+    Аргументы:
+        original (np.ndarray): Оригинальное изображение.
+        processed (np.ndarray): Обработанное изображение.
+        max_val (float): Максимальное значение пикселя.
+        channels (list): Список названий каналов (например, ['R', 'G', 'B']).
+
+    Возвращает:
+        dict: Словарь, где ключи - названия каналов, а значения - соответствующие PSNR.
+    """
+    channel_psnrs = {}
+    for i, channel in enumerate(channels):
+        mse = np.mean((original[..., i] - processed[..., i]) ** 2)
+        psnr = 20 * math.log10(max_val) - 10 * math.log10(mse) if mse != 0 else float('inf')
+        channel_psnrs[channel] = psnr
+    return channel_psnrs
 
 
-def get_hint(psnr: float, for_csv: bool = False) -> str:
-    for th in _THRESHOLDS:
-        if psnr >= th:
-            hint = _HINTS[th]
-            return hint if for_csv else f"{_STYLES[get_style(psnr)]}{hint}"
-    return _HINTS[0] if for_csv else f"{_STYLES['bad']}{_HINTS[0]}"
+def get_quality_hint(psnr: float, for_csv: bool = False) -> str:
+    """
+    Возвращает текстовую подсказку о качестве изображения на основе значения PSNR.
+
+    Аргументы:
+        psnr (float): Значение PSNR.
+        for_csv (bool, optional): Определяет, нужно ли возвращать подсказку для CSV (без стилей). По умолчанию False.
+
+    Возвращает:
+        str: Подсказка о качестве изображения.
+    """
+    for threshold in PSNR_QUALITY_THRESHOLDS:
+        if psnr >= threshold:
+            hint = QUALITY_HINTS[threshold]
+            return hint if for_csv else f"{STYLES[get_quality_style(psnr)]}{hint}"
+    return QUALITY_HINTS[0] if for_csv else f"{STYLES['bad']}{QUALITY_HINTS[0]}"  # Fallback to 'bad' if no threshold is met
 
 
-def get_style(psnr: float) -> str:
+def get_quality_style(psnr: float) -> str:
+    """
+    Определяет стиль форматирования на основе значения PSNR.
+
+    Аргументы:
+        psnr (float): Значение PSNR.
+
+    Возвращает:
+        str: Ключ стиля из словаря STYLES.
+    """
     if psnr >= 50:
         return 'good'
     elif psnr >= 40:
@@ -167,157 +221,215 @@ def get_style(psnr: float) -> str:
         return 'bad'
 
 
-def comp_res(ow: int, oh: int, min_s: int = 16) -> List[Tuple[int, int]]:
-    res = []
-    cw, ch = ow, oh
-    while cw >= min_s * 2 and ch >= min_s * 2:
-        cw //= 2
-        ch //= 2
-        res.append((cw, ch))
-    return res
+def compute_resolutions(original_width: int, original_height: int, min_size: int = 16) -> List[Tuple[int, int]]:
+    """
+    Вычисляет список разрешений для анализа, последовательно уменьшая размеры изображения вдвое.
+
+    Процесс продолжается, пока обе стороны изображения не станут меньше, чем min_size * 2.
+
+    Аргументы:
+        original_width (int): Исходная ширина изображения.
+        original_height (int): Исходная высота изображения.
+        min_size (int, optional): Минимальный размер стороны изображения. По умолчанию 16.
+
+    Возвращает:
+        list: Список кортежей (ширина, высота) для уменьшенных разрешений.
+    """
+    resolutions = []
+    current_width, current_height = original_width, original_height
+    while current_width >= min_size * 2 and current_height >= min_size * 2:
+        current_width //= 2
+        current_height //= 2
+        resolutions.append((current_width, current_height))
+    return resolutions
 
 
-def proc_img(fp: str, analyze_chs: bool, interp: str) -> tuple[list, float | None, list[str] | None]:
-    img, mv, chs = load_img(fp)
+def process_image(file_path: str, analyze_channels: bool, interpolation: str) -> tuple[list, float | None, list[str] | None]:
+    """
+    Обрабатывает изображение, вычисляя PSNR для различных уменьшенных и увеличенных разрешений.
+
+    Аргументы:
+        file_path (str): Путь к файлу изображения.
+        analyze_channels (bool): Флаг, указывающий, нужно ли анализировать каналы раздельно.
+        interpolation (str): Метод интерполяции для масштабирования ('bilinear', 'mitchell' или 'bicubic').
+
+    Возвращает:
+        tuple: (results, max_value, channels), где results - список результатов анализа,
+               max_value - максимальное значение пикселя (только для EXR), channels - список каналов.
+    """
+    img, max_val, channels = load_image(file_path)
     if img is None:
         return [], None, None
 
-    if mv is None:
-        mv = 1.0
+    if max_val is None:
+        max_val = 1.0 # just to shut up the PyLance warning
 
-    oh, ow = img.shape[:2]
-    orig_res_str = f"{ow}x{oh}"
+    original_height, original_width = img.shape[:2]
+    original_resolution_str = f"{original_width}x{original_height}"
 
-    res = []
-    if analyze_chs and chs:
-        ch_psnr_orig = {c: float('inf') for c in chs}
-        res.append((orig_res_str, ch_psnr_orig, float('inf'), f"{_STYLES['original']}Оригинал{Style.RESET_ALL}"))
+    results = []
+    if analyze_channels and channels:
+        channel_psnr_original = {c: float('inf') for c in channels}
+        results.append((original_resolution_str, channel_psnr_original, float('inf'), f"{STYLES['original']}Оригинал{Style.RESET_ALL}"))
     else:
-        res.append((orig_res_str, float('inf'), f"{_STYLES['original']}Оригинал{Style.RESET_ALL}"))
+        results.append((original_resolution_str, float('inf'), f"{STYLES['original']}Оригинал{Style.RESET_ALL}"))
 
-    resolutions = comp_res(ow, oh)
-    interp_flag = _INTERP_METHODS.get(interp, _DEFAULT_INTERP)
+    resolutions = compute_resolutions(original_width, original_height)
+    interpolation_flag = INTERPOLATION_METHODS.get(interpolation, DEFAULT_INTERPOLATION)
 
-    for tw, th in resolutions:
-        if interp_flag == 'mitchell':
-            d_img = resize_mn(img.copy(), tw, th)
-            u_img = resize_mn(d_img.copy(), ow, oh)
+    for target_width, target_height in resolutions:
+        if interpolation_flag == 'mitchell':
+            downscaled_img = resize_mitchell(img.copy(), target_width, target_height)
+            upscaled_img = resize_mitchell(downscaled_img.copy(), original_width, original_height)
         else:
-            cv2_interp_flag = getattr(cv2, interp_flag, cv2.INTER_LINEAR)
-            d_img = cv2.resize(img, (tw, th), interpolation=cv2_interp_flag)
-            u_img = cv2.resize(d_img, (ow, oh), interpolation=cv2_interp_flag)
+            cv2_interpolation_flag = getattr(cv2, interpolation_flag, cv2.INTER_LINEAR)
+            downscaled_img = cv2.resize(img, (target_width, target_height), interpolation=cv2_interpolation_flag)
+            upscaled_img = cv2.resize(downscaled_img, (original_width, original_height), interpolation=cv2_interpolation_flag)
 
-        if analyze_chs and chs:
-            ch_psnr = calc_ch_psnr(img, u_img, mv, chs)
-            min_psnr = min(ch_psnr.values())
-            res.append((f"{tw}x{th}", ch_psnr, min_psnr, get_hint(min_psnr)))
+        if analyze_channels and channels:
+            channel_psnr = calculate_channel_psnr(img, upscaled_img, max_val, channels)
+            min_psnr = min(channel_psnr.values())
+            results.append((f"{target_width}x{target_height}", channel_psnr, min_psnr, get_quality_hint(min_psnr)))
         else:
-            psnr = calc_psnr(img, u_img, mv)
-            res.append((f"{tw}x{th}", psnr, get_hint(psnr)))
+            psnr = calculate_psnr(img, upscaled_img, max_val)
+            results.append((f"{target_width}x{target_height}", psnr, get_quality_hint(psnr)))
 
-    return res, mv, chs
+    return results, max_val, channels
 
 
-def collect_files(paths: list[str]) -> List[str]:
-    files = []
+def collect_files_to_process(paths: list[str]) -> List[str]:
+    """
+    Собирает список файлов для обработки из указанных путей.
+
+    Если путь - это файл, он добавляется в список. Если путь - это директория,
+    функция рекурсивно обходит директорию и добавляет все файлы с поддерживаемыми расширениями.
+
+    Аргументы:
+        paths (list): Список путей к файлам или директориям.
+
+    Возвращает:
+        list: Список путей к файлам для обработки.
+    """
+    files_to_process = []
     for path in paths:
         if os.path.isfile(path):
-            files.append(path)
+            files_to_process.append(path)
         elif os.path.isdir(path):
             for dirpath, _, filenames in os.walk(path):
                 for filename in filenames:
-                    if filename.lower().endswith(tuple(_EXTS)):
-                        files.append(os.path.join(dirpath, filename))
+                    if filename.lower().endswith(tuple(SUPPORTED_EXTENSIONS)):
+                        files_to_process.append(os.path.join(dirpath, filename))
         else:
-            logging.warning(f"Путь не файл/директория: {path}")
-    return files
+            logging.warning(f"Путь не является файлом или директорией, или не существует: {path}")
+    return files_to_process
 
 
-def output_console(fp: str, res: list, analyze_chs: bool, chs: Optional[List[str]], mv: Optional[float]):
-    print(f"\n\n{_STYLES['header']}--- {os.path.basename(fp):^50} ---{Style.RESET_ALL}")
+def output_results_console(file_path: str, results: list, analyze_channels: bool, channels: Optional[List[str]], max_val: Optional[float]):
+    """
+    Выводит результаты анализа в консоль в форматированном виде.
 
-    if mv is not None and mv < 0.001:
-        print(f"{_STYLES['warning']}Предупреждение: Max value {mv:.3e}!{Style.RESET_ALL}")
+    Аргументы:
+        file_path (str): Путь к обработанному файлу изображения.
+        results (list): Список результатов анализа, возвращенный функцией process_image.
+        analyze_channels (bool): Флаг, указывающий, проводился ли анализ каналов.
+        channels (list|None): Список каналов изображения, если проводился анализ каналов.
+        max_val (float|None): Максимальное значение пикселя в изображении (может быть None).
+    """
+    print(f"\n\n{STYLES['header']}--- {os.path.basename(file_path):^50} ---{Style.RESET_ALL}")
 
-    if analyze_chs and chs:
-        header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(9) for c in ['R(L)', 'G', 'B', 'A'][:len(chs)]])} | {'Min':^9} | {'Качество (min)':<36}{Style.RESET_ALL}"
+    if max_val is not None and max_val < 0.001:
+        print(f"{STYLES['warning']}Предупреждение: Максимальное значение {max_val:.3e}!{Style.RESET_ALL}")
+
+    if analyze_channels and channels:
+        header = f"\n{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(9) for c in ['R(L)', 'G', 'B', 'A'][:len(channels)]])} | {'Min':^9} | {'Качество (min)':<36}{Style.RESET_ALL}"
         print(header)
-        header_line = f"{'-'*12}-+-" + "-+-".join(["-" * 9] * len(['R(L)', 'G', 'B', 'A'][:len(chs)])) + f"-+-{'-'*9}-+-{'-'*32}"
+        header_line = f"{'-'*12}-+-" + "-+-".join(["-" * 9] * len(['R(L)', 'G', 'B', 'A'][:len(channels)])) + f"-+-{'-'*9}-+-{'-'*32}"
         print(header_line)
 
-        for r, ch_psnr, min_psnr, hint in res:
-            ch_vals_console = ' | '.join([f"{ch_psnr.get(c, 0):9.2f}" for c in ['R', 'G', 'B', 'A'][:len(chs)]])
-            print(f"{r:<12} | {ch_vals_console} | {min_psnr:9.2f} | {hint:<36}")
+        for res, ch_psnr, min_psnr, hint in results:
+            ch_values_console = ' | '.join([f"{ch_psnr.get(c, 0):9.2f}" for c in ['R', 'G', 'B', 'A'][:len(channels)]])
+            print(f"{res:<12} | {ch_values_console} | {min_psnr:9.2f} | {hint:<36}")
     else:
         print(f"\n{Style.BRIGHT}{'Разрешение':<12} | {'PSNR (dB)':^10} | {'Качество':<36}{Style.RESET_ALL}")
         print(f"{'-'*12}-+-{'-'*10}-+-{'-'*30}")
-        for r, psnr, hint in res:
-            print(f"{r:<12} {Style.DIM}|{Style.NORMAL} {psnr:^10.2f} {Style.DIM}|{Style.NORMAL} {hint:<36}")
+        for res, psnr, hint in results:
+            print(f"{res:<12} {Style.DIM}|{Style.NORMAL} {psnr:^10.2f} {Style.DIM}|{Style.NORMAL} {hint:<36}")
     print()
 
 
-def output_csv(fp: str, res: list, analyze_chs: bool, chs: Optional[List[str]], csv_writer):
-    first_row = True
+def output_results_csv(file_path: str, results: list, analyze_channels: bool, channels: Optional[List[str]], csv_writer):
+    """
+    Записывает результаты анализа в CSV файл.
 
-    for r, psnr_values, quality_hint, *rest in res:
+    Аргументы:
+        file_path (str): Путь к обработанному файлу изображения.
+        results (list): Список результатов анализа.
+        analyze_channels (bool): Флаг, указывающий, проводился ли анализ каналов.
+        channels (list|None): Список каналов изображения, если проводился анализ каналов.
+        csv_writer: Объект csv.writer для записи в CSV файл.
+    """
+    first_row = True  # First data row for a file flag
+
+    for res, psnr_values, quality_hint, *rest in results:  # Unpack results tuple
         if first_row:
-            csv_writer.writerow([os.path.basename(fp), r, "", "", "", "", "", ""])
+            # Write filename only in the first row for each file
+            csv_writer.writerow([os.path.basename(file_path), res, "", "", "", "", "", ""])
             first_row = False
         else:
-            csv_row_values = ["", r]
+            csv_row_values = ["", res]  # Empty filename for subsequent rows
 
-            if analyze_chs and chs:
-                ch_psnr = psnr_values
+            if analyze_channels and channels:
+                ch_psnr = psnr_values  # psnr_values is channel PSNR dict in this case
                 csv_row_values.extend([
-                    f"{ch_psnr.get('R', ch_psnr.get('L', float('inf'))):.2f}",
+                    f"{ch_psnr.get('R', ch_psnr.get('L', float('inf'))):.2f}",  # R or L channel
                     f"{ch_psnr.get('G', float('inf')):.2f}",
                     f"{ch_psnr.get('B', float('inf')):.2f}",
                     f"{ch_psnr.get('A', float('inf')):.2f}",
-                    f'{quality_hint:.2f}',
-                    get_hint(quality_hint, for_csv=True)
+                    f'{quality_hint:.2f}',  # quality_hint is min_psnr in channel analysis
+                    get_quality_hint(quality_hint, for_csv=True)  # quality_hint is min_psnr
                 ])
             else:
-                psnr = psnr_values
+                psnr = psnr_values  # psnr_values is single PSNR value in this case
                 csv_row_values.extend([
-                    f'{psnr:.2f}',
-                    "", "", "", "",
-                    "",
-                    get_hint(psnr, for_csv=True)
+                    f'{psnr:.2f}',  # PSNR value
+                    "", "", "", "",  # Empty columns for channel PSNRs - remove these
+                    "",  # Empty column for Min PSNR - remove this
+                    get_quality_hint(psnr, for_csv=True)  # Quality hint for overall PSNR
                 ])
 
                 csv_row_values_corrected = [csv_row_values[0], csv_row_values[1], csv_row_values[2]] + [""] * 4 + [csv_row_values[-1]]
                 csv_writer.writerow(csv_row_values_corrected)
-                continue
+                continue  # Skip original writerow to avoid duplicate write
 
-            csv_writer.writerow(csv_row_values)
+            csv_writer.writerow(csv_row_values)  # Only write for channel analysis case
 
 
-def format_interp_help():
-    methods = [f"{m:<8}{' (default)' if m == _DEFAULT_INTERP else '':<15} {_INTERP_DOC[m][1]}."
-               for m in _INTERP_METHODS.keys()]
-    return ("Метод интерполяции. Варианты:\n" +
+def format_interpolation_help():
+    methods = [f"{m:<8}{' (default)' if m == DEFAULT_INTERPOLATION else '':<15} {INTERPOLATION_METHODS_DOC[m][1]}."
+               for m in INTERPOLATION_METHODS.keys()]
+    return ("Метод интерполяции для масштабирования.  Вариантики:\n" +
             '\n'.join(methods))
 
 
-def parse_args():
+def parse_arguments():
     parser = argparse.ArgumentParser(
         description='Анализ потерь качества текстур при масштабировании.',
         formatter_class=argparse.RawTextHelpFormatter
     )
-    parser.add_argument('paths', nargs='+', help='Пути к файлам/директориям.')
-    parser.add_argument('-c', '--channels', action='store_true', help='Анализ по каналам.')
-    parser.add_argument('-o', '--csv-output', action='store_true', help='Вывод в CSV.')
-    parser.add_argument('-i', '--interpolation', default=_DEFAULT_INTERP, choices=_INTERP_DOC.keys(), metavar='METHOD', help=format_interp_help())
+    parser.add_argument('paths', nargs='+', help='Пути к файлам текстур или директориям для анализа.')
+    parser.add_argument('-c', '--channels', action='store_true', help='Включить анализ по цветовым каналам.')
+    parser.add_argument('-o', '--csv-output', action='store_true', help='Выводить результаты в CSV файл.')
+    parser.add_argument('-i', '--interpolation', default=DEFAULT_INTERPOLATION, choices=INTERPOLATION_METHODS_DOC.keys(), metavar='METHOD', help=format_interpolation_help())
 
     return parser.parse_args()
 
 
 def main():
-    args = parse_args()
-    files_to_process = collect_files(args.paths)
+    args = parse_arguments()
+    files_to_process = collect_files_to_process(args.paths)
 
     if not files_to_process:
-        print("Файлы не найдены.")
+        print("Не найдено поддерживаемых файлов для обработки.")
         return
 
     if args.csv_output:
@@ -326,23 +438,23 @@ def main():
         csv_filepath = os.path.join(os.getcwd(), csv_filename)
 
         with open(csv_filepath, "w", newline="", encoding="utf-8") as csvfile:
-            csv_writer = csv.writer(csvfile, delimiter=_CSV_SEP)
+            csv_writer = csv.writer(csvfile, delimiter=CSV_SEPARATOR)
 
             general_csv_header = ["Файл", "Разрешение", "R(L) PSNR", "G PSNR", "B PSNR", "A PSNR", "Min PSNR", "Качество (min)"]
             csv_writer.writerow(general_csv_header)
 
             for file_path in files_to_process:
-                results, max_val, channels = proc_img(file_path, args.channels, args.interpolation)
+                results, max_val, channels = process_image(file_path, args.channels, args.interpolation)
                 if results:
-                    output_csv(file_path, results, args.channels, channels, csv_writer)
-                    output_console(file_path, results, args.channels, channels, max_val)
+                    output_results_csv(file_path, results, args.channels, channels, csv_writer)
+                    output_results_console(file_path, results, args.channels, channels, max_val)
         print(f"\nМетрики сохранены в: {csv_filepath}")
 
     else:
         for file_path in files_to_process:
-            results, max_val, channels = proc_img(file_path, args.channels, args.interpolation)
+            results, max_val, channels = process_image(file_path, args.channels, args.interpolation)
             if results:
-                output_console(file_path, results, args.channels, channels, max_val)
+                output_results_console(file_path, results, args.channels, channels, max_val)
 
 
 if __name__ == "__main__":
