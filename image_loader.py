@@ -8,9 +8,10 @@ import os
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-def load_image(file_path: str) -> Tuple[Optional[np.ndarray], Optional[float], Optional[list[str]]]: # Исправлено: List -> list
+def load_image(file_path: str) -> Tuple[Optional[np.ndarray], Optional[float], Optional[list[str]]]:
     """
     Загружает изображение из файла и возвращает массив numpy, максимальное значение и каналы.
+    Поддерживаемые форматы: EXR, PNG, TGA.
 
     Args:
         file_path: Путь к файлу изображения

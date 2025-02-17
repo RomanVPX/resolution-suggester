@@ -3,14 +3,15 @@ import os
 import numpy as np
 from typing import List, Tuple, Optional, Dict
 import datetime
-import argparse # Добавлено: argparse
+import argparse
 
 from config import SUPPORTED_EXTENSIONS
 from cli import parse_arguments, setup_logging, validate_paths
 from image_loader import load_image
 from image_processing import get_resize_function
 from metrics import calculate_psnr, calculate_channel_psnr, compute_resolutions
-from reporting import ConsoleReporter, CSVReporter, QualityHelper
+from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename # Перенесен generate_csv_filename
+
 
 def main():
     setup_logging()
@@ -22,13 +23,14 @@ def main():
         return
 
     if args.csv_output:
-        csv_path = generate_csv_filename()
+        csv_path = generate_csv_filename() # Используем функцию из reporting.py
         with CSVReporter(csv_path) as reporter:
             reporter.write_header(args.channels)
             process_files(files, args, reporter)
-        print(f"\nМетрики сохранены в: {csv_path}")
+        print(f"\nМетрики сохранены в: {csv_path}") # f-strings для форматирования
     else:
         process_files(files, args)
+
 
 def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
     """Обработка списка файлов с выводом результатов"""
@@ -40,6 +42,7 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
             if reporter:
                 reporter.write_results(os.path.basename(file_path), results, args.channels)
 
+
 def process_single_file(
     file_path: str,
     args: argparse.Namespace
@@ -50,11 +53,15 @@ def process_single_file(
         return None, None
 
     original_h, original_w = img.shape[:2]
-    resize_fn = get_resize_function(args.interpolation)
+    try: # Обработка исключения при получении функции ресайза
+        resize_fn = get_resize_function(args.interpolation)
+    except ValueError as e:
+        logging.error(f"Error for {file_path}: {e}") # Логирование ошибки
+        return None, None # Возврат None для указания на ошибку обработки файла
 
     results = []
     if args.channels:
-        results.append(create_original_channel_entry(original_w, original_h, channels))
+        results.append(create_original_entry(original_w, original_h, channels))
     else:
         results.append(create_original_entry(original_w, original_h))
 
@@ -81,10 +88,7 @@ def process_single_file(
 
     return results, {'max_val': max_val, 'channels': channels}
 
-def generate_csv_filename() -> str:
-    """Генерация имени CSV файла с временной меткой"""
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    return f"texture_analysis_{timestamp}.csv"
+
 
 def print_console_results(
     file_path: str,
@@ -96,7 +100,7 @@ def print_console_results(
     ConsoleReporter.print_file_header(file_path)
 
     if meta['max_val'] < 0.001:
-        logging.warning(f"Low max value: {meta['max_val']:.3e}")
+        logging.warning(f"Low max value: {meta['max_val']:.3e}") # f-strings для форматирования
 
     ConsoleReporter.print_quality_table(
         results,
@@ -104,20 +108,22 @@ def print_console_results(
         meta.get('channels')
     )
 
-def create_original_channel_entry(w: int, h: int, channels: list[str]) -> Tuple:
-    return (
-        f"{w}x{h}",
-        {c: float('inf') for c in channels},
-        float('inf'),
-        f"{QualityHelper.get_style(float('inf'))}Оригинал"
-    )
 
-def create_original_entry(w: int, h: int) -> Tuple:
-    return (
-        f"{w}x{h}",
-        float('inf'),
-        f"{QualityHelper.get_style(float('inf'))}Оригинал"
-    )
+def create_original_entry(w: int, h: int, channels: Optional[List[str]] = None) -> Tuple: # Унифицированная функция
+    """Создает запись для оригинального изображения."""
+    if channels:
+        return (
+            f"{w}x{h}",
+            {c: float('inf') for c in channels},
+            float('inf'),
+            f"{QualityHelper.get_style(float('inf'))}Оригинал"
+        )
+    else:
+        return (
+            f"{w}x{h}",
+            float('inf'),
+            f"{QualityHelper.get_style(float('inf'))}Оригинал"
+        )
 
 if __name__ == "__main__":
     main()

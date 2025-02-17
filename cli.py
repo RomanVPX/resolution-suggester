@@ -60,7 +60,7 @@ def format_interpolation_help() -> str:
     ]
     return "Доступные методы интерполяции:\n" + "\n".join(methods)
 
-def validate_paths(paths: list[str]) -> list[str]: # Исправлено: List -> list
+def validate_paths(paths: list[str]) -> list[str]:
     """Валидация и сбор файлов для обработки"""
     valid_paths = []
     for path in paths:
@@ -70,9 +70,13 @@ def validate_paths(paths: list[str]) -> list[str]: # Исправлено: List 
             valid_paths.extend(collect_files_from_dir(path))
         else:
             logging.warning(f"Invalid path: {path}")
+
+    if not valid_paths: # Проверка на наличие валидных путей
+        logging.error("No valid files or directories found. Please check the provided paths.") # Более информативное сообщение об ошибке
+        exit(1) # Завершение программы с кодом ошибки
     return valid_paths
 
-def collect_files_from_dir(directory: str) -> list[str]: # Исправлено: List -> list
+def collect_files_from_dir(directory: str) -> list[str]:
     """Рекурсивный сбор поддерживаемых файлов из директории"""
     collected = []
     for root, _, files in os.walk(directory):

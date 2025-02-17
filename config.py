@@ -1,6 +1,6 @@
 # config.py
 from typing import List
-import cv2 # Добавлен импорт cv2
+import cv2
 
 SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png']
 CSV_SEPARATOR = ';'
@@ -14,8 +14,8 @@ QUALITY_HINTS = {
 }
 
 INTERPOLATION_METHODS = {
-    'bilinear': 'INTER_LINEAR', # Исправлено: 'cv2.INTER_LINEAR' -> 'INTER_LINEAR'
-    'bicubic': 'INTER_CUBIC', # Исправлено: 'cv2.INTER_CUBIC' -> 'INTER_CUBIC'
+    'bilinear': 'INTER_LINEAR',
+    'bicubic': 'INTER_CUBIC',
     'mitchell': 'mitchell',
 }
 
@@ -37,19 +37,11 @@ STYLES = {
 
 PSNR_QUALITY_THRESHOLDS = sorted(QUALITY_HINTS.keys(), reverse=True)
 
+
 def get_output_csv_header(analyze_channels: bool) -> list[str]:
-    return [
-        "Файл",
-        "Разрешение",
-        "R(L) PSNR",
-        "G PSNR",
-        "B PSNR",
-        "A PSNR",
-        "Min PSNR",
-        "Качество (min)"
-    ] if analyze_channels else [
-        "Файл",
-        "Разрешение",
-        "PSNR",
-        "Качество"
-    ]
+    header = ["Файл", "Разрешение"]
+    if analyze_channels:
+        header.extend(["R(L) PSNR", "G PSNR", "B PSNR", "A PSNR", "Min PSNR", "Качество (min)"])
+    else:
+        header.extend(["PSNR", "Качество"])
+    return header

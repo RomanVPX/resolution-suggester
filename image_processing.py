@@ -1,3 +1,4 @@
+# image_processing.py
 import cv2
 import numpy as np
 from numba import njit, prange
@@ -37,23 +38,23 @@ def _resize_mitchell_impl(
             accumulator = np.zeros(channels, dtype=np.float64)
             weight_sum = 0.0
 
-            for m in range(-2, 2):
-                for n in range(-2, 2):
-                    x_idx = int(x_floor + n)
-                    y_idx = int(y_floor + m)
+            for row_offset in range(-2, 2):
+                for col_offset in range(-2, 2):
+                    x_idx = int(x_floor + col_offset) # col_offset для горизонтального смещения
+                    y_idx = int(y_floor + row_offset) # row_offset для вертикального смещения
 
-                    if 0 <= x_idx < width and 0 <= y_idx < height:
-                        weight = mitchell_netravali(x - x_floor - n, B, C) * mitchell_netravali(
-                            y - y_floor - m, B, C
-                        )
+                    if 0 <= x_idx < width and 0 <= y_idx < height: # Проверка границ изображения
+                        weight_x = mitchell_netravali(x - x_floor - col_offset, B, C) # Вес по X
+                        weight_y = mitchell_netravali(y - y_floor - row_offset, B, C) # Вес по Y
+                        weight = weight_x * weight_y # Общий вес как произведение весов по X и Y
                         pixel = img[y_idx, x_idx]
-                        accumulator += weight * pixel
-                        weight_sum += weight
+                        accumulator += weight * pixel # Накопление взвешенных значений пикселей
+                        weight_sum += weight # Суммирование весов
 
             if weight_sum > 0:
-                resized[i, j] = accumulator / weight_sum
+                resized[i, j] = accumulator / weight_sum # Нормализация накопленного значения на сумму весов
             else:
-                resized[i, j] = np.zeros_like(accumulator)
+                resized[i, j] = np.zeros_like(accumulator) # Заполнение нулями, если сумма весов равна 0
 
     return resized
 
@@ -69,6 +70,8 @@ def get_resize_function(interpolation: str):
     if interpolation == "mitchell":
         return resize_mitchell
 
-    cv2_flag_name = INTERPOLATION_METHODS[interpolation] # Получаем строковое имя флага cv2
-    cv2_flag = getattr(cv2, cv2_flag_name) # Используем строковое имя для получения атрибута cv2
+    cv2_flag_name = INTERPOLATION_METHODS.get(interpolation)
+    if cv2_flag_name is None:
+        raise ValueError(f"Метод интерполяции '{interpolation}' не поддерживается.")
+    cv2_flag = getattr(cv2, cv2_flag_name)
     return lambda img, w, h: cv2.resize(img, (w, h), interpolation=cv2_flag)

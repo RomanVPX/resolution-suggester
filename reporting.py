@@ -1,3 +1,4 @@
+# reporting.py
 from datetime import datetime
 import csv
 import os
@@ -11,6 +12,13 @@ from config import (
     PSNR_QUALITY_THRESHOLDS,
     get_output_csv_header
 )
+
+
+def generate_csv_filename() -> str:
+    """Генерация имени CSV файла с временной меткой"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return f"texture_analysis_{timestamp}.csv"
+
 
 class ConsoleReporter:
     @staticmethod
@@ -38,7 +46,6 @@ class ConsoleReporter:
                 min_psnr_styled = f"{original_style}{min_psnr:9.2f}{Style.RESET_ALL}"
 
                 # Correctly handle channel names and formatting for grayscale images
-                channel_names_for_display = ['R(L)', 'G', 'B', 'A'][:len(channels)]
                 if 'L' in channels and len(channels) == 1:
                     channel_values = [f"{original_style}{ch_psnr.get('L', float('inf')):>9.2f}{Style.RESET_ALL}"] # Right-align and format L channel
                 else:
@@ -52,7 +59,6 @@ class ConsoleReporter:
                 min_psnr_styled = f"{style}{min_psnr:9.2f}{Style.RESET_ALL}"
 
                 # Correctly handle channel names and formatting for grayscale images
-                channel_names_for_display = ['R(L)', 'G', 'B', 'A'][:len(channels)]
                 if 'L' in channels and len(channels) == 1:
                     channel_values = [f"{style}{ch_psnr.get('L', 0):>9.2f}{Style.RESET_ALL}"] # Right-align and format L channel
                 else:
@@ -109,16 +115,16 @@ class CSVReporter:
                 ch_psnr = psnr_values
                 min_psnr = result_item[2]
                 hint = result_item[3]
-                if i == 0: # First row (original image) in channel mode
-                    row.extend([""] * 6) # Empty all columns except filename and resolution
-                elif 'L' in ch_psnr and len(ch_psnr) == 1: # Grayscale image
+                if i == 0:
+                    row.extend([""] * 6)
+                elif 'L' in ch_psnr and len(ch_psnr) == 1:
                     row.extend([
                         f"{ch_psnr.get('L', float('inf')):.2f}",
                         "", "", "",
                         f"{min_psnr:.2f}",
                         QualityHelper.get_hint(min_psnr, for_csv=True)
                     ])
-                else: # Color image
+                else:
                     row.extend([
                         f"{ch_psnr.get('R', float('inf')):.2f}",
                         f"{ch_psnr.get('G', float('inf')):.2f}",
@@ -127,11 +133,11 @@ class CSVReporter:
                         f"{min_psnr:.2f}",
                         QualityHelper.get_hint(min_psnr, for_csv=True)
                     ])
-            else: # No channel analysis
+            else:
                 psnr = psnr_values
                 hint = result_item[2]
-                if i == 0: # First row (original image) in simple mode
-                    row.extend([""] * 2) # Empty all columns except filename and resolution
+                if i == 0:
+                    row.extend([""] * 2)
                 else:
                     row.extend([
                         f"{psnr:.2f}",
@@ -141,6 +147,7 @@ class CSVReporter:
                     row.extend([""] * (4 - len(row)))
 
             self.writer.writerow(row)
+
 
 class QualityHelper:
     @staticmethod
@@ -154,13 +161,13 @@ class QualityHelper:
     @staticmethod
     def get_style_for_hint(hint: str) -> str:
         """Возвращает ANSI-код стиля на основе текстовой подсказки о качестве"""
-        if hint == QUALITY_HINTS[50]: return STYLES['good'] # "практически идентичные изображения"
-        if hint == QUALITY_HINTS[40]: return STYLES['ok'] # "очень хорошее качество"
-        if hint == QUALITY_HINTS[30]: return STYLES['medium'] # "приемлемое качество"
-        return STYLES['bad'] # "заметные потери"
+        if hint == QUALITY_HINTS[50]: return STYLES['good']
+        if hint == QUALITY_HINTS[40]: return STYLES['ok']
+        if hint == QUALITY_HINTS[30]: return STYLES['medium']
+        return STYLES['bad']
 
     @staticmethod
-    def get_style(psnr: float) -> str: # Эта функция больше не используется напрямую для hint-ов
+    def get_style(psnr: float) -> str:
         """Возвращает ANSI-код стиля на основе значения PSNR (больше не используется для hint-ов)"""
         if psnr >= 50: return STYLES['good']
         if psnr >= 40: return STYLES['ok']
