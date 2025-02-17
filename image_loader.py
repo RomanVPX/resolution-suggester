@@ -47,7 +47,14 @@ def load_exr(file_path: str) -> Tuple[np.ndarray, float, list[str]]: # Испр�
 def load_raster(file_path: str) -> tuple[np.ndarray, float, list[str]]:
     """Загружает PNG/TGA файл с нормализацией"""
     img = Image.open(file_path)
-    if img.mode not in ('L', 'RGB', 'RGBA'):
+    convert_map = {
+        '1': 'L',
+        'LA': 'RGBA',
+        'CMYK': 'RGB'
+    }
+    if img.mode in convert_map:
+        img = img.convert(convert_map[img.mode])
+    elif img.mode not in ('L', 'RGB', 'RGBA'):
         img = img.convert('RGB')
 
     # Определение битности
