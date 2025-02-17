@@ -20,16 +20,23 @@ if (-not (pip install -r requirements.txt)) {
 }
 
 @"
+if (`$MyInvocation.InvocationName -eq '.\activate.ps1') {
+    Write-Host "`nОшибка: этот скрипт нужно запускать через точку (dot-sourcing)" -ForegroundColor Red
+    Write-Host "Правильный способ:"
+    Write-Host ". ./activate.ps1"
+    exit 1
+}
+
 `$ScriptDir = "$ScriptDir"
 Set-Location -Path `$ScriptDir
 . .venv/Scripts/activate
 
-Write-Host "`nВиртуальное окружение .venv успешно активировано."
+Write-Host "`nВиртуальное окружение .venv успешно активировано." -ForegroundColor Green
 Write-Host "Для запуска скрипта в активированном окружении, просто выполните:"
 Write-Host "python resolution_suggester.py <путь_к_файлу_или_директории> [опции]"
 Write-Host "`nДля выхода из виртуального окружения, выполните команду: deactivate"
 "@ | Out-File -FilePath "activate.ps1" -Encoding UTF8
 
-Write-Host "`nУстановка завершена успешно!"
+Write-Host "`nУстановка завершена успешно!" -ForegroundColor Green
 Write-Host "Для активации окружения выполните:"
 Write-Host ". ./activate.ps1"

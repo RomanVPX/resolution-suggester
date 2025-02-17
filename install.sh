@@ -20,8 +20,20 @@ if ! pip install -r requirements.txt; then
     exit 1
 fi
 
-cat > activate.sh << EOL
+cat > activate.sh << 'EOL'
 #!/bin/bash
+(return 0 2>/dev/null) && sourced=1 || sourced=0
+if [ "$sourced" -eq 0 ]; then
+    printf "\nОшибка: этот скрипт нужно запускать через source или .\n"
+    printf "Правильный способ:\n"
+    printf "source ./activate.sh\n"
+    printf "или\n"
+    printf ". ./activate.sh\n"
+    exit 1
+fi
+EOL
+
+cat >> activate.sh << EOL
 source "${SCRIPT_DIR}/.venv/bin/activate"
 printf "\nВиртуальное окружение .venv успешно активировано.\n"
 printf "Для запуска скрипта в активированном окружении, просто выполните:\n"
