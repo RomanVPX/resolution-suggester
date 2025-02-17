@@ -1,7 +1,7 @@
 # main.py
 import os
 import numpy as np
-from typing import List, Tuple, Optional, Dict # Добавлено: Dict
+from typing import List, Tuple, Optional, Dict
 import datetime
 import argparse # Добавлено: argparse
 
@@ -30,7 +30,7 @@ def main():
     else:
         process_files(files, args)
 
-def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None): # Исправлено: List -> list
+def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
     """Обработка списка файлов с выводом результатов"""
     for file_path in files:
         results, meta = process_single_file(file_path, args)
@@ -43,7 +43,7 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
 def process_single_file(
     file_path: str,
     args: argparse.Namespace
-) -> Tuple[Optional[list], Optional[dict]]: # Исправлено: List -> list
+) -> Tuple[Optional[list], Optional[dict]]:
     """Обработка одного файла"""
     img, max_val, channels = load_image(file_path)
     if img is None:
@@ -88,7 +88,7 @@ def generate_csv_filename() -> str:
 
 def print_console_results(
     file_path: str,
-    results: list, # Исправлено: List -> list
+    results: list,
     analyze_channels: bool,
     meta: dict
 ):
@@ -104,7 +104,7 @@ def print_console_results(
         meta.get('channels')
     )
 
-def create_original_channel_entry(w: int, h: int, channels: list[str]) -> Tuple: # Исправлено: List -> list
+def create_original_channel_entry(w: int, h: int, channels: list[str]) -> Tuple:
     return (
         f"{w}x{h}",
         {c: float('inf') for c in channels},
