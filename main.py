@@ -1,11 +1,10 @@
 # main.py
 import os
 import numpy as np
-from typing import List, Tuple, Optional, Dict
-import datetime
+from typing import List, Tuple, Optional
+from tqdm import tqdm
 import argparse
 
-from config import SUPPORTED_EXTENSIONS
 from cli import parse_arguments, setup_logging, validate_paths
 from image_loader import load_image
 from image_processing import get_resize_function
@@ -34,13 +33,16 @@ def main():
 
 def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
     """Обработка списка файлов с выводом результатов"""
-    for file_path in files:
-        results, meta = process_single_file(file_path, args)
+    with tqdm(total=len(files), desc="Processing files") as pbar:
+        for file_path in files:
+            results, meta = process_single_file(file_path, args)
 
-        if results:
-            print_console_results(file_path, results, args.channels, meta)
-            if reporter:
-                reporter.write_results(os.path.basename(file_path), results, args.channels)
+            if results:
+                print_console_results(file_path, results, args.channels, meta)
+                if reporter:
+                    reporter.write_results(os.path.basename(file_path), results, args.channels)
+            pbar.update(1)
+
 
 
 def process_single_file(
