@@ -1,6 +1,7 @@
 # image_processing.py
 import cv2
 import numpy as np
+from functools import lru_cache
 from numba import njit, prange
 from config import INTERPOLATION_METHODS
 
@@ -64,13 +65,11 @@ def resize_mitchell(img: np.ndarray, target_width: int, target_height: int) -> n
     return resized[:, :, 0] if img.ndim == 2 else resized
 
 
+@lru_cache(maxsize=4)
 def get_resize_function(interpolation: str):
     """Фабрика функций для ресайза"""
     if interpolation == "mitchell":
         return resize_mitchell
 
-    cv2_flag_name = INTERPOLATION_METHODS.get(interpolation)
-    if cv2_flag_name is None:
-        raise ValueError(f"Метод интерполяции '{interpolation}' не поддерживается.")
-    cv2_flag = getattr(cv2, cv2_flag_name)
+    cv2_flag = getattr(cv2, INTERPOLATION_METHODS[interpolation], cv2.INTER_LINEAR)
     return lambda img, w, h: cv2.resize(img, (w, h), interpolation=cv2_flag)
