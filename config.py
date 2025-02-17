@@ -1,6 +1,4 @@
 # config.py
-from typing import List
-import cv2
 
 SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png']
 CSV_SEPARATOR = ';'

@@ -43,8 +43,16 @@ def load_exr(file_path: str) -> Tuple[np.ndarray, float, list[str]]: # Испр�
     channels = ['R', 'G', 'B', 'A'][:img.shape[2]] if img.ndim > 2 else ['L']
     return img, max_val, channels
 
-def load_raster(file_path: str) -> Tuple[np.ndarray, float, list[str]]: # Исправлено: List -> list
+# Добавить обработку 16-битных изображений и улучшить типизацию
+def load_raster(file_path: str) -> tuple[np.ndarray, float, list[str]]:
     """Загружает PNG/TGA файл с нормализацией"""
-    img = np.array(Image.open(file_path)).astype(np.float32) / 255.0
-    channels = ['R', 'G', 'B', 'A'][:img.shape[2]] if img.ndim > 2 else ['L']
-    return img, 1.0, channels
+    img = Image.open(file_path)
+    if img.mode not in ('L', 'RGB', 'RGBA'):
+        img = img.convert('RGB')
+
+    # Определение битности
+    divisor = 65535.0 if img.mode == 'I;16' else 255.0
+    img_array = np.array(img).astype(np.float32) / divisor
+
+    channels = ['R', 'G', 'B', 'A'][:img_array.shape[2]] if img_array.ndim > 2 else ['L']
+    return img_array, float(divisor), channels

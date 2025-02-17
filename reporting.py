@@ -2,7 +2,7 @@
 from datetime import datetime
 import csv
 import os
-from typing import List, Dict, Optional
+from typing import List, Optional
 from colorama import Style
 
 from config import (

@@ -2,7 +2,6 @@
 import cv2
 import numpy as np
 from numba import njit, prange
-from typing import Tuple
 from config import INTERPOLATION_METHODS
 
 @njit(cache=True)

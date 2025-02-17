@@ -1,7 +1,7 @@
 # metrics.py
 import math
 import numpy as np
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, Tuple
 
 def calculate_psnr(
     original: np.ndarray,
@@ -9,6 +9,8 @@ def calculate_psnr(
     max_val: float
 ) -> float:
     """Вычисляет PSNR между двумя изображениями"""
+    if original.shape != processed.shape:
+        raise ValueError("Image dimensions must match for PSNR calculation")
     mse = np.mean((original - processed) ** 2)
     return 20 * math.log10(max_val) - 10 * math.log10(mse) if mse != 0 else float('inf')
 
