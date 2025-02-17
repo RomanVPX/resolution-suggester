@@ -2,7 +2,6 @@
 import argparse
 import logging
 import os
-from typing import List
 
 from config import (
     INTERPOLATION_DESCRIPTIONS,
@@ -72,8 +71,7 @@ def validate_paths(paths: list[str]) -> list[str]:
             logging.warning(f"Invalid path: {path}")
 
     if not valid_paths: # Проверка на наличие валидных путей
-        logging.error("No valid files or directories found. Please check the provided paths.") # Более информативное сообщение об ошибке
-        exit(1) # Завершение программы с кодом ошибки
+        raise ValueError("No valid files/directories found. Please check the provided paths.")
     return valid_paths
 
 def collect_files_from_dir(directory: str) -> list[str]:
