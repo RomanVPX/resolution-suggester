@@ -3,7 +3,8 @@ import cv2
 import numpy as np
 from functools import lru_cache
 from numba import njit, prange
-from config import INTERPOLATION_METHODS
+from config import INTERPOLATION_METHODS, InterpolationMethod # Импорт Enum
+
 
 @njit(cache=True)
 def mitchell_netravali(x: float, B: float = 1 / 3, C: float = 1 / 3) -> float:
@@ -40,8 +41,8 @@ def _resize_mitchell_impl(
 
             for row_offset in range(-2, 2):
                 for col_offset in range(-2, 2):
-                    x_idx = int(x_floor + col_offset) # col_offset для горизонтального смещения
-                    y_idx = int(y_floor + row_offset) # row_offset для вертикального смещения
+                    x_idx = int(x_floor + col_offset)  # col_offset для горизонтального смещения
+                    y_idx = int(y_floor + row_offset)  # row_offset для вертикального смещения
 
                     if 0 <= x_idx < width and 0 <= y_idx < height: # Проверка границ изображения
                         weight_x = mitchell_netravali(x - x_floor - col_offset, B, C) # Вес по X
@@ -68,8 +69,9 @@ def resize_mitchell(img: np.ndarray, target_width: int, target_height: int) -> n
 @lru_cache(maxsize=4)
 def get_resize_function(interpolation: str):
     """Фабрика функций для ресайза"""
-    if interpolation == "mitchell":
+    interpolation_method = InterpolationMethod(interpolation) # Преобразование строки в Enum
+    if interpolation_method == InterpolationMethod.MITCHELL:
         return resize_mitchell
 
-    cv2_flag = getattr(cv2, INTERPOLATION_METHODS[interpolation], cv2.INTER_LINEAR)
+    cv2_flag = getattr(cv2, INTERPOLATION_METHODS[interpolation_method], cv2.INTER_LINEAR) # Используем Enum как ключ
     return lambda img, w, h: cv2.resize(img, (w, h), interpolation=cv2_flag)

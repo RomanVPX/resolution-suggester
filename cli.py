@@ -5,9 +5,9 @@ import os
 
 from config import (
     INTERPOLATION_DESCRIPTIONS,
-    INTERPOLATION_METHODS,
     DEFAULT_INTERPOLATION,
-    SUPPORTED_EXTENSIONS
+    SUPPORTED_EXTENSIONS,
+    InterpolationMethod  # Импорт Enum
 )
 
 def setup_logging():
@@ -44,7 +44,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '-i', '--interpolation',
         default=DEFAULT_INTERPOLATION,
-        choices=INTERPOLATION_METHODS.keys(),
+        choices=[m.value for m in InterpolationMethod], # Используем значения Enum для choices
         metavar='METHOD',
         help=format_interpolation_help()
     )
@@ -54,7 +54,7 @@ def parse_arguments() -> argparse.Namespace:
 def format_interpolation_help() -> str:
     """Форматирование справки по методам интерполяции"""
     methods = [
-        f"{m:<8}{' (default)' if m == DEFAULT_INTERPOLATION else '':<10} {desc}"
+        f"{m.value:<8}{' (default)' if m == DEFAULT_INTERPOLATION else '':<10} {desc}" # Используем m.value
         for m, desc in INTERPOLATION_DESCRIPTIONS.items()
     ]
     return "Доступные методы интерполяции:\n" + "\n".join(methods)
@@ -71,8 +71,7 @@ def validate_paths(paths: list[str]) -> list[str]:
             logging.warning(f"Invalid path: {path}")
 
     if not valid_paths: # Проверка на наличие валидных путей
-        logging.error("No valid files or directories found. Please check the provided paths.") # Более информативное сообщение об ошибке
-        exit(1) # Завершение программы с кодом ошибки
+        raise ValueError("No valid files/directories found. Please check the provided paths.")
     return valid_paths
 
 def collect_files_from_dir(directory: str) -> list[str]:

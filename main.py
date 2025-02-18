@@ -9,7 +9,8 @@ from cli import parse_arguments, setup_logging, validate_paths
 from image_loader import load_image
 from image_processing import get_resize_function
 from metrics import calculate_psnr, calculate_channel_psnr, compute_resolutions
-from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename # Перенесен generate_csv_filename
+from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
+from config import InterpolationMethod # Импорт Enum
 
 
 def main():
@@ -22,11 +23,11 @@ def main():
         return
 
     if args.csv_output:
-        csv_path = generate_csv_filename() # Используем функцию из reporting.py
+        csv_path = generate_csv_filename()
         with CSVReporter(csv_path) as reporter:
             reporter.write_header(args.channels)
             process_files(files, args, reporter)
-        print(f"\nМетрики сохранены в: {csv_path}") # f-strings для форматирования
+        print(f"\nМетрики сохранены в: {csv_path}")
     else:
         process_files(files, args)
 
@@ -42,7 +43,6 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
                 if reporter:
                     reporter.write_results(os.path.basename(file_path), results, args.channels)
             pbar.update(1)
-
 
 
 def process_single_file(
@@ -89,7 +89,6 @@ def process_single_file(
             ))
 
     return results, {'max_val': max_val, 'channels': channels}
-
 
 
 def print_console_results(

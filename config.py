@@ -1,4 +1,5 @@
 # config.py
+from enum import Enum
 
 SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png']
 CSV_SEPARATOR = ';'
@@ -11,16 +12,21 @@ QUALITY_HINTS = {
     0: "заметные потери",
 }
 
+class InterpolationMethod(str, Enum):
+    BILINEAR = 'bilinear'
+    BICUBIC = 'bicubic'
+    MITCHELL = 'mitchell'
+
 INTERPOLATION_METHODS = {
-    'bilinear': 'INTER_LINEAR',
-    'bicubic': 'INTER_CUBIC',
-    'mitchell': 'mitchell',
+    InterpolationMethod.BILINEAR: 'INTER_LINEAR',
+    InterpolationMethod.BICUBIC: 'INTER_CUBIC',
+    InterpolationMethod.MITCHELL: 'mitchell',
 }
 
 INTERPOLATION_DESCRIPTIONS = {
-    'bilinear': 'Билинейная интерполяция',
-    'bicubic': 'Бикубическая интерполяция',
-    'mitchell': 'Фильтр Митчелла-Нетравали',
+    InterpolationMethod.BILINEAR: 'Билинейная интерполяция',
+    InterpolationMethod.BICUBIC: 'Бикубическая интерполяция',
+    InterpolationMethod.MITCHELL: 'Фильтр Митчелла-Нетравали',
 }
 
 STYLES = {
