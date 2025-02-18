@@ -144,7 +144,6 @@ class CSVReporter:
                 min_psnr = result_item[2]
                 hint = result_item[3]
                 if i == 0:
-                    # Оригиналу в CSV можно вписать пустые значения для каналов
                     row.extend([""] * 6)
                 else:
                     # Заполняем по ключам 'R', 'G', 'B', 'A' или 'L' и т.д.

@@ -59,7 +59,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '-t', '--threads',
         type=int,
-        default=4,
+        default=8,
         metavar='N',
         help='Число параллельных процессов (по умолчанию 4)'
     )
