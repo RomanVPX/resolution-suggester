@@ -30,10 +30,8 @@ def main():
         process_files(files, args)
 
 def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
-    """Обработка списка файлов с выводом результатов"""
     for file_path in files:
         results, meta = process_single_file(file_path, args)
-
         if results:
             print_console_results(file_path, results, args.channels, meta)
             if reporter:
@@ -43,7 +41,6 @@ def process_single_file(
     file_path: str,
     args: argparse.Namespace
 ) -> Tuple[Optional[list], Optional[dict]]:
-    """Обработка одного файла"""
     result = load_image(file_path)
     if result.error or result.data is None:
         logging.error(f"Failed to load image: {file_path} - {result.error}")
@@ -55,8 +52,8 @@ def process_single_file(
 
     height, width = img.shape[:2]
 
-    if height < 16 or width < 16:
-        logging.warning(f"Image too small for analysis: {file_path}")
+    if height < args.min_size or width < args.min_size:
+        logging.warning(f"Image too small (<{args.min_size}) for analysis: {file_path}")
         return None, None
 
     try:
@@ -71,7 +68,7 @@ def process_single_file(
     else:
         results.append(create_original_entry(width, height))
 
-    resolutions = compute_resolutions(width, height)
+    resolutions = compute_resolutions(width, height, args.min_size)
 
     with tqdm(total=len(resolutions), desc=f"Анализ {file_path}", leave=False) as fbar:
         for w, h in resolutions:
@@ -104,7 +101,6 @@ def print_console_results(
     analyze_channels: bool,
     meta: dict
 ):
-    """Вывод результатов в консоль"""
     ConsoleReporter.print_file_header(file_path)
 
     if meta['max_val'] < 0.001:
@@ -117,7 +113,6 @@ def print_console_results(
     )
 
 def create_original_entry(width: int, height: int, channels: Optional[List[str]] = None) -> tuple:
-    """Создает запись для оригинального изображения."""
     if channels:
         return (
             f"{width}x{height}",

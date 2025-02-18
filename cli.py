@@ -17,7 +17,6 @@ def setup_logging():
     )
 
 def parse_arguments() -> argparse.Namespace:
-    """Парсинг аргументов командной строки"""
     parser = argparse.ArgumentParser(
         description='Анализ потерь качества текстур при масштабировании.',
         formatter_class=argparse.RawTextHelpFormatter
@@ -44,15 +43,22 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '-i', '--interpolation',
         default=DEFAULT_INTERPOLATION,
-        choices=[m.value for m in InterpolationMethod], # Используем значения Enum для choices
+        choices=[m.value for m in InterpolationMethod],
         metavar='METHOD',
         help=format_interpolation_help()
+    )
+
+    parser.add_argument(
+        '-m', '--min-size',
+        type=int,
+        default=16,
+        metavar='SIZE',
+        help='Минимальный размер (по ширине и высоте) для анализа (по умолчанию 16)'
     )
 
     return parser.parse_args()
 
 def format_interpolation_help() -> str:
-    """Форматирование справки по методам интерполяции"""
     methods = [
         f"{m.value:<8}{' (default)' if m.value == DEFAULT_INTERPOLATION else '':<10} {desc}"
         for m, desc in INTERPOLATION_DESCRIPTIONS.items()
@@ -60,7 +66,6 @@ def format_interpolation_help() -> str:
     return "Доступные методы интерполяции:\n" + "\n".join(methods)
 
 def validate_paths(paths: list[str]) -> list[str]:
-    """Валидация и сбор файлов для обработки"""
     valid_paths = []
     for path in paths:
         if os.path.isfile(path):
@@ -75,7 +80,6 @@ def validate_paths(paths: list[str]) -> list[str]:
     return valid_paths
 
 def collect_files_from_dir(directory: str) -> list[str]:
-    """Рекурсивный сбор поддерживаемых файлов из директории"""
     collected = []
     for root, _, files in os.walk(directory):
         for f in files:
