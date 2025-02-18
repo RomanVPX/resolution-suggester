@@ -67,7 +67,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '-s', '--save-intermediate',
         action='store_true',
-        help='Сохранять промежуточные результаты ресайза'
+        help='Сохранять результаты даунскейла'
     )
 
     parser.add_argument(

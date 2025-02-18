@@ -3,12 +3,15 @@ import argparse
 import logging
 import concurrent.futures
 
+from PIL import Image
+import numpy as np
 from typing import List, Tuple, Optional
 from cli import parse_arguments, setup_logging, validate_paths
 from image_loader import load_image
 from image_processing import get_resize_function
 from metrics import calculate_psnr, calculate_channel_psnr, compute_resolutions
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
+from config import SAVE_INTERMEDIATE_DIR
 
 def main():
     setup_logging()
@@ -97,6 +100,9 @@ def process_single_file(
             continue
 
         downscaled = resize_fn(img, w, h)
+        if args.save_intermediate:
+            _save_intermediate(downscaled, file_path, w, h)
+
         upscaled = resize_fn(downscaled, width, height)
 
         if args.channels:
@@ -140,6 +146,35 @@ def create_original_entry(width: int, height: int, channels: Optional[List[str]]
     if channels:
         return (*base_entry, {c: float('inf') for c in channels}, float('inf'), "Оригинал")
     return (*base_entry, float('inf'), "Оригинал")
+
+def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height: int):
+    """
+    Сохраняет промежуточный результат в PNG.
+    Если монохром (H,W,1) - избавляемся от оси каналов для записи.
+    Если (H,W) - тоже прям пишем как есть (Pillow поймёт такую матрицу как grayscale).
+    Если (H,W,3) или (H,W,4) - запишем как RGB / RGBA.
+    """
+    # Убедимся, что папка существует
+
+    file_path_dir = os.path.dirname(file_path) + os.sep + SAVE_INTERMEDIATE_DIR
+    if not os.path.exists(file_path_dir):
+        os.makedirs(file_path_dir, exist_ok=True)
+
+    output_path = os.path.join(file_path_dir, os.path.basename(file_path).split('.')[0] + f"_{width}x{height}.png")
+    out_dir = os.path.dirname(output_path)
+    if out_dir and not os.path.exists(out_dir):
+        os.makedirs(out_dir, exist_ok=True)
+
+    arr_for_save = img_array
+    if arr_for_save.ndim == 3 and arr_for_save.shape[2] == 1:
+        # (H, W, 1) -> (H, W)
+        arr_for_save = arr_for_save.squeeze(axis=-1)
+
+    # Pillow требует, чтобы данные были в [0..255], uint8 - конвертируем
+    arr_uint8 = np.clip(arr_for_save * 255.0, 0, 255).astype(np.uint8)
+
+    pil_img = Image.fromarray(arr_uint8)
+    pil_img.save(output_path, format="PNG")
 
 if __name__ == "__main__":
     main()

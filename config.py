@@ -19,6 +19,8 @@ QUALITY_HINTS = {
     0: "заметные потери",
 }
 
+SAVE_INTERMEDIATE_DIR = '_intermediate'
+
 class InterpolationMethod(str, Enum):
     BILINEAR = 'bilinear'
     BICUBIC = 'bicubic'
