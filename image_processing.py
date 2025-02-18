@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 from functools import lru_cache
-from typing import Callable, Tuple
+from typing import Callable
 from numba import njit, prange
 from config import INTERPOLATION_METHODS, InterpolationMethod, MITCHELL_B, MITCHELL_C
 
@@ -106,6 +106,6 @@ def get_resize_function(interpolation: str) -> ResizeFunction:
 
     try:
         cv2_flag = getattr(cv2, INTERPOLATION_METHODS[interpolation_method])
-        return lambda img, w, h: cv2.resize(img, (w, h), interpolation=cv2_flag)
+        return lambda img, w, h: np.asarray(cv2.resize(img, (w, h), interpolation=cv2_flag), dtype=np.float32)
     except AttributeError:
         raise ValueError(f"OpenCV interpolation method not found: {interpolation_method}")
