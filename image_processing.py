@@ -3,12 +3,72 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 from functools import lru_cache
-from typing import Callable, Tuple
+from typing import Callable
 from numba import njit, prange
 from config import INTERPOLATION_METHODS, InterpolationMethod, MITCHELL_B, MITCHELL_C
 
 
 ResizeFunction = Callable[[npt.NDArray[np.float32], int, int], npt.NDArray[np.float32]]
+
+@njit(cache=True)
+def _resize_single_channel(
+    channel: npt.NDArray[np.float32],
+    target_width: int,
+    target_height: int,
+    B: float,
+    C: float
+) -> npt.NDArray[np.float32]:
+    height, width = channel.shape
+    resized = np.zeros((target_height, target_width), dtype=channel.dtype)
+
+    x_ratio = width / target_width
+    y_ratio = height / target_height
+
+    for i in range(target_height):
+        for j in range(target_width):
+            x = j * x_ratio
+            y = i * y_ratio
+            x_floor = np.floor(x)
+            y_floor = np.floor(y)
+
+            accumulator = 0.0
+            weight_sum = 0.0
+
+            for row_offset in range(-1, 3):
+                for col_offset in range(-1, 3):
+                    x_idx = int(x_floor + col_offset)
+                    y_idx = int(y_floor + row_offset)
+
+                    if 0 <= x_idx < width and 0 <= y_idx < height:
+                        weight_x = mitchell_netravali(x - x_floor - col_offset, B, C)
+                        weight_y = mitchell_netravali(y - y_floor - row_offset, B, C)
+                        weight = weight_x * weight_y
+                        accumulator += weight * channel[y_idx, x_idx]
+                        weight_sum += weight
+
+            resized[i, j] = accumulator / (weight_sum + np.finfo(np.float32).tiny)
+
+    return resized
+
+@njit(parallel=True, cache=True)
+def _resize_mitchell_impl(
+    img: npt.NDArray[np.float32],
+    target_width: int,
+    target_height: int,
+    B: float = MITCHELL_B,
+    C: float = MITCHELL_C
+) -> npt.NDArray[np.float32]:
+    if img.ndim == 2:
+        return _resize_single_channel(img, target_width, target_height, B, C)
+
+    channels = img.shape[2]
+    resized = np.empty((target_height, target_width, channels), dtype=img.dtype)
+
+    for c in prange(channels):
+        resized[:, :, c] = _resize_single_channel(img[:, :, c], target_width, target_height, B, C)
+
+    return resized
+
 
 @njit(cache=True)
 def mitchell_netravali(x: float, B: float = MITCHELL_B, C: float = MITCHELL_C) -> float:
@@ -21,54 +81,6 @@ def mitchell_netravali(x: float, B: float = MITCHELL_B, C: float = MITCHELL_C) -
     elif x < 2:
         return (-B - 6*C)*x3 + (6*B + 30*C)*x2 + (-12*B - 48*C)*x + (8*B + 24*C)
     return 0.0
-
-
-@njit(parallel=True, cache=True)
-def _resize_mitchell_impl(
-    img: npt.NDArray[np.float32],
-    target_width: int,
-    target_height: int,
-    B: float = MITCHELL_B,
-    C: float = MITCHELL_C
-) -> npt.NDArray[np.float32]:
-    """Ядро реализации алгоритма Митчелла-Нетравали"""
-    height: int = img.shape[0]
-    width: int = img.shape[1]
-    channels: int = img.shape[2] if img.ndim == 3 else 1
-    resized: npt.NDArray[np.float32] = np.zeros((target_height, target_width, channels), dtype=img.dtype)
-
-    x_ratio: float = width / target_width
-    y_ratio: float = height / target_height
-
-    for i in prange(target_height):
-        for j in range(target_width):
-            x: float = j * x_ratio
-            y: float = i * y_ratio
-            x_floor: float = np.floor(x)
-            y_floor: float = np.floor(y)
-
-            accumulator: np.ndarray = np.zeros(channels, dtype=np.float64) # Explicit type for accumulator
-            weight_sum: float = 0.0
-
-            for row_offset in range(-1, 3):  # 4 samples: -1, 0, 1, 2 (support=2)
-                for col_offset in range(-1, 3):
-                    x_idx: int = int(x_floor + col_offset)  # col_offset для горизонтального смещения
-                    y_idx: int = int(y_floor + row_offset)  # row_offset для вертикального смещения
-
-                    if 0 <= x_idx < width and 0 <= y_idx < height: # Проверка границ изображения
-                        weight_x: float = mitchell_netravali(x - x_floor - col_offset, B, C) # Вес по X
-                        weight_y: float = mitchell_netravali(y - y_floor - row_offset, B, C) # Вес по Y
-                        weight: float = weight_x * weight_y # Общий вес как произведение весов по X и Y
-                        pixel = img[y_idx, x_idx]
-                        accumulator += weight * pixel # Накопление взвешенных значений пикселей
-                        weight_sum += weight # Суммирование весов
-
-            if weight_sum > 0:
-                resized[i, j] = accumulator / weight_sum # Нормализация накопленного значения на сумму весов
-            else:
-                resized[i, j] = np.zeros_like(accumulator) # Заполнение нулями, если сумма весов равна 0
-
-    return resized
 
 
 def resize_mitchell(
