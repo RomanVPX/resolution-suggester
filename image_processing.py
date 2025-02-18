@@ -30,35 +30,40 @@ def mitchell_netravali(x: float, B: float = MITCHELL_B, C: float = MITCHELL_C) -
 
 @njit(parallel=True, cache=True)
 def _resize_mitchell_impl(
-    img: np.ndarray, target_width: int, target_height: int, B: float = MITCHELL_B, C: float = MITCHELL_C
-) -> np.ndarray:
+    img: npt.NDArray[np.float32],
+    target_width: int,
+    target_height: int,
+    B: float = MITCHELL_B,
+    C: float = MITCHELL_C
+) -> npt.NDArray[np.float32]:
     """Ядро реализации алгоритма Митчелла-Нетравали"""
-    height, width = img.shape[:2]
-    channels = img.shape[2] if img.ndim == 3 else 1
-    resized = np.zeros((target_height, target_width, channels), dtype=img.dtype)
+    height: int = img.shape[0]
+    width: int = img.shape[1]
+    channels: int = img.shape[2] if img.ndim == 3 else 1
+    resized: npt.NDArray[np.float32] = np.zeros((target_height, target_width, channels), dtype=img.dtype)
 
-    x_ratio = width / target_width
-    y_ratio = height / target_height
+    x_ratio: float = width / target_width
+    y_ratio: float = height / target_height
 
     for i in prange(target_height):
         for j in range(target_width):
-            x = j * x_ratio
-            y = i * y_ratio
-            x_floor = np.floor(x)
-            y_floor = np.floor(y)
+            x: float = j * x_ratio
+            y: float = i * y_ratio
+            x_floor: float = np.floor(x)
+            y_floor: float = np.floor(y)
 
-            accumulator = np.zeros(channels, dtype=np.float64)
-            weight_sum = 0.0
+            accumulator: np.ndarray = np.zeros(channels, dtype=np.float64) # Explicit type for accumulator
+            weight_sum: float = 0.0
 
             for row_offset in range(-1, 3):  # Было range(-2, 2)
                 for col_offset in range(-1, 3):
-                    x_idx = int(x_floor + col_offset)  # col_offset для горизонтального смещения
-                    y_idx = int(y_floor + row_offset)  # row_offset для вертикального смещения
+                    x_idx: int = int(x_floor + col_offset)  # col_offset для горизонтального смещения
+                    y_idx: int = int(y_floor + row_offset)  # row_offset для вертикального смещения
 
                     if 0 <= x_idx < width and 0 <= y_idx < height: # Проверка границ изображения
-                        weight_x = mitchell_netravali(x - x_floor - col_offset, B, C) # Вес по X
-                        weight_y = mitchell_netravali(y - y_floor - row_offset, B, C) # Вес по Y
-                        weight = weight_x * weight_y # Общий вес как произведение весов по X и Y
+                        weight_x: float = mitchell_netravali(x - x_floor - col_offset, B, C) # Вес по X
+                        weight_y: float = mitchell_netravali(y - y_floor - row_offset, B, C) # Вес по Y
+                        weight: float = weight_x * weight_y # Общий вес как произведение весов по X и Y
                         pixel = img[y_idx, x_idx]
                         accumulator += weight * pixel # Накопление взвешенных значений пикселей
                         weight_sum += weight # Суммирование весов
