@@ -6,7 +6,7 @@ from typing import Callable
 from numba import njit, prange
 from config import INTERPOLATION_METHODS, InterpolationMethod, MITCHELL_B, MITCHELL_C
 
-TINY = 1e-8
+TINY_EPSILON = 1e-8
 MITCHELL_RADIUS = 2  # Радиус фильтра Митчелла
 
 ResizeFunction = Callable[[npt.NDArray[np.float32], int, int], npt.NDArray[np.float32]]
@@ -37,36 +37,61 @@ def _resize_single_channel(
     B: float,
     C: float
 ) -> npt.NDArray[np.float32]:
-    """Ресайз одного канала (2D) фильтром Митчелла без чанкинга."""
     height, width = channel.shape
     resized = np.zeros((target_height, target_width), dtype=channel.dtype)
 
     x_ratio = width / target_width
     y_ratio = height / target_height
 
+    # Предварительный расчет весов для X и Y
+    x_weights = np.zeros((target_width, 4), dtype=np.float32)
+    x_indices = np.zeros((target_width, 4), dtype=np.int32)
+    y_weights = np.zeros((target_height, 4), dtype=np.float32)
+    y_indices = np.zeros((target_height, 4), dtype=np.int32)
+
+    # Предварительный расчет весов и индексов
+    for j in range(target_width):
+        x = j * x_ratio
+        x_floor = int(np.floor(x))
+        for k in range(4):
+            x_idx = x_floor + k - 1
+            if 0 <= x_idx < width:
+                x_indices[j, k] = x_idx
+                x_weights[j, k] = mitchell_netravali(x - x_floor - (k - 1), B, C)
+
+    for i in range(target_height):
+        y = i * y_ratio
+        y_floor = int(np.floor(y))
+        for k in range(4):
+            y_idx = y_floor + k - 1
+            if 0 <= y_idx < height:
+                y_indices[i, k] = y_idx
+                y_weights[i, k] = mitchell_netravali(y - y_floor - (k - 1), B, C)
+
+    # Основной цикл ресайза с использованием предварительно рассчитанных значений
     for i in range(target_height):
         for j in range(target_width):
-            x = j * x_ratio
-            y = i * y_ratio
-            x_floor = np.floor(x)
-            y_floor = np.floor(y)
-
             accumulator = 0.0
             weight_sum = 0.0
 
-            for row_offset in range(-1, 3):
-                for col_offset in range(-1, 3):
-                    x_idx = int(x_floor + col_offset)
-                    y_idx = int(y_floor + row_offset)
+            for ky in range(4):
+                y_idx = y_indices[i, ky]
+                wy = y_weights[i, ky]
+                if wy == 0.0:
+                    continue
+
+                for kx in range(4):
+                    x_idx = x_indices[j, kx]
+                    wx = x_weights[j, kx]
+                    if wx == 0.0:
+                        continue
 
                     if 0 <= x_idx < width and 0 <= y_idx < height:
-                        weight_x = mitchell_netravali(x - x_floor - col_offset, B, C)
-                        weight_y = mitchell_netravali(y - y_floor - row_offset, B, C)
-                        weight = weight_x * weight_y
+                        weight = wx * wy
                         accumulator += weight * channel[y_idx, x_idx]
                         weight_sum += weight
 
-            resized[i, j] = accumulator / (weight_sum + TINY)
+            resized[i, j] = accumulator / (weight_sum + TINY_EPSILON)
 
     return resized
 
