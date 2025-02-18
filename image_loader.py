@@ -68,4 +68,5 @@ def load_raster(file_path: str) -> Tuple[npt.NDArray[np.float32], float, list[st
     img_array = np.array(img).astype(np.float32) / divisor
     channels = MODE_CHANNEL_MAP[img.mode]
 
-    return img_array, float(divisor), channels
+    return img_array, 1.0, channels
+    # return img_array, float(divisor), channels
