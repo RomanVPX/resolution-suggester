@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 from functools import lru_cache
-from typing import Callable
+from typing import Callable, Tuple
 from numba import njit, prange
 from config import INTERPOLATION_METHODS, InterpolationMethod, MITCHELL_B, MITCHELL_C
 

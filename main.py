@@ -47,10 +47,14 @@ def process_single_file(
     args: argparse.Namespace
 ) -> Tuple[Optional[list], Optional[dict]]:
     """Обработка одного файла"""
-    img, max_val, channels = load_image(file_path)
-    if img is None:
-        logging.error(f"Failed to load image: {file_path}")
+    result = load_image(file_path)
+    if result.error or result.data is None:
+        logging.error(f"Failed to load image: {file_path} - {result.error}")
         return None, None
+
+    img = result.data
+    max_val = result.max_value
+    channels = result.channels
 
     if img.shape[0] < 16 or img.shape[1] < 16:
         logging.warning(f"Image too small for analysis: {file_path}")
