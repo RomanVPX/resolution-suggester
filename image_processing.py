@@ -7,13 +7,15 @@ from config import INTERPOLATION_METHODS, InterpolationMethod # Импорт Enu
 
 
 @njit(cache=True)
-def mitchell_netravali(x: float, B: float = 1 / 3, C: float = 1 / 3) -> float:
-    """Фильтр Митчелла-Нетравали для резамплинга"""
+def mitchell_netravali(x: float, B: float = 1/3, C: float = 1/3) -> float:
     x = np.abs(x)
+    x2 = x * x
+    x3 = x * x2
+
     if x < 1:
-        return (12 - 9 * B - 6 * C) * x**3 + (-18 + 12 * B + 6 * C) * x**2 + (6 - 2 * B)
-    if x < 2:
-        return (-B - 6 * C) * x**3 + (6 * B + 30 * C) * x**2 + (-12 * B - 48 * C) * x + (8 * B + 24 * C)
+        return (12 - 9*B - 6*C)*x3 + (-18 + 12*B + 6*C)*x2 + (6 - 2*B)
+    elif x < 2:
+        return (-B - 6*C)*x3 + (6*B + 30*C)*x2 + (-12*B - 48*C)*x + (8*B + 24*C)
     return 0.0
 
 
@@ -39,8 +41,8 @@ def _resize_mitchell_impl(
             accumulator = np.zeros(channels, dtype=np.float64)
             weight_sum = 0.0
 
-            for row_offset in range(-2, 2):
-                for col_offset in range(-2, 2):
+            for row_offset in range(-1, 3):  # Было range(-2, 2)
+                for col_offset in range(-1, 3):
                     x_idx = int(x_floor + col_offset)  # col_offset для горизонтального смещения
                     y_idx = int(y_floor + row_offset)  # row_offset для вертикального смещения
 
@@ -60,10 +62,16 @@ def _resize_mitchell_impl(
     return resized
 
 
-def resize_mitchell(img: np.ndarray, target_width: int, target_height: int) -> np.ndarray:
-    """Публичная функция для ресайза с фильтром Митчелла-Нетравали"""
-    resized = _resize_mitchell_impl(img, target_width, target_height)
-    return resized[:, :, 0] if img.ndim == 2 else resized
+def resize_mitchell(
+    img: np.ndarray,
+    target_width: int,
+    target_height: int,
+    B: float = 1/3,
+    C: float = 1/3
+) -> np.ndarray:
+    """Добавлены параметры B и C в публичный интерфейс"""
+    resized = _resize_mitchell_impl(img, target_width, target_height, B, C)
+    return resized.squeeze() if img.ndim == 2 else resized
 
 
 @lru_cache(maxsize=4)
