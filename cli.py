@@ -54,7 +54,7 @@ def parse_arguments() -> argparse.Namespace:
 def format_interpolation_help() -> str:
     """Форматирование справки по методам интерполяции"""
     methods = [
-        f"{m.value:<8}{' (default)' if m == DEFAULT_INTERPOLATION else '':<10} {desc}" # Используем m.value
+        f"{m.value:<8}{' (default)' if m.value == DEFAULT_INTERPOLATION else '':<10} {desc}"
         for m, desc in INTERPOLATION_DESCRIPTIONS.items()
     ]
     return "Доступные методы интерполяции:\n" + "\n".join(methods)
