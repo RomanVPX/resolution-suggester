@@ -70,15 +70,6 @@ def parse_arguments() -> argparse.Namespace:
         help='Сохранять промежуточные результаты ресайза'
     )
 
-    # Новый параметр для чанкинга применительно к Митчеллу
-    parser.add_argument(
-        '--chunk-size',
-        type=int,
-        default=0,
-        metavar='SIZE',
-        help='Размер тайла для чанкинга при митчелловском ресайзе (0 — без чанкинга)'
-    )
-
     parser.add_argument(
         '--no-parallel',
         action='store_true',
@@ -86,16 +77,6 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     args = parser.parse_args()
-
-    if args.chunk_size < 0:
-        parser.error("--chunk-size не может быть отрицательным")
-
-    if args.interpolation != InterpolationMethod.MITCHELL.value and args.chunk_size > 0:
-        logging.warning(
-            "Параметр --chunk-size актуален только для методa интерполяции 'mitchell'. "
-            "Значение будет сброшено к 0."
-        )
-        args.chunk_size = 0
 
     return args
 

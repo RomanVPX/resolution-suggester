@@ -80,7 +80,7 @@ def process_single_file(
         return None, None
 
     try:
-        resize_fn = get_resize_function(args.interpolation, args.chunk_size)
+        resize_fn = get_resize_function(args.interpolation)
     except ValueError:
         return None, None
 

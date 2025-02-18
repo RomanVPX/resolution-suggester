@@ -113,115 +113,23 @@ def _resize_mitchell(
 
     return resized
 
-def _resize_mitchell_chunked(
-    img: np.ndarray,
-    target_width: int,
-    target_height: int,
-    chunk_size: int,
-    B: float,
-    C: float
-) -> np.ndarray:
-    """
-     - Пробегаемся по тайлам в пространстве (target).
-     - Для каждого тайла вычисляем соответствующий фрагмент (source)
-       и слегка расширяем границы (на 2 пикселя, радиус Митчелла).
-     - Масштабируем фрагмент, вставляем результат в нужное место выходного массива.
-    """
-    src_h, src_w = img.shape[:2]
-    channels = 1 if img.ndim == 2 else img.shape[2]
-
-    out_shape = (target_height, target_width) if channels == 1 else (target_height, target_width, channels)
-    resized_final = np.zeros(out_shape, dtype=np.float32)
-
-    # Коэффициенты (сколько пикселей source на 1 пиксель target)
-    x_ratio = float(src_w) / float(target_width)
-    y_ratio = float(src_h) / float(target_height)
-
-    def resize_one_channel(local_channel: np.ndarray, tw: int, th: int) -> np.ndarray:
-        return _resize_mitchell_single_channel(local_channel, tw, th, B, C)
-
-    # Функция ресайза цветного фрагмента или моно
-    def resize_local_block(local_block: np.ndarray, tw: int, th: int) -> np.ndarray:
-        if local_block.ndim == 2:
-            return resize_one_channel(local_block, tw, th)
-        else:
-            # Раскладываем каналы
-            ch_count = local_block.shape[2]
-            out_block = []
-            for cc in range(ch_count):
-                out_block.append(resize_one_channel(local_block[..., cc], tw, th))
-            return np.stack(out_block, axis=-1)
-
-    # Бежим по чанкам в target-пространстве
-    for ty0 in range(0, target_height, chunk_size):
-        ty1 = min(ty0 + chunk_size, target_height)
-
-        for tx0 in range(0, target_width, chunk_size):
-            tx1 = min(tx0 + chunk_size, target_width)
-
-            # Размер текущего тайла в target
-            tile_w = tx1 - tx0
-            tile_h = ty1 - ty0
-
-            # Соответствующие координаты в source (с учётом округления)
-            sx0_float = tx0 * x_ratio
-            sx1_float = tx1 * x_ratio
-            sy0_float = ty0 * y_ratio
-            sy1_float = ty1 * y_ratio
-
-            # Округляем (используем floor/ceil)
-            sx0 = int(np.floor(sx0_float))
-            sx1 = int(np.ceil(sx1_float))
-            sy0 = int(np.floor(sy0_float))
-            sy1 = int(np.ceil(sy1_float))
-
-            # Расширяем на 2 пикселя радиуса Митчелла
-            sx0_ext = max(sx0 - MITCHELL_RADIUS, 0)
-            sx1_ext = min(sx1 + MITCHELL_RADIUS, src_w)
-            sy0_ext = max(sy0 - MITCHELL_RADIUS, 0)
-            sy1_ext = min(sy1 + MITCHELL_RADIUS, src_h)
-
-            # Вырезаем фрагмент из исходника
-            if channels == 1:
-                local_data = img[sy0_ext:sy1_ext, sx0_ext:sx1_ext]
-            else:
-                local_data = img[sy0_ext:sy1_ext, sx0_ext:sx1_ext, :]
-
-            # Масштабируем фрагмент до размеров (tile_h x tile_w)
-            local_resized = resize_local_block(local_data, tile_w, tile_h)
-
-            # Кладём в итоговый массив
-            if channels == 1:
-                resized_final[ty0:ty1, tx0:tx1] = local_resized
-            else:
-                resized_final[ty0:ty1, tx0:tx1, :] = local_resized
-
-    return resized_final.squeeze() if channels == 1 else resized_final
-
-
 def resize_mitchell(
     img: np.ndarray,
     target_width: int,
     target_height: int,
     B: float = MITCHELL_B,
     C: float = MITCHELL_C,
-    chunk_size: int = 0
 ) -> np.ndarray:
     """
-    Публичный интерфейс Митчелла. Если chunk_size>0, включается refined-чанкинг.
+    Публичный интерфейс Митчелла.
     """
-    if chunk_size > 0:
-        logging.info(f"Resizing (Mitchell) {img.shape} to {target_width}x{target_height} Using chunk_size={chunk_size}")
-        return _resize_mitchell_chunked(img, target_width, target_height, chunk_size, B, C)
-    else:
-        logging.info(f"Resizing (Mitchell) {img.shape} to {target_width}x{target_height} Using normal resampling")
-        return _resize_mitchell(img, target_width, target_height, B, C)
+    return _resize_mitchell(img, target_width, target_height, B, C)
 
 @lru_cache(maxsize=4)
-def get_resize_function(interpolation: str, chunk_size: int = 0) -> ResizeFunction:
+def get_resize_function(interpolation: str) -> ResizeFunction:
     """
     Фабрика функций для ресайза:
-    Если выбрали 'mitchell', берём resize_mitchell. chunk_size управляет чанкингом.
+    Если выбрали 'mitchell', берём resize_mitchell.
     """
     try:
         interpolation_method = InterpolationMethod(interpolation)
@@ -229,8 +137,7 @@ def get_resize_function(interpolation: str, chunk_size: int = 0) -> ResizeFuncti
         raise ValueError(f"Unsupported interpolation method: {interpolation}")
 
     if interpolation_method == InterpolationMethod.MITCHELL:
-        # Возвращаем функцию Митчелла с нужным chunk_size
-        return partial(resize_mitchell, chunk_size=chunk_size)
+        return partial(resize_mitchell)
 
     try:
         cv2_flag = getattr(cv2, INTERPOLATION_METHODS[interpolation_method])
