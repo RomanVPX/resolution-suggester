@@ -8,11 +8,6 @@ from numba import njit, prange
 from config import INTERPOLATION_METHODS, InterpolationMethod, MITCHELL_B, MITCHELL_C
 
 
-@lru_cache(maxsize=32)
-def get_mitchell_kernel(x: float, B: float = MITCHELL_B, C: float = MITCHELL_C) -> float:
-    """Кэшированное вычисление значений ядра фильтра"""
-    return mitchell_netravali(x, B, C)
-
 ResizeFunction = Callable[[npt.NDArray[np.float32], int, int], npt.NDArray[np.float32]]
 
 @njit(cache=True)
@@ -55,7 +50,7 @@ def _resize_mitchell_impl(
             accumulator: np.ndarray = np.zeros(channels, dtype=np.float64) # Explicit type for accumulator
             weight_sum: float = 0.0
 
-            for row_offset in range(-1, 3):  # Было range(-2, 2)
+            for row_offset in range(-1, 3):  # 4 samples: -1, 0, 1, 2 (support=2)
                 for col_offset in range(-1, 3):
                     x_idx: int = int(x_floor + col_offset)  # col_offset для горизонтального смещения
                     y_idx: int = int(y_floor + row_offset)  # row_offset для вертикального смещения
