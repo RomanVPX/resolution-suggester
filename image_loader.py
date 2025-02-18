@@ -43,23 +43,39 @@ def load_exr(file_path: str) -> Tuple[np.ndarray, float, list[str]]: # Испр�
     channels = ['R', 'G', 'B', 'A'][:img.shape[2]] if img.ndim > 2 else ['L']
     return img, max_val, channels
 
-# Добавить обработку 16-битных изображений и улучшить типизацию
 def load_raster(file_path: str) -> tuple[np.ndarray, float, list[str]]:
-    """Загружает PNG/TGA файл с нормализацией"""
     img = Image.open(file_path)
-    convert_map = {
+    mode_conversion = {
         '1': 'L',
-        'LA': 'RGBA',
-        'CMYK': 'RGB'
+        'L': 'L',
+        'LA': 'LA',
+        'RGB': 'RGB',
+        'RGBA': 'RGBA',
+        'CMYK': 'RGB',
+        'YCbCr': 'RGB',
+        'LAB': 'RGB',
+        'HSV': 'RGB',
+        'I;16': 'I;16'
     }
-    if img.mode in convert_map:
-        img = img.convert(convert_map[img.mode])
-    elif img.mode not in ('L', 'RGB', 'RGBA'):
-        img = img.convert('RGB')
 
-    # Определение битности
-    divisor = 65535.0 if img.mode == 'I;16' else 255.0
+    target_mode = mode_conversion.get(img.mode, 'RGB')
+    if img.mode != target_mode:
+        img = img.convert(target_mode)
+
+    # Улучшенная обработка битности
+    divisor = 65535.0 if img.mode.startswith('I;16') else 255.0
+
     img_array = np.array(img).astype(np.float32) / divisor
+    channels = _get_channels_description(img.mode)
 
-    channels = ['R', 'G', 'B', 'A'][:img_array.shape[2]] if img_array.ndim > 2 else ['L']
     return img_array, float(divisor), channels
+
+def _get_channels_description(mode: str) -> list[str]:
+    channel_map = {
+        'L': ['L'],
+        'LA': ['L', 'A'],
+        'RGB': ['R', 'G', 'B'],
+        'RGBA': ['R', 'G', 'B', 'A'],
+        'I;16': ['L']
+    }
+    return channel_map.get(mode, ['Unknown'])
