@@ -41,7 +41,7 @@ def load_image(file_path: str) -> ImageLoadResult:
         file_path: Путь к файлу изображения
 
     Returns:
-        Tuple: (image_array, max_value, channels) или (None, None, None) при ошибке
+        ImageLoadResult: поля (data, max_value, channels, error)
     """
     try:
         ext = os.path.splitext(file_path)[1].lower()
@@ -63,17 +63,16 @@ def load_exr(file_path: str) -> ImageLoadResult:
     try:
         exr_file = pyexr.open(file_path)
 
-        # Получаем каналы через атрибут channels
         channels = exr_file.channels if hasattr(exr_file, 'channels') else []
 
+        img = exr_file.get().astype(np.float32)
 
-        img = exr_file.get()
-        img = img.astype(np.float32)
-
-        # Автодетект каналов
         if not channels:
             num_channels = img.shape[2] if img.ndim > 2 else 1
-            channels = ['R', 'G', 'B', 'A'][:num_channels] if num_channels > 1 else ['L']
+            if num_channels > 1:
+                channels = ['R', 'G', 'B', 'A'][:num_channels]
+            else:
+                channels = ['L']
 
         max_val = np.max(np.abs(img))
         return ImageLoadResult(img, max_val, channels)
@@ -83,6 +82,10 @@ def load_exr(file_path: str) -> ImageLoadResult:
         return ImageLoadResult(None, None, None, str(e))
 
 def load_raster(file_path: str) -> ImageLoadResult:
+    """
+    Загружает PNG/TGA и нормализует данные в диапазон [0..1].
+    Если изображение grayscale, то расширяем до (H, W, 1) для согласованности.
+    """
     img = Image.open(file_path)
 
     if img.mode not in MODE_CHANNEL_MAP:
@@ -90,7 +93,11 @@ def load_raster(file_path: str) -> ImageLoadResult:
 
     divisor = BIT_DEPTH_16 if img.mode.startswith('I;16') else BIT_DEPTH_8
     img_array = np.array(img).astype(np.float32) / divisor
+
+    if img_array.ndim == 2:
+        img_array = np.expand_dims(img_array, axis=-1)
+
     channels = MODE_CHANNEL_MAP[img.mode]
 
-    # Максимальное значение после нормализации всегда 1.0
+    # Максимальное значение после нормализации всегда 1.0 для PNG/TGA
     return ImageLoadResult(img_array, 1.0, channels)

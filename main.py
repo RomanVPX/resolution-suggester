@@ -11,7 +11,6 @@ from image_processing import get_resize_function
 from metrics import calculate_psnr, calculate_channel_psnr, compute_resolutions
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
 
-
 def main():
     setup_logging()
     args = parse_arguments()
@@ -30,7 +29,6 @@ def main():
     else:
         process_files(files, args)
 
-
 def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
     """Обработка списка файлов с выводом результатов"""
     for file_path in files:
@@ -40,7 +38,6 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
             print_console_results(file_path, results, args.channels, meta)
             if reporter:
                 reporter.write_results(os.path.basename(file_path), results, args.channels)
-
 
 def process_single_file(
     file_path: str,
@@ -56,27 +53,34 @@ def process_single_file(
     max_val = result.max_value
     channels = result.channels
 
-    if img.shape[0] < 16 or img.shape[1] < 16:
+    # Явно называем (height, width), чтобы потом не путать с compute_resolutions.
+    height, width = img.shape[:2]
+
+    if height < 16 or width < 16:
         logging.warning(f"Image too small for analysis: {file_path}")
         return None, None
 
-    original_h, original_w = img.shape[:2]
     try:
         resize_fn = get_resize_function(args.interpolation)
     except ValueError as e:
         logging.error(f"Error for {file_path}: {e}")
         return None, None
 
+    # Формируем результат по оригинальному изображению в общий список
+    # (см. create_original_entry ниже).
     results = []
     if args.channels:
-        results.append(create_original_entry(original_w, original_h, channels))
+        results.append(create_original_entry(width, height, channels))
     else:
-        results.append(create_original_entry(original_w, original_h))
-    resolutions = compute_resolutions(original_w, original_h)
+        results.append(create_original_entry(width, height))
+
+    # Генерируем разрешения: важно передавать (width, height)
+    resolutions = compute_resolutions(width, height)
+
     with tqdm(total=len(resolutions), desc=f"Анализ {file_path}", leave=False) as fbar:
         for w, h in resolutions:
             downscaled = resize_fn(img, w, h)
-            upscaled = resize_fn(downscaled, original_w, original_h)
+            upscaled = resize_fn(downscaled, width, height)
 
             if args.channels:
                 channel_psnr = calculate_channel_psnr(img, upscaled, max_val, channels)
@@ -98,7 +102,6 @@ def process_single_file(
 
     return results, {'max_val': max_val, 'channels': channels}
 
-
 def print_console_results(
     file_path: str,
     results: list,
@@ -117,19 +120,18 @@ def print_console_results(
         meta.get('channels')
     )
 
-
-def create_original_entry(w: int, h: int, channels: Optional[List[str]] = None) -> tuple:
+def create_original_entry(width: int, height: int, channels: Optional[List[str]] = None) -> tuple:
     """Создает запись для оригинального изображения."""
     if channels:
         return (
-            f"{w}x{h}",
+            f"{width}x{height}",
             {c: float('inf') for c in channels},
             float('inf'),
             f"{QualityHelper.get_style(float('inf'))}Оригинал"
         )
     else:
         return (
-            f"{w}x{h}",
+            f"{width}x{height}",
             float('inf'),
             f"{QualityHelper.get_style(float('inf'))}Оригинал"
         )
