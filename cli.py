@@ -7,7 +7,7 @@ from config import (
     INTERPOLATION_DESCRIPTIONS,
     DEFAULT_INTERPOLATION,
     SUPPORTED_EXTENSIONS,
-    InterpolationMethod  # Импорт Enum
+    InterpolationMethod
 )
 
 def setup_logging():
