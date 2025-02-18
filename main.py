@@ -52,6 +52,11 @@ def process_single_file(
     """Обработка одного файла"""
     img, max_val, channels = load_image(file_path)
     if img is None:
+        logging.error(f"Failed to load image: {file_path}")
+        return None, None
+
+    if img.shape[0] < 16 or img.shape[1] < 16:
+        logging.warning(f"Image too small for analysis: {file_path}")
         return None, None
 
     original_h, original_w = img.shape[:2]
