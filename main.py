@@ -1,9 +1,10 @@
 # main.py
 import os
+import argparse
+import logging
+
 from typing import List, Tuple, Optional
 from tqdm import tqdm
-import argparse
-
 from cli import parse_arguments, setup_logging, validate_paths
 from image_loader import load_image
 from image_processing import get_resize_function
@@ -32,7 +33,7 @@ def main():
 
 def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
     """Обработка списка файлов с выводом результатов"""
-    with tqdm(total=len(files), desc="Processing files") as pbar:
+    with tqdm(total=len(files), desc="Обрабатываю файлы") as pbar:
         for file_path in files:
             results, meta = process_single_file(file_path, args)
 
@@ -58,38 +59,40 @@ def process_single_file(
         return None, None
 
     original_h, original_w = img.shape[:2]
-    try: # Обработка исключения при получении функции ресайза
+    try:
         resize_fn = get_resize_function(args.interpolation)
     except ValueError as e:
-        logging.error(f"Error for {file_path}: {e}") # Логирование ошибки
-        return None, None # Возврат None для указания на ошибку обработки файла
+        logging.error(f"Error for {file_path}: {e}")
+        return None, None
 
     results = []
     if args.channels:
         results.append(create_original_entry(original_w, original_h, channels))
     else:
         results.append(create_original_entry(original_w, original_h))
+    resolutions = compute_resolutions(original_w, original_h)
+    with tqdm(total=len(resolutions), desc=f"Анализ {file_path}") as fbar:
+        for w, h in resolutions:
+            downscaled = resize_fn(img, w, h)
+            upscaled = resize_fn(downscaled, original_w, original_h)
 
-    for w, h in compute_resolutions(original_w, original_h):
-        downscaled = resize_fn(img, w, h)
-        upscaled = resize_fn(downscaled, original_w, original_h)
-
-        if args.channels:
-            channel_psnr = calculate_channel_psnr(img, upscaled, max_val, channels)
-            min_psnr = min(channel_psnr.values())
-            results.append((
-                f"{w}x{h}",
-                channel_psnr,
-                min_psnr,
-                QualityHelper.get_hint(min_psnr)
-            ))
-        else:
-            psnr = calculate_psnr(img, upscaled, max_val)
-            results.append((
-                f"{w}x{h}",
-                psnr,
-                QualityHelper.get_hint(psnr)
-            ))
+            if args.channels:
+                channel_psnr = calculate_channel_psnr(img, upscaled, max_val, channels)
+                min_psnr = min(channel_psnr.values())
+                results.append((
+                    f"{w}x{h}",
+                    channel_psnr,
+                    min_psnr,
+                    QualityHelper.get_hint(min_psnr)
+                ))
+            else:
+                psnr = calculate_psnr(img, upscaled, max_val)
+                results.append((
+                    f"{w}x{h}",
+                    psnr,
+                    QualityHelper.get_hint(psnr)
+                ))
+            fbar.update(1)
 
     return results, {'max_val': max_val, 'channels': channels}
 
@@ -104,7 +107,7 @@ def print_console_results(
     ConsoleReporter.print_file_header(file_path)
 
     if meta['max_val'] < 0.001:
-        logging.warning(f"Low max value: {meta['max_val']:.3e}") # f-strings для форматирования
+        logging.warning(f"Low max value: {meta['max_val']:.3e}")
 
     ConsoleReporter.print_quality_table(
         results,
@@ -113,7 +116,7 @@ def print_console_results(
     )
 
 
-def create_original_entry(w: int, h: int, channels: Optional[List[str]] = None) -> Tuple: # Унифицированная функция
+def create_original_entry(w: int, h: int, channels: Optional[List[str]] = None) -> tuple:
     """Создает запись для оригинального изображения."""
     if channels:
         return (
