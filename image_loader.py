@@ -20,9 +20,9 @@ MODE_CHANNEL_MAP: Dict[str, list[str]] = {
     'I;16': ['L'],
     'I;16L': ['L'],
     'I;16B': ['L'],
-    'CMYK': ['C', 'M', 'Y', 'K'],
-    'YCbCr': ['Y', 'Cb', 'Cr'],
-    'LAB': ['L', 'a', 'b']
+    # 'CMYK': ['C', 'M', 'Y', 'K'],
+    # 'YCbCr': ['Y', 'Cb', 'Cr'],
+    # 'LAB': ['L', 'a', 'b']
 }
 
 @dataclass
