@@ -33,15 +33,13 @@ def main():
 
 def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
     """Обработка списка файлов с выводом результатов"""
-    with tqdm(total=len(files), desc="Обрабатываю файлы") as pbar:
-        for file_path in files:
-            results, meta = process_single_file(file_path, args)
+    for file_path in files:
+        results, meta = process_single_file(file_path, args)
 
-            if results:
-                print_console_results(file_path, results, args.channels, meta)
-                if reporter:
-                    reporter.write_results(os.path.basename(file_path), results, args.channels)
-            pbar.update(1)
+        if results:
+            print_console_results(file_path, results, args.channels, meta)
+            if reporter:
+                reporter.write_results(os.path.basename(file_path), results, args.channels)
 
 
 def process_single_file(
@@ -71,7 +69,7 @@ def process_single_file(
     else:
         results.append(create_original_entry(original_w, original_h))
     resolutions = compute_resolutions(original_w, original_h)
-    with tqdm(total=len(resolutions), desc=f"Анализ {file_path}") as fbar:
+    with tqdm(total=len(resolutions), desc=f"Анализ {file_path}", leave=False) as fbar:
         for w, h in resolutions:
             downscaled = resize_fn(img, w, h)
             upscaled = resize_fn(downscaled, original_w, original_h)
