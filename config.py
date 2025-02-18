@@ -2,12 +2,15 @@
 from enum import Enum
 from colorama import Fore, Back, Style
 
-SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png']
+SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png', '.jpg', '.jpeg']
 CSV_SEPARATOR = ';'
 DEFAULT_INTERPOLATION = 'mitchell'
 
 MITCHELL_B = 1/3
 MITCHELL_C = 1/3
+
+MITCHELL_RADIUS = 2
+TINY_EPSILON = 1e-8
 
 QUALITY_HINTS = {
     50: "практически идентичные изображения",

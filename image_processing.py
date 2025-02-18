@@ -1,13 +1,11 @@
+import logging
 import cv2
 import numpy as np
 import numpy.typing as npt
-from functools import lru_cache
+from functools import lru_cache, partial
 from typing import Callable
 from numba import njit, prange
-from config import INTERPOLATION_METHODS, InterpolationMethod, MITCHELL_B, MITCHELL_C
-
-TINY_EPSILON = 1e-8
-MITCHELL_RADIUS = 2  # Радиус фильтра Митчелла
+from config import MITCHELL_B, MITCHELL_C, TINY_EPSILON, MITCHELL_RADIUS, INTERPOLATION_METHODS, InterpolationMethod
 
 ResizeFunction = Callable[[npt.NDArray[np.float32], int, int], npt.NDArray[np.float32]]
 
@@ -213,8 +211,10 @@ def resize_mitchell(
     Публичный интерфейс Митчелла. Если chunk_size>0, включается refined-чанкинг.
     """
     if chunk_size > 0:
+        logging.info(f"Resizing (Mitchell) {img.shape} to {target_width}x{target_height} Using chunk_size={chunk_size}")
         return _resize_mitchell_chunked(img, target_width, target_height, chunk_size, B, C)
     else:
+        logging.info(f"Resizing (Mitchell) {img.shape} to {target_width}x{target_height} Using normal resampling")
         return _resize_mitchell(img, target_width, target_height, B, C)
 
 @lru_cache(maxsize=4)
@@ -230,7 +230,6 @@ def get_resize_function(interpolation: str, chunk_size: int = 0) -> ResizeFuncti
 
     if interpolation_method == InterpolationMethod.MITCHELL:
         # Возвращаем функцию Митчелла с нужным chunk_size
-        from functools import partial
         return partial(resize_mitchell, chunk_size=chunk_size)
 
     try:

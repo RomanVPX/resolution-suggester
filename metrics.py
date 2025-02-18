@@ -1,8 +1,11 @@
 # metrics.py
 import math
 import numpy as np
+from numba import njit
 from typing import Dict, Tuple
+from config import TINY_EPSILON
 
+@njit(cache=True)
 def calculate_psnr(
     original: np.ndarray,
     processed: np.ndarray,
@@ -11,10 +14,16 @@ def calculate_psnr(
     if original.shape != processed.shape:
         raise ValueError("Image dimensions must match for PSNR calculation")
 
-    mse = np.mean((original - processed) ** 2)
-    if mse < 1e-12:
+    # Оптимизированный расчет MSE
+    diff = original - processed
+    mse = np.mean(diff * diff)
+
+    if mse < TINY_EPSILON:
         return float('inf')
-    return 20 * math.log10(max_val) - 10 * math.log10(mse)
+
+    # Предварительно вычисленный логарифм для max_val
+    log_max = 20 * math.log10(max_val)
+    return log_max - 10 * math.log10(mse)
 
 def calculate_channel_psnr(
     original: np.ndarray,

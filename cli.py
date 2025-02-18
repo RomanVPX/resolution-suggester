@@ -64,6 +64,12 @@ def parse_arguments() -> argparse.Namespace:
         help='Число параллельных процессов (по умолчанию 8)'
     )
 
+    parser.add_argument(
+        '-s', '--save-intermediate',
+        action='store_true',
+        help='Сохранять промежуточные результаты ресайза'
+    )
+
     # Новый параметр для чанкинга применительно к Митчеллу
     parser.add_argument(
         '--chunk-size',

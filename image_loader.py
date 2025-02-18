@@ -47,16 +47,28 @@ def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
     try:
         ext = os.path.splitext(file_path)[1].lower()
 
+        # Existence check
+        if not os.path.exists(file_path):
+            return ImageLoadResult(None, None, None, f"File not found: {file_path}")
+
+        # Size check
+        file_size = os.path.getsize(file_path)
+        if file_size == 0:
+            return ImageLoadResult(None, None, None, f"Empty file: {file_path}")
+
         match ext:
             case '.exr':
                 return load_exr(file_path, normalize_exr)
-            case '.png' | '.tga':
+            case '.png' | '.tga' | '.jpg' | '.jpeg':
                 return load_raster(file_path)
             case _:
                 msg = f"Unsupported format: {file_path}"
                 logging.warning(msg)
                 return ImageLoadResult(None, None, None, msg)
 
+    except MemoryError:
+        logging.error("Not enough memory to load image %s", file_path)
+        return ImageLoadResult(None, None, None, "Not enough memory to load image")
     except Exception as e:
         logging.error(f"Error reading {file_path}: {str(e)}")
         return ImageLoadResult(None, None, None, str(e))
