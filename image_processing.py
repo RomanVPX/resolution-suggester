@@ -30,7 +30,7 @@ def mitchell_netravali(x: float, B: float = MITCHELL_B, C: float = MITCHELL_C) -
     return 0.0
 
 @njit(cache=True)
-def _resize_single_channel(
+def _resize_mitchell_single_channel(
     channel: npt.NDArray[np.float32],
     target_width: int,
     target_height: int,
@@ -96,7 +96,7 @@ def _resize_single_channel(
     return resized
 
 @njit(parallel=True, cache=True)
-def _resize_mitchell_impl(
+def _resize_mitchell(
     img: npt.NDArray[np.float32],
     target_width: int,
     target_height: int,
@@ -105,17 +105,17 @@ def _resize_mitchell_impl(
 ) -> npt.NDArray[np.float32]:
     """Полный митчелловский ресайз без чанкинга (канальная параллелизация)."""
     if img.ndim == 2:
-        return _resize_single_channel(img, target_width, target_height, B, C)
+        return _resize_mitchell_single_channel(img, target_width, target_height, B, C)
 
     channels = img.shape[2]
     resized = np.empty((target_height, target_width, channels), dtype=img.dtype)
 
     for c in prange(channels):
-        resized[:, :, c] = _resize_single_channel(img[:, :, c], target_width, target_height, B, C)
+        resized[:, :, c] = _resize_mitchell_single_channel(img[:, :, c], target_width, target_height, B, C)
 
     return resized
 
-def _resize_mitchell_chunked_refined(
+def _resize_mitchell_chunked(
     img: np.ndarray,
     target_width: int,
     target_height: int,
@@ -124,7 +124,6 @@ def _resize_mitchell_chunked_refined(
     C: float
 ) -> np.ndarray:
     """
-    Более точный чанковый ресайз:
      - Пробегаемся по тайлам в пространстве (target).
      - Для каждого тайла вычисляем соответствующий фрагмент (source)
        и слегка расширяем границы (на 2 пикселя, радиус Митчелла).
@@ -141,7 +140,7 @@ def _resize_mitchell_chunked_refined(
     y_ratio = float(src_h) / float(target_height)
 
     def resize_one_channel(local_channel: np.ndarray, tw: int, th: int) -> np.ndarray:
-        return _resize_single_channel(local_channel, tw, th, B, C)
+        return _resize_mitchell_single_channel(local_channel, tw, th, B, C)
 
     # Функция ресайза цветного фрагмента или моно
     def resize_local_block(local_block: np.ndarray, tw: int, th: int) -> np.ndarray:
@@ -214,9 +213,9 @@ def resize_mitchell(
     Публичный интерфейс Митчелла. Если chunk_size>0, включается refined-чанкинг.
     """
     if chunk_size > 0:
-        return _resize_mitchell_chunked_refined(img, target_width, target_height, chunk_size, B, C)
+        return _resize_mitchell_chunked(img, target_width, target_height, chunk_size, B, C)
     else:
-        return _resize_mitchell_impl(img, target_width, target_height, B, C)
+        return _resize_mitchell(img, target_width, target_height, B, C)
 
 @lru_cache(maxsize=4)
 def get_resize_function(interpolation: str, chunk_size: int = 0) -> ResizeFunction:
