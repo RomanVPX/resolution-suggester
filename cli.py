@@ -61,7 +61,7 @@ def parse_arguments() -> argparse.Namespace:
         type=int,
         default=8,
         metavar='N',
-        help='Число параллельных процессов (по умолчанию 4)'
+        help='Число параллельных процессов (по умолчанию 8)'
     )
 
     # Новый параметр для чанкинга применительно к Митчеллу
@@ -73,7 +73,19 @@ def parse_arguments() -> argparse.Namespace:
         help='Размер тайла для чанкинга при митчелловском ресайзе (0 — без чанкинга)'
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    if args.chunk_size < 0:
+        parser.error("--chunk-size не может быть отрицательным")
+
+    if args.interpolation != InterpolationMethod.MITCHELL.value and args.chunk_size > 0:
+        logging.warning(
+            "Параметр --chunk-size актуален только для методa интерполяции 'mitchell'. "
+            "Значение будет сброшено к 0."
+        )
+        args.chunk_size = 0
+
+    return args
 
 def format_interpolation_help() -> str:
     methods = [

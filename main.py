@@ -31,7 +31,6 @@ def main():
 
 def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.threads) as executor:
-        # Сопоставляем Future -> file_path, чтобы знать, какой файл обрабатывался
         future_to_file = {
             executor.submit(process_single_file, file_path, args): file_path
             for file_path in files
@@ -65,6 +64,7 @@ def process_single_file(
     height, width = img.shape[:2]
 
     if height < args.min_size or width < args.min_size:
+        logging.info(f"Skipping {file_path} (size {width}x{height}) - smaller than min_size = {args.min_size}")
         return None, None
 
     try:
