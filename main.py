@@ -1,4 +1,3 @@
-# main.py
 import os
 import argparse
 import logging
@@ -30,16 +29,10 @@ def main():
         process_files(files, args)
 
 def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
-    with concurrent.futures.ProcessPoolExecutor(max_workers=args.threads) as executor:
-        future_to_file = {
-            executor.submit(process_single_file, file_path, args): file_path
-            for file_path in files
-        }
-
-        for future in concurrent.futures.as_completed(future_to_file):
-            file_path = future_to_file[future]
+    if args.no_parallel:
+        for file_path in files:
             try:
-                results, meta = future.result()
+                results, meta = process_single_file(file_path, args)
             except Exception as e:
                 logging.error(f"Error processing {file_path}: {e}")
                 continue
@@ -48,6 +41,25 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
                 print_console_results(file_path, results, args.channels, meta)
                 if reporter:
                     reporter.write_results(os.path.basename(file_path), results, args.channels)
+    else:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=args.threads) as executor:
+            future_to_file = {
+                executor.submit(process_single_file, file_path, args): file_path
+                for file_path in files
+            }
+
+            for future in concurrent.futures.as_completed(future_to_file):
+                file_path = future_to_file[future]
+                try:
+                    results, meta = future.result()
+                except Exception as e:
+                    logging.error(f"Error processing {file_path}: {e}")
+                    continue
+
+                if results:
+                    print_console_results(file_path, results, args.channels, meta)
+                    if reporter:
+                        reporter.write_results(os.path.basename(file_path), results, args.channels)
 
 def process_single_file(
     file_path: str,
@@ -81,6 +93,9 @@ def process_single_file(
     resolutions = compute_resolutions(width, height, args.min_size)
 
     for (w, h) in resolutions:
+        if w == width and h == height:
+            continue
+
         downscaled = resize_fn(img, w, h)
         upscaled = resize_fn(downscaled, width, height)
 

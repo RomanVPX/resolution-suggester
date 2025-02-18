@@ -73,6 +73,12 @@ def parse_arguments() -> argparse.Namespace:
         help='Размер тайла для чанкинга при митчелловском ресайзе (0 — без чанкинга)'
     )
 
+    parser.add_argument(
+        '--no-parallel',
+        action='store_true',
+        help='Отключить параллельную обработку и использовать однопроходную схему'
+    )
+
     args = parser.parse_args()
 
     if args.chunk_size < 0:
