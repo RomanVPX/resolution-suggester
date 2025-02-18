@@ -2,9 +2,9 @@
 import os
 import argparse
 import logging
+import concurrent.futures
 
 from typing import List, Tuple, Optional
-from tqdm import tqdm
 from cli import parse_arguments, setup_logging, validate_paths
 from image_loader import load_image
 from image_processing import get_resize_function
@@ -30,12 +30,25 @@ def main():
         process_files(files, args)
 
 def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
-    for file_path in files:
-        results, meta = process_single_file(file_path, args)
-        if results:
-            print_console_results(file_path, results, args.channels, meta)
-            if reporter:
-                reporter.write_results(os.path.basename(file_path), results, args.channels)
+    with concurrent.futures.ProcessPoolExecutor(max_workers=args.threads) as executor:
+        # Сопоставляем Future -> file_path, чтобы знать, какой файл обрабатывался
+        future_to_file = {
+            executor.submit(process_single_file, file_path, args): file_path
+            for file_path in files
+        }
+
+        for future in concurrent.futures.as_completed(future_to_file):
+            file_path = future_to_file[future]
+            try:
+                results, meta = future.result()
+            except Exception as e:
+                logging.error(f"Error processing {file_path}: {e}")
+                continue
+
+            if results:
+                print_console_results(file_path, results, args.channels, meta)
+                if reporter:
+                    reporter.write_results(os.path.basename(file_path), results, args.channels)
 
 def process_single_file(
     file_path: str,
@@ -43,7 +56,6 @@ def process_single_file(
 ) -> Tuple[Optional[list], Optional[dict]]:
     result = load_image(file_path)
     if result.error or result.data is None:
-        logging.error(f"Failed to load image: {file_path} - {result.error}")
         return None, None
 
     img = result.data
@@ -53,13 +65,11 @@ def process_single_file(
     height, width = img.shape[:2]
 
     if height < args.min_size or width < args.min_size:
-        logging.warning(f"Image too small (<{args.min_size}) for analysis: {file_path}")
         return None, None
 
     try:
         resize_fn = get_resize_function(args.interpolation)
-    except ValueError as e:
-        logging.error(f"Error for {file_path}: {e}")
+    except ValueError:
         return None, None
 
     results = []
@@ -70,28 +80,26 @@ def process_single_file(
 
     resolutions = compute_resolutions(width, height, args.min_size)
 
-    with tqdm(total=len(resolutions), desc=f"Анализ {file_path}", leave=False) as fbar:
-        for w, h in resolutions:
-            downscaled = resize_fn(img, w, h)
-            upscaled = resize_fn(downscaled, width, height)
+    for (w, h) in resolutions:
+        downscaled = resize_fn(img, w, h)
+        upscaled = resize_fn(downscaled, width, height)
 
-            if args.channels:
-                channel_psnr = calculate_channel_psnr(img, upscaled, max_val, channels)
-                min_psnr = min(channel_psnr.values())
-                results.append((
-                    f"{w}x{h}",
-                    channel_psnr,
-                    min_psnr,
-                    QualityHelper.get_hint(min_psnr)
-                ))
-            else:
-                psnr = calculate_psnr(img, upscaled, max_val)
-                results.append((
-                    f"{w}x{h}",
-                    psnr,
-                    QualityHelper.get_hint(psnr)
-                ))
-            fbar.update(1)
+        if args.channels:
+            channel_psnr = calculate_channel_psnr(img, upscaled, max_val, channels)
+            min_psnr = min(channel_psnr.values())
+            results.append((
+                f"{w}x{h}",
+                channel_psnr,
+                min_psnr,
+                QualityHelper.get_hint(min_psnr)
+            ))
+        else:
+            psnr = calculate_psnr(img, upscaled, max_val)
+            results.append((
+                f"{w}x{h}",
+                psnr,
+                QualityHelper.get_hint(psnr)
+            ))
 
     return results, {'max_val': max_val, 'channels': channels}
 

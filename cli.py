@@ -56,6 +56,14 @@ def parse_arguments() -> argparse.Namespace:
         help='Минимальный размер (по ширине и высоте) для анализа (по умолчанию 16)'
     )
 
+    parser.add_argument(
+        '-t', '--threads',
+        type=int,
+        default=4,
+        metavar='N',
+        help='Число параллельных процессов (по умолчанию 4)'
+    )
+
     return parser.parse_args()
 
 def format_interpolation_help() -> str:
