@@ -64,6 +64,15 @@ def parse_arguments() -> argparse.Namespace:
         help='Число параллельных процессов (по умолчанию 4)'
     )
 
+    # Новый параметр для чанкинга применительно к Митчеллу
+    parser.add_argument(
+        '--chunk-size',
+        type=int,
+        default=0,
+        metavar='SIZE',
+        help='Размер тайла для чанкинга при митчелловском ресайзе (0 — без чанкинга)'
+    )
+
     return parser.parse_args()
 
 def format_interpolation_help() -> str:
