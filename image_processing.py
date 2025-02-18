@@ -3,11 +3,11 @@ import cv2
 import numpy as np
 from functools import lru_cache
 from numba import njit, prange
-from config import INTERPOLATION_METHODS, InterpolationMethod # Импорт Enum
+from config import INTERPOLATION_METHODS, InterpolationMethod, MITCHELL_B, MITCHELL_C
 
 
 @njit(cache=True)
-def mitchell_netravali(x: float, B: float = 1/3, C: float = 1/3) -> float:
+def mitchell_netravali(x: float, B: float = MITCHELL_B, C: float = MITCHELL_C) -> float:
     x = np.abs(x)
     x2 = x * x
     x3 = x * x2
@@ -21,7 +21,7 @@ def mitchell_netravali(x: float, B: float = 1/3, C: float = 1/3) -> float:
 
 @njit(parallel=True, cache=True)
 def _resize_mitchell_impl(
-    img: np.ndarray, target_width: int, target_height: int, B: float = 1 / 3, C: float = 1 / 3
+    img: np.ndarray, target_width: int, target_height: int, B: float = MITCHELL_B, C: float = MITCHELL_C
 ) -> np.ndarray:
     """Ядро реализации алгоритма Митчелла-Нетравали"""
     height, width = img.shape[:2]
@@ -66,9 +66,8 @@ def resize_mitchell(
     img: np.ndarray,
     target_width: int,
     target_height: int,
-    B: float = 1/3,
-    C: float = 1/3
-) -> np.ndarray:
+    B: float = MITCHELL_B,
+    C: float = MITCHELL_C) -> np.ndarray:
     """Добавлены параметры B и C в публичный интерфейс"""
     resized = _resize_mitchell_impl(img, target_width, target_height, B, C)
     return resized.squeeze() if img.ndim == 2 else resized

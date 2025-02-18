@@ -5,6 +5,9 @@ SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png']
 CSV_SEPARATOR = ';'
 DEFAULT_INTERPOLATION = 'mitchell'
 
+MITCHELL_B = 1/3
+MITCHELL_C = 1/3
+
 QUALITY_HINTS = {
     50: "практически идентичные изображения",
     40: "очень хорошее качество",
