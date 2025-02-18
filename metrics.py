@@ -12,7 +12,9 @@ def calculate_psnr(
     if original.shape != processed.shape:
         raise ValueError("Image dimensions must match for PSNR calculation")
     mse = np.mean((original - processed) ** 2)
-    return 20 * math.log10(max_val) - 10 * math.log10(mse) if mse != 0 else float('inf')
+    if mse == 0:
+        return float('inf')
+    return 20 * math.log10(max_val) - 10 * math.log10(mse)
 
 def calculate_channel_psnr(
     original: np.ndarray,

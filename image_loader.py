@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import pyexr
 from PIL import Image, ImageFile
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional
 import os
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -59,7 +59,7 @@ def load_raster(file_path: str) -> tuple[np.ndarray, float, list[str]]:
     }
 
     target_mode = mode_conversion.get(img.mode, 'RGB')
-    if img.mode != target_mode:
+    if target_mode and img.mode != target_mode:
         img = img.convert(target_mode)
 
     # Улучшенная обработка битности
