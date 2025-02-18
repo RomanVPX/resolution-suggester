@@ -1,5 +1,6 @@
 # config.py
 from enum import Enum
+from colorama import Fore, Back, Style
 
 SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png']
 CSV_SEPARATOR = ';'
@@ -35,11 +36,11 @@ INTERPOLATION_DESCRIPTIONS = {
 STYLES = {
     'header': "\033[1;96;100m",
     'warning': "\033[2;33m",
-    'original': "\033[36m",
-    'good': "\033[92m",
-    'ok': "\033[32m",
-    'medium': "\033[33m",
-    'bad': "\033[31m",
+    'original': Fore.CYAN,
+    'good': Fore.LIGHTGREEN_EX,
+    'ok': Fore.GREEN,
+    'medium': Fore.YELLOW,
+    'bad': Fore.RED,
 }
 
 PSNR_QUALITY_THRESHOLDS = sorted(QUALITY_HINTS.keys(), reverse=True)

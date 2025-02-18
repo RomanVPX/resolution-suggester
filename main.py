@@ -136,19 +136,10 @@ def print_console_results(
     )
 
 def create_original_entry(width: int, height: int, channels: Optional[List[str]] = None) -> tuple:
+    base_entry = (f"{width}x{height}",)
     if channels:
-        return (
-            f"{width}x{height}",
-            {c: float('inf') for c in channels},
-            float('inf'),
-            f"{QualityHelper.get_style(float('inf'))}Оригинал"
-        )
-    else:
-        return (
-            f"{width}x{height}",
-            float('inf'),
-            f"{QualityHelper.get_style(float('inf'))}Оригинал"
-        )
+        return (*base_entry, {c: float('inf') for c in channels}, float('inf'), "Оригинал")
+    return (*base_entry, float('inf'), "Оригинал")
 
 if __name__ == "__main__":
     main()
