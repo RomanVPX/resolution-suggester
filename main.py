@@ -53,7 +53,6 @@ def process_single_file(
     max_val = result.max_value
     channels = result.channels
 
-    # Явно называем (height, width), чтобы потом не путать с compute_resolutions.
     height, width = img.shape[:2]
 
     if height < 16 or width < 16:
@@ -66,15 +65,12 @@ def process_single_file(
         logging.error(f"Error for {file_path}: {e}")
         return None, None
 
-    # Формируем результат по оригинальному изображению в общий список
-    # (см. create_original_entry ниже).
     results = []
     if args.channels:
         results.append(create_original_entry(width, height, channels))
     else:
         results.append(create_original_entry(width, height))
 
-    # Генерируем разрешения: важно передавать (width, height)
     resolutions = compute_resolutions(width, height)
 
     with tqdm(total=len(resolutions), desc=f"Анализ {file_path}", leave=False) as fbar:

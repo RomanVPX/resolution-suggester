@@ -1,4 +1,3 @@
-# image_processing.py
 import cv2
 import numpy as np
 import numpy.typing as npt
@@ -92,7 +91,6 @@ def resize_mitchell(
     """Добавлены параметры B и C в публичный интерфейс"""
     resized = _resize_mitchell_impl(img, target_width, target_height, B, C)
     return resized.squeeze() if img.ndim == 2 else resized
-
 
 @lru_cache(maxsize=4)
 def get_resize_function(interpolation: str) -> ResizeFunction:
