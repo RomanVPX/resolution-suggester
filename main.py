@@ -1,6 +1,5 @@
 # main.py
 import os
-import numpy as np
 from typing import List, Tuple, Optional
 from tqdm import tqdm
 import argparse
@@ -10,7 +9,6 @@ from image_loader import load_image
 from image_processing import get_resize_function
 from metrics import calculate_psnr, calculate_channel_psnr, compute_resolutions
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
-from config import InterpolationMethod # Импорт Enum
 
 
 def main():

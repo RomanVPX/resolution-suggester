@@ -1,10 +1,19 @@
 # image_processing.py
 import cv2
 import numpy as np
+import numpy.typing as npt
 from functools import lru_cache
+from typing import Callable, Tuple
 from numba import njit, prange
 from config import INTERPOLATION_METHODS, InterpolationMethod, MITCHELL_B, MITCHELL_C
 
+
+@lru_cache(maxsize=32)
+def get_mitchell_kernel(x: float, B: float = MITCHELL_B, C: float = MITCHELL_C) -> float:
+    """Кэшированное вычисление значений ядра фильтра"""
+    return mitchell_netravali(x, B, C)
+
+ResizeFunction = Callable[[npt.NDArray[np.float32], int, int], npt.NDArray[np.float32]]
 
 @njit(cache=True)
 def mitchell_netravali(x: float, B: float = MITCHELL_B, C: float = MITCHELL_C) -> float:
@@ -74,11 +83,29 @@ def resize_mitchell(
 
 
 @lru_cache(maxsize=4)
-def get_resize_function(interpolation: str):
-    """Фабрика функций для ресайза"""
-    interpolation_method = InterpolationMethod(interpolation) # Преобразование строки в Enum
+def get_resize_function(interpolation: str) -> ResizeFunction:
+    """
+    Фабрика функций для ресайза с улучшенной типизацией
+
+    Args:
+        interpolation: метод интерполяции
+
+    Returns:
+        Callable: функция ресайза
+
+    Raises:
+        ValueError: при неподдерживаемом методе интерполяции
+    """
+    try:
+        interpolation_method = InterpolationMethod(interpolation)
+    except ValueError:
+        raise ValueError(f"Unsupported interpolation method: {interpolation}")
+
     if interpolation_method == InterpolationMethod.MITCHELL:
         return resize_mitchell
 
-    cv2_flag = getattr(cv2, INTERPOLATION_METHODS[interpolation_method], cv2.INTER_LINEAR) # Используем Enum как ключ
-    return lambda img, w, h: cv2.resize(img, (w, h), interpolation=cv2_flag)
+    try:
+        cv2_flag = getattr(cv2, INTERPOLATION_METHODS[interpolation_method])
+        return lambda img, w, h: cv2.resize(img, (w, h), interpolation=cv2_flag)
+    except AttributeError:
+        raise ValueError(f"OpenCV interpolation method not found: {interpolation_method}")
