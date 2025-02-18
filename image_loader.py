@@ -4,7 +4,7 @@ import numpy as np
 import pyexr
 import os
 from PIL import Image, ImageFile
-from typing import Dict
+from typing import Dict, Optional, List
 from dataclasses import dataclass
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -12,7 +12,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 BIT_DEPTH_16 = 65535.0
 BIT_DEPTH_8 = 255.0
 
-MODE_CHANNEL_MAP: Dict[str, list[str]] = {
+MODE_CHANNEL_MAP: Dict[str, List[str]] = {
     'L': ['L'],
     'LA': ['L', 'A'],
     'RGB': ['R', 'G', 'B'],
@@ -27,10 +27,10 @@ MODE_CHANNEL_MAP: Dict[str, list[str]] = {
 
 @dataclass
 class ImageLoadResult:
-    data: np.ndarray | None
-    max_value: float | None
-    channels: list[str] | None
-    error: str | None = None
+    data: Optional[np.ndarray]
+    max_value: Optional[float]
+    channels: Optional[List[str]]
+    error: Optional[str] = None
 
 def load_image(file_path: str) -> ImageLoadResult:
     """
@@ -51,8 +51,9 @@ def load_image(file_path: str) -> ImageLoadResult:
         if ext in ('.png', '.tga'):
             return load_raster(file_path)
 
-        logging.warning(f"Unsupported format: {file_path}")
-        return ImageLoadResult(None, None, None)
+        msg = f"Unsupported format: {file_path}"
+        logging.warning(msg)
+        return ImageLoadResult(None, None, None, error=msg)
 
     except Exception as e:
         logging.error(f"Error reading {file_path}: {str(e)}")
