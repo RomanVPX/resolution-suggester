@@ -2,7 +2,7 @@
 from datetime import datetime
 import csv
 import os
-from typing import List, Optional
+from typing import List, Optional, Union
 from colorama import Style
 
 from config import (
@@ -13,12 +13,10 @@ from config import (
     get_output_csv_header
 )
 
-
 def generate_csv_filename() -> str:
     """Генерация имени CSV файла с временной меткой"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"texture_analysis_{timestamp}.csv"
-
 
 class ConsoleReporter:
     @staticmethod
@@ -35,56 +33,86 @@ class ConsoleReporter:
 
     @staticmethod
     def _print_channel_table(results: list, channels: List[str]):
-        header = f"{Style.BRIGHT}{'Разрешение':<12} | {' | '.join([c.center(9) for c in ['R(L)', 'G', 'B', 'A'][:len(channels)]])} | {'Min':^9} | {'Качество (min)':<36}{Style.RESET_ALL}"
+        """
+        Переработанная табличная печать для произвольного количества каналов.
+        results: список кортежей вида:
+            ( 'WxH', {channel: psnr_value, ...}, min_psnr, hint )
+        channels: список каналов, соответствующих порядку в изображении
+        """
+        # Сформируем динамический заголовок по именам каналов
+        channel_headers = [c.center(9) for c in channels]
+        header = (
+            f"{Style.BRIGHT}{'Разрешение':<12} | " +
+            " | ".join(channel_headers) +
+            f" | {'Min':^9} | {'Качество (min)':<36}{Style.RESET_ALL}"
+        )
         print(header)
-        print(f"{'-'*12}-+-{'-+-'.join(['-' * 9] * len(['R(L)', 'G', 'B', 'A'][:len(channels)]))}-+-{'-'*9}-+-{'-'*32}")
 
-        for res, ch_psnr, min_psnr, hint in results:
+        separator_parts = [
+            "-" * 12,
+            *["-" * 9 for _ in channels],
+            "-" * 9,
+            "-" * 32
+        ]
+        print("-+-".join(separator_parts))
+
+        for res, ch_psnr_dict, min_psnr, hint in results:
+            # Проверка «Оригинала»
             if hint.endswith("Оригинал"):
                 original_style = STYLES['original']
-                hint_styled = f"{original_style}Оригинал{Style.RESET_ALL}"
-                min_psnr_styled = f"{original_style}{min_psnr:9.2f}{Style.RESET_ALL}"
+                res_str = f"{original_style}{res:<12}{Style.RESET_ALL}"
+                min_str = f"{original_style}{min_psnr:9.2f}{Style.RESET_ALL}"
+                hint_str = f"{original_style}Оригинал{Style.RESET_ALL}"
 
-                # Correctly handle channel names and formatting for grayscale images
-                if 'L' in channels and len(channels) == 1:
-                    channel_values = [f"{original_style}{ch_psnr.get('L', float('inf')):>9.2f}{Style.RESET_ALL}"] # Right-align and format L channel
-                else:
-                    channel_values = [f"{original_style}{ch_psnr.get(c, float('inf')):>9.2f}{Style.RESET_ALL}" for c in ['R', 'G', 'B', 'A'][:len(channels)]] # Right-align and format other channels
+                channel_strs = []
+                for c in channels:
+                    channel_val = ch_psnr_dict.get(c, float('inf'))
+                    channel_strs.append(f"{original_style}{channel_val:>9.2f}{Style.RESET_ALL}")
 
-                ch_values_console = ' | '.join(channel_values)
-                print(f"{original_style}{res:<12}{Style.RESET_ALL} | {ch_values_console} | {min_psnr_styled} | {hint_styled:<36}")
+                print(
+                    f"{res_str} | " +
+                    " | ".join(channel_strs) +
+                    f" | {min_str} | {hint_str:<36}"
+                )
             else:
                 style = QualityHelper.get_style_for_hint(hint)
-                hint_styled = f"{style}{hint}{Style.RESET_ALL}"
-                min_psnr_styled = f"{style}{min_psnr:9.2f}{Style.RESET_ALL}"
+                res_str = f"{style}{res:<12}{Style.RESET_ALL}"
+                min_str = f"{style}{min_psnr:9.2f}{Style.RESET_ALL}"
+                hint_str = f"{style}{hint}{Style.RESET_ALL}"
 
-                # Correctly handle channel names and formatting for grayscale images
-                if 'L' in channels and len(channels) == 1:
-                    channel_values = [f"{style}{ch_psnr.get('L', 0):>9.2f}{Style.RESET_ALL}"] # Right-align and format L channel
-                else:
-                    channel_values = [f"{style}{ch_psnr.get(c, 0):>9.2f}{Style.RESET_ALL}" for c in ['R', 'G', 'B', 'A'][:len(channels)]] # Right-align and format other channels
+                channel_strs = []
+                for c in channels:
+                    channel_val = ch_psnr_dict.get(c, 0.0)
+                    channel_strs.append(f"{style}{channel_val:>9.2f}{Style.RESET_ALL}")
 
-                ch_values_console = ' | '.join(channel_values)
-                print(f"{QualityHelper.get_style_for_hint(hint)}{res:<12}{Style.RESET_ALL} | {ch_values_console} | {min_psnr_styled} | {hint_styled:<36}")
-
+                print(
+                    f"{res_str} | " +
+                    " | ".join(channel_strs) +
+                    f" | {min_str} | {hint_str:<36}"
+                )
 
     @staticmethod
     def _print_simple_table(results: list):
         header = f"{Style.BRIGHT}{'Разрешение':<12} | {'PSNR (dB)':^10} | {'Качество':<36}{Style.RESET_ALL}"
         print(header)
         print(f"{'-'*12}-+-{'-'*10}-+-{'-'*36}")
+
         for res, psnr, hint in results:
             if hint.endswith("Оригинал"):
                 original_style = STYLES['original']
                 hint_styled = f"{original_style}Оригинал{Style.RESET_ALL}"
                 psnr_styled = f"{original_style}{psnr:^10.2f}{Style.RESET_ALL}"
-                print(f"{original_style}{res:<12}{Style.RESET_ALL} {Style.DIM}|{Style.NORMAL} {psnr_styled} {Style.DIM}|{Style.NORMAL} {hint_styled:<36}{Style.RESET_ALL}")
+                print(
+                    f"{original_style}{res:<12}{Style.RESET_ALL} "
+                    f"{Style.DIM}|{Style.NORMAL} {psnr_styled} {Style.DIM}|{Style.NORMAL} {hint_styled:<36}{Style.RESET_ALL}"
+                )
             else:
                 style = QualityHelper.get_style_for_hint(hint)
                 hint_styled = f"{style}{hint}{Style.RESET_ALL}"
                 psnr_styled = f"{style}{psnr:^10.2f}{Style.RESET_ALL}"
-                print(f"{QualityHelper.get_style_for_hint(hint)}{res:<12}{Style.RESET_ALL} {Style.DIM}|{Style.NORMAL} {psnr_styled} {Style.DIM}|{Style.NORMAL} {hint_styled:<36}") # Стиль разрешения для остальных строк
-
+                print(
+                    f"{res:<12} {Style.DIM}|{Style.NORMAL} {psnr_styled} {Style.DIM}|{Style.NORMAL} {hint_styled:<36}"
+                )
 
 class CSVReporter:
     def __init__(self, output_path: str):
@@ -116,23 +144,28 @@ class CSVReporter:
                 min_psnr = result_item[2]
                 hint = result_item[3]
                 if i == 0:
+                    # Оригиналу в CSV можно вписать пустые значения для каналов
                     row.extend([""] * 6)
-                elif 'L' in ch_psnr and len(ch_psnr) == 1:
-                    row.extend([
-                        f"{ch_psnr.get('L', float('inf')):.2f}",
-                        "", "", "",
-                        f"{min_psnr:.2f}",
-                        QualityHelper.get_hint(min_psnr, for_csv=True)
-                    ])
                 else:
-                    row.extend([
-                        f"{ch_psnr.get('R', float('inf')):.2f}",
-                        f"{ch_psnr.get('G', float('inf')):.2f}",
-                        f"{ch_psnr.get('B', float('inf')):.2f}",
-                        f"{ch_psnr.get('A', float('inf')):.2f}",
-                        f"{min_psnr:.2f}",
-                        QualityHelper.get_hint(min_psnr, for_csv=True)
-                    ])
+                    # Заполняем по ключам 'R', 'G', 'B', 'A' или 'L' и т.д.
+                    # При желании найти единую схему: см. get_output_csv_header()
+                    if 'L' in ch_psnr and len(ch_psnr) == 1:
+                        # Градации серого
+                        row.extend([
+                            f"{ch_psnr.get('L', float('inf')):.2f}",
+                            "", "", "",
+                            f"{min_psnr:.2f}",
+                            QualityHelper.get_hint(min_psnr, for_csv=True)
+                        ])
+                    else:
+                        row.extend([
+                            f"{ch_psnr.get('R', float('inf')):.2f}",
+                            f"{ch_psnr.get('G', float('inf')):.2f}",
+                            f"{ch_psnr.get('B', float('inf')):.2f}",
+                            f"{ch_psnr.get('A', float('inf')):.2f}",
+                            f"{min_psnr:.2f}",
+                            QualityHelper.get_hint(min_psnr, for_csv=True)
+                        ])
             else:
                 psnr = psnr_values
                 hint = result_item[2]
@@ -147,7 +180,6 @@ class CSVReporter:
                     row.extend([""] * (4 - len(row)))
 
             self.writer.writerow(row)
-
 
 class QualityHelper:
     @staticmethod
