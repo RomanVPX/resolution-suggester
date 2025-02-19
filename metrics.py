@@ -3,7 +3,8 @@ import math
 import numpy as np
 from numba import njit
 from typing import Dict, Tuple
-from config import TINY_EPSILON # Consider adding SSIM constants to config if needed
+from config import TINY_EPSILON
+from scipy.signal import convolve2d
 
 @njit(cache=True)
 def calculate_psnr(
@@ -74,24 +75,12 @@ def filter_2d(img: np.ndarray, kernel: np.ndarray) -> np.ndarray:
 
 def _filter_2d_singlechannel(channel: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     """
-    Наивная реализация 2D свёртки с reflect-паддингом для одноканального изображения.
+    Реализация 2D свёртки с reflect-паддингом с использованием scipy.signal.convolve2d.
     channel: (H,W)
     kernel: (kH,kW)
     """
-    H, W = channel.shape
-    kH, kW = kernel.shape
-    padH, padW = kH // 2, kW // 2
-
-    # Расширенное изображение
-    extended = np.pad(channel, ((padH, padH), (padW, padW)), mode='reflect')
-    out = np.zeros_like(channel)
-
-    for i in range(H):
-        for j in range(W):
-            roi = extended[i:i+kH, j:j+kW]
-            out[i, j] = np.sum(roi * kernel)
-
-    return out
+    # Исправленная граница 'reflect' -> 'symm' (symmetric)
+    return convolve2d(channel, kernel, mode='same', boundary='symm')
 
 def calculate_ssim_gauss_single(
     original: np.ndarray,
