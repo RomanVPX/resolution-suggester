@@ -1,3 +1,11 @@
+"""
+Command line interface for image quality analysis.
+
+This module provides the command line interface for image quality analysis.
+It uses argparse to define the command line interface and parse the
+arguments.
+
+"""
 import argparse
 import logging
 import os
@@ -164,7 +172,7 @@ def validate_paths(paths: list[str]) -> list[str]:
         elif os.path.isdir(path):
             valid_paths.extend(collect_files_from_dir(path))
         else:
-            logging.warning(f"Неверный путь: {path}")
+            logging.warning("Неверный путь: %s", path)
             invalid_paths_str.append(path)
 
     if not valid_paths:
@@ -195,7 +203,7 @@ def collect_files_from_dir(directory: str) -> list[str]:
                 if os.path.splitext(f)[1].lower() in SUPPORTED_EXTENSIONS:
                     collected.append(os.path.join(root, f))
     except PermissionError as e:
-        logging.error(f"Ошибка доступа к директории {directory}: {str(e)}")
-    except Exception as e:
-        logging.error(f"Неожиданная ошибка при обходе директории {directory}: {str(e)}")
+        logging.error("Ошибка доступа к директории %s: %s", directory, str(e))
+    except OSError as e:
+        logging.error("Неожиданная ошибка при обходе директории %s: %s", directory, str(e))
     return collected
