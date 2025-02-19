@@ -115,8 +115,13 @@ def validate_paths(paths: list[str]) -> list[str]:
 
 def collect_files_from_dir(directory: str) -> list[str]:
     collected = []
-    for root, _, files in os.walk(directory):
-        for f in files:
-            if os.path.splitext(f)[1].lower() in SUPPORTED_EXTENSIONS:
-                collected.append(os.path.join(root, f))
+    try:
+        for root, _, files in os.walk(directory):
+            for f in files:
+                if os.path.splitext(f)[1].lower() in SUPPORTED_EXTENSIONS:
+                    collected.append(os.path.join(root, f))
+    except PermissionError as e:
+        logging.error(f"Ошибка доступа к директории {directory}: {str(e)}")
+    except Exception as e:
+        logging.error(f"Неожиданная ошибка при обходе директории {directory}: {str(e)}")
     return collected
