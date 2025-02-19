@@ -1,10 +1,8 @@
-# metrics.py
 import math
 import numpy as np
-from numba import njit
+from numba import njit, prange
 from typing import Dict, Tuple
 from config import TINY_EPSILON
-from scipy.signal import convolve2d
 
 @njit(cache=True)
 def calculate_psnr(
@@ -21,7 +19,6 @@ def calculate_psnr(
     if mse < TINY_EPSILON:
         return float('inf')
 
-    # Предварительно вычисленный логарифм для max_val
     log_max = 20 * math.log10(max_val)
     return log_max - 10 * math.log10(mse)
 
@@ -36,68 +33,92 @@ def calculate_channel_psnr(
         for i, channel in enumerate(channels)
     }
 
+@njit(cache=True)
 def gaussian_kernel(window_size: int = 11, sigma: float = 1.5) -> np.ndarray:
     """
-    Формирует 2D-ядро Гаусса.
-
-    Args:
-        window_size: Размер окна ядра (нечетное число, по умолчанию 11).
-        sigma: Стандартное отклонение Гауссианы (по умолчанию 1.5).
-
-    Returns:
-        np.ndarray: Нормированное 2D-ядро Гаусса.
+    Формирует 2D-ядро Гаусса в nopython-режиме Numba
+    (без np.meshgrid и np.linspace).
     """
-    ax = np.linspace(-(window_size-1)/2., (window_size-1)/2., window_size)
-    xx, yy = np.meshgrid(ax, ax)
-    kernel = np.exp(-0.5 * (np.square(xx) + np.square(yy)) / np.square(sigma))
-    return kernel / np.sum(kernel)
+    result = np.zeros((window_size, window_size), dtype=np.float32)
+    half = (window_size - 1) / 2.0
 
+    sum_val = 0.0
+    for i in range(window_size):
+        for j in range(window_size):
+            x = i - half
+            y = j - half
+            val = math.exp(-0.5 * (x*x + y*y) / (sigma*sigma))
+            result[i, j] = val
+            sum_val += val
+
+    # Нормируем ядро
+    for i in range(window_size):
+        for j in range(window_size):
+            result[i, j] /= sum_val
+
+    return result
+
+@njit(cache=True)
 def filter_2d(img: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     """
-    Свёртка img (H,W) или (H,W,C) с ядром kernel (kH,kW).
-    На границах используется reflect-паддинг.
-
-    Args:
-        img: Входное изображение (H,W) или (H,W,C).
-        kernel: Ядро свертки (kH,kW).
-
-    Returns:
-        np.ndarray: Результат свертки, изображение той же размерности, что и входное.
+    Свёртка (H,W) или (H,W,C) с ядром kernel (kH,kW) с отражающим (reflect) паддингом.
+    Все операции совместимы с nopython-режимом.
     """
     if img.ndim == 2:
         return _filter_2d_singlechannel(img, kernel)
     else:
-        # (H,W,C)
+        (h, w, c) = img.shape
         out = np.zeros_like(img)
-        for c in range(img.shape[2]):
-            out[..., c] = _filter_2d_singlechannel(img[..., c], kernel)
+        for ch in range(c):
+            out[..., ch] = _filter_2d_singlechannel(img[..., ch], kernel)
         return out
 
+@njit(parallel=True, cache=True)
 def _filter_2d_singlechannel(channel: np.ndarray, kernel: np.ndarray) -> np.ndarray:
-    """
-    Реализация 2D свёртки с reflect-паддингом с использованием scipy.signal.convolve2d.
-    channel: (H,W)
-    kernel: (kH,kW)
-    """
-    # Исправленная граница 'reflect' -> 'symm' (symmetric)
-    return convolve2d(channel, kernel, mode='same', boundary='symm')
+    h, w = channel.shape
+    kh, kw = kernel.shape
+    pad_h = kh // 2
+    pad_w = kw // 2
 
+    result = np.zeros((h, w), dtype=channel.dtype)
+
+    for i in prange(h):  # <-- заменяем range на prange
+        for j in range(w):
+            accum = 0.0
+            for ki in range(kh):
+                for kj in range(kw):
+                    src_i = i + ki - pad_h
+                    src_j = j + kj - pad_w
+                    src_i = reflect_coordinate(src_i, h)
+                    src_j = reflect_coordinate(src_j, w)
+                    accum += channel[src_i, src_j] * kernel[ki, kj]
+            result[i, j] = accum
+
+    return result
+
+
+@njit(cache=True)
+def reflect_coordinate(x: int, size: int) -> int:
+    """
+    Отражающее переотображение индекса x, если он выходит за границы [0..size-1].
+    Симметричный reflect, аналог OpenCV BORDER_REFLECT_101.
+    """
+    if x < 0:
+        return -x - 1  # отражаем ниже нуля
+    elif x >= size:
+        return 2*size - x - 1  # отражаем выше размера
+    return x
+
+@njit(cache=True)
 def calculate_ssim_gauss_single(
     original: np.ndarray,
     processed: np.ndarray,
-    K1: float = 0.01, # Consider making these constants in config.py
+    K1: float = 0.01,
     K2: float = 0.03,
     L: float = 1.0,
     window_size: int = 11,
     sigma: float = 1.5
 ) -> float:
-    """
-    Более точный расчёт SSIM на одном канале. Используем Гауссово окно:
-      muX = conv(X) ...
-      sigmaX = conv(X^2) - muX^2
-      и т.д.
-    Результат — среднее по всей карте SSIM.
-    """
     if original.shape != processed.shape:
         raise ValueError("SSIM: размеры изображений должны совпадать")
 
@@ -115,9 +136,8 @@ def calculate_ssim_gauss_single(
 
     numerator   = (2.0 * muX * muY + C1) * (2.0 * sigmaXY + C2)
     denominator = (muX**2 + muY**2 + C1) * (sigmaX + sigmaY + C2)
-    ssim_map = numerator / np.maximum(denominator, TINY_EPSILON)
+    ssim_map    = numerator / np.maximum(denominator, TINY_EPSILON)
 
-    # Возвращаем среднее по всей карте
     return float(np.mean(ssim_map))
 
 def calculate_ssim_gauss(
@@ -129,25 +149,16 @@ def calculate_ssim_gauss(
     window_size: int = 11,
     sigma: float = 1.5
 ) -> float:
-    """
-    SSIM с Гауссовым окном.
-    Если изображение многоканальное — берём среднее по каналам.
-    Предполагаем, что original, processed в диапазоне [0..max_val].
-    Если max_val > 1, нормализуем.
-    """
     if original.shape != processed.shape:
         raise ValueError("SSIM: размеры изображений должны совпадать")
 
-    # Нормализуем если max_val > 1
     if max_val > 1.00001:
-        original = original / max_val
+        original  = original  / max_val
         processed = processed / max_val
 
-    # Если (H,W)
     if original.ndim == 2:
         return calculate_ssim_gauss_single(original, processed, K1, K2, 1.0, window_size, sigma)
     elif original.ndim == 3:
-        # Среднее по каналам
         c = original.shape[2]
         ssim_sum = 0.0
         for i in range(c):
@@ -157,8 +168,8 @@ def calculate_ssim_gauss(
                 K1, K2, 1.0, window_size, sigma
             )
         return ssim_sum / c
-
-    raise ValueError("Неподдерживаемая размерность изображения для SSIM")
+    else:
+        raise ValueError("Неподдерживаемая размерность изображения для SSIM")
 
 def calculate_channel_ssim_gauss(
     original: np.ndarray,
@@ -168,27 +179,26 @@ def calculate_channel_ssim_gauss(
     window_size: int = 11,
     sigma: float = 1.5
 ) -> Dict[str, float]:
-    """
-    Померный SSIM для (H,W,C). Возвращаем словарь {channel_name: ssim_value}.
-    """
     if original.shape != processed.shape:
         raise ValueError("SSIM: размеры изображений должны совпадать")
 
-    ssim_dict: Dict[str, float] = {}
-
     if max_val > 1.00001:
-        original = original / max_val
+        original  = original  / max_val
         processed = processed / max_val
 
-    # Если вдруг (H,W) — значит один канал
+    # Если у нас оказалось (H,W), тогда это один канал:
     if original.ndim == 2:
-        ssim_dict['L'] = calculate_ssim_gauss_single(original, processed, window_size=window_size, sigma=sigma)
-        return ssim_dict
+        return {'L': calculate_ssim_gauss_single(original, processed, window_size=window_size, sigma=sigma)}
 
+    # Для (H,W,C)
+    ssim_dict: Dict[str, float] = {}
     for i, ch in enumerate(channels):
-        s = calculate_ssim_gauss_single(original[..., i], processed[..., i],
-                                        window_size=window_size, sigma=sigma)
-        ssim_dict[ch] = s
+        ssim_dict[ch] = calculate_ssim_gauss_single(
+            original[..., i],
+            processed[..., i],
+            window_size=window_size,
+            sigma=sigma
+        )
 
     return ssim_dict
 
@@ -199,10 +209,8 @@ def compute_resolutions(
 ) -> list[Tuple[int, int]]:
     resolutions = []
     w, h = original_width, original_height
-
     while w >= min_size * 2 and h >= min_size * 2:
         w //= 2
         h //= 2
         resolutions.append((w, h))
-
     return resolutions
