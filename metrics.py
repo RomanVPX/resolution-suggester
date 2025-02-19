@@ -32,7 +32,6 @@ def calculate_channel_psnr(
         for i, channel in enumerate(channels)
     }
 
-@njit(parallel=True, cache=True)
 def gaussian_kernel_1d(size: int, sigma: float) -> np.ndarray:
     """
     Формирует 1D-ядро Гаусса длиной size с параметром sigma.
@@ -42,14 +41,14 @@ def gaussian_kernel_1d(size: int, sigma: float) -> np.ndarray:
     half = (size - 1) / 2.0
 
     sum_val = 0.0
-    for i in prange(size):
+    for i in range(size):
         x = i - half
         val = math.exp(-0.5 * (x*x) / (sigma*sigma))
         kernel_1d[i] = val
         sum_val += val
 
     # Нормируем, чтобы сумма коэффициентов была = 1
-    for i in prange(size):
+    for i in range(size):
         kernel_1d[i] /= sum_val
 
     return kernel_1d
@@ -108,7 +107,7 @@ def convolve_1d_vert(src: np.ndarray, kernel_1d: np.ndarray) -> np.ndarray:
             out[i, j] = accum
     return out
 
-@njit(cache=True)
+
 def filter_2d_separable(img: np.ndarray, size: int, sigma: float) -> np.ndarray:
     """
     Разделяемая свёртка Гаусса для (H,W) или (H,W,C).
@@ -135,7 +134,7 @@ def filter_2d_separable(img: np.ndarray, size: int, sigma: float) -> np.ndarray:
     return result
 
 
-@njit(cache=True)
+
 def calculate_ssim_gauss_single(
     original: np.ndarray,
     processed: np.ndarray,
