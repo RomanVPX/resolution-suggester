@@ -13,12 +13,35 @@ from config import (
 )
 
 def setup_logging():
+    """
+    Initialize logging module.
+
+    Set the logging level to INFO and format each log entry as
+    '%(asctime)s - %(levelname)s - %(message)s'.
+    """
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s'
     )
 
 def parse_arguments() -> argparse.Namespace:
+    """
+    Parse command line arguments.
+
+    Returns a Namespace object with the following attributes:
+      - paths: list of paths to files or directories to analyze
+      - channels: boolean flag to analyze by color channels
+      - csv_output: boolean flag to export results to CSV
+      - metric: string, one of the values from QualityMetric enum
+      - interpolation: string, one of the values from InterpolationMethod enum
+      - min_size: int, minimum size (width and height) for analysis (default 16)
+      - threads: int, number of parallel processes for file processing (default 8)
+      - save_intermediate: boolean flag to save downscaled results
+      - no_parallel: boolean flag to disable parallel processing and use single-threaded scheme
+
+    Raises:
+      - argparse.ArgumentError if arguments are invalid
+    """
     parser = argparse.ArgumentParser(
         description='Анализ потерь качества текстур при масштабировании.',
         formatter_class=argparse.RawTextHelpFormatter
@@ -71,7 +94,8 @@ def parse_arguments() -> argparse.Namespace:
         type=int,
         default=8,
         metavar='N',
-        help='Число параллельных процессов для обработки файлов (игнорируется при --no-parallel, по умолчанию 8)'
+        help='Число параллельных процессов для обработки файлов\
+              (игнорируется при --no-parallel, по умолчанию 8)'
     )
 
     parser.add_argument(
@@ -91,6 +115,14 @@ def parse_arguments() -> argparse.Namespace:
     return args
 
 def format_metric_help() -> str:
+    """
+    Return a string containing the list of available quality metrics.
+
+    Each metric is represented as a string with the following format:
+    <metric name> <(default)> <metric description>
+
+    The <(default)> part is only present if the metric is the default one.
+    """
     metrics = [
         f"{m.value:<8}{' (default)' if m.value == DEFAULT_METRIC else '':<10} {desc}"
         for m, desc in METRIC_DESCRIPTIONS.items()
@@ -98,6 +130,14 @@ def format_metric_help() -> str:
     return "Доступные метрики качества:\n" + "\n".join(metrics)
 
 def format_interpolation_help() -> str:
+    """
+    Return a string containing the list of available interpolation methods.
+
+    Each method is represented as a string with the following format:
+    <method name> <(default)> <method description>
+
+    The <(default)> part is only present if the method is the default one.
+    """
     methods = [
         f"{m.value:<8}{' (default)' if m.value == DEFAULT_INTERPOLATION else '':<10} {desc}"
         for m, desc in INTERPOLATION_DESCRIPTIONS.items()
@@ -105,6 +145,16 @@ def format_interpolation_help() -> str:
     return "Доступные методы интерполяции:\n" + "\n".join(methods)
 
 def validate_paths(paths: list[str]) -> list[str]:
+    """
+    Validate paths and return a list of valid paths.
+
+    For each path in the input list, the function checks if it is a valid file or directory.
+    If the path is a file, it is added to the output list.
+    If the path is a directory, the function calls collect_files_from_dir to get a list of
+    all files in the directory and adds them to the output list.
+
+    If no valid paths are found, the function logs an error message and returns an empty list.
+    """
     valid_paths = []
     invalid_paths_str = []
 
@@ -126,6 +176,18 @@ def validate_paths(paths: list[str]) -> list[str]:
     return valid_paths
 
 def collect_files_from_dir(directory: str) -> list[str]:
+    """
+    Recursively collects and returns a list of file paths from the specified directory.
+
+    Args:
+        directory: The path to the directory to search for files.
+
+    Returns:
+        A list of file paths with extensions matching the SUPPORTED_EXTENSIONS.
+
+    Logs:
+        Logs an error if access to a directory is denied or if an unexpected error occurs.
+    """
     collected = []
     try:
         for root, _, files in os.walk(directory):
