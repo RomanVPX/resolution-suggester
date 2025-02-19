@@ -14,26 +14,48 @@ MITCHELL_C = 1/3
 MITCHELL_RADIUS = 2
 TINY_EPSILON = 1e-8
 
-class QualityHintPSNR(Enum):
-    EXCELLENT = 50
-    VERY_GOOD = 40
-    GOOD = 30
-    NOTICEABLE_LOSS = 0
+# === Quality levels ===
+class QualityLevel(Enum):
+    EXCELLENT = "excellent"
+    VERY_GOOD = "very_good"
+    GOOD = "good"
+    NOTICEABLE_LOSS = "noticeable_loss"
 
-class QualityHintSSIM(Enum):
-    EXCELLENT = 0.9
-    VERY_GOOD = 0.8
-    GOOD = 0.65
-    NOTICEABLE_LOSS = 0.0
-
-QUALITY_HINTS = {
-    QualityHintPSNR.EXCELLENT.value: "практически идентичные изображения",
-    QualityHintPSNR.VERY_GOOD.value: "очень хорошее качество",
-    QualityHintPSNR.GOOD.value: "приемлемое качество",
-    QualityHintPSNR.NOTICEABLE_LOSS.value: "заметные потери",
+QUALITY_LEVEL_DESCRIPTIONS = {
+    QualityLevel.EXCELLENT: "практически идентичные изображения",
+    QualityLevel.VERY_GOOD: "очень хорошее качество",
+    QualityLevel.GOOD: "приемлемое качество",
+    QualityLevel.NOTICEABLE_LOSS: "заметные потери",
 }
 
-PSNR_QUALITY_THRESHOLDS = sorted(QUALITY_HINTS.keys(), reverse=True)
+# === Quality metrics ===
+class QualityMetric(str, Enum):
+    PSNR = 'psnr'
+    SSIM = 'ssim'
+
+# Описания метрик для справки
+METRIC_DESCRIPTIONS = {
+    QualityMetric.PSNR: 'Пиковое отношение сигнала к шуму',
+    QualityMetric.SSIM: 'Индекс структурного сходства',
+}
+
+DEFAULT_METRIC = QualityMetric.PSNR.value
+
+# === Quality thresholds for metrics ===
+METRIC_QUALITY_THRESHOLDS = {
+    QualityMetric.PSNR: {
+        QualityLevel.EXCELLENT: 50,
+        QualityLevel.VERY_GOOD: 40,
+        QualityLevel.GOOD: 30,
+        QualityLevel.NOTICEABLE_LOSS: 0,
+    },
+    QualityMetric.SSIM: {
+        QualityLevel.EXCELLENT: 0.9,
+        QualityLevel.VERY_GOOD: 0.8,
+        QualityLevel.GOOD: 0.65,
+        QualityLevel.NOTICEABLE_LOSS: 0.0,
+    }
+}
 
 
 # === Interpolation methods ===
@@ -57,20 +79,6 @@ INTERPOLATION_DESCRIPTIONS = {
 }
 
 DEFAULT_INTERPOLATION = 'mitchell'
-
-
-# === Quality metrics ===
-class QualityMetric(str, Enum):
-    PSNR = 'psnr'
-    SSIM = 'ssim'
-
-# Описания метрик для справки
-METRIC_DESCRIPTIONS = {
-    QualityMetric.PSNR: 'Пиковое отношение сигнала к шуму',
-    QualityMetric.SSIM: 'Индекс структурного сходства',
-}
-
-DEFAULT_METRIC = QualityMetric.PSNR.value
 
 
 # === Styling for console output ===

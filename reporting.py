@@ -8,10 +8,11 @@ from colorama import Style
 from config import (
     STYLES,
     CSV_SEPARATOR,
-    QUALITY_HINTS,
-    PSNR_QUALITY_THRESHOLDS,
+    QUALITY_LEVEL_DESCRIPTIONS,
+    METRIC_QUALITY_THRESHOLDS,
     get_output_csv_header,
-    QualityHintPSNR # Import QualityHint Enum
+    QualityLevel,
+    QualityMetric # Import QualityMetric
 )
 
 def generate_csv_filename(metric: str, interpolation: str) -> str:
@@ -149,7 +150,7 @@ class CSVReporter:
                             f"{ch_psnr.get('L', float('inf')):.2f}",
                             "", "", "",
                             f"{min_psnr:.2f}",
-                            QualityHelper.get_hint(min_psnr, for_csv=True)
+                            QualityHelper.get_hint(min_psnr, for_csv=True) # No metric needed for CSV output?
                         ])
                     else:
                         row.extend([
@@ -158,7 +159,7 @@ class CSVReporter:
                             f"{ch_psnr.get('B', float('inf')):.2f}",
                             f"{ch_psnr.get('A', float('inf')):.2f}",
                             f"{min_psnr:.2f}",
-                            QualityHelper.get_hint(min_psnr, for_csv=True)
+                            QualityHelper.get_hint(min_psnr, for_csv=True) # No metric needed for CSV output?
                         ])
             else:
                 psnr = psnr_values
@@ -168,7 +169,7 @@ class CSVReporter:
                 else:
                     row.extend([
                         f"{psnr:.2f}",
-                        QualityHelper.get_hint(psnr, for_csv=True)
+                        QualityHelper.get_hint(psnr, for_csv=True) # No metric needed for CSV output?
                     ])
                 if len(row) < 4:
                     row.extend([""] * (4 - len(row)))
@@ -177,25 +178,36 @@ class CSVReporter:
 
 class QualityHelper:
     @staticmethod
-    def get_hint(psnr: float, for_csv: bool = False) -> str:
-        """Возвращает текстовую оценку качества"""
-        for threshold in PSNR_QUALITY_THRESHOLDS:
-            if psnr >= threshold:
-                return QUALITY_HINTS[threshold]
-        return QUALITY_HINTS[QualityHintPSNR.NOTICEABLE_LOSS.value] # Use enum value
+    def get_hint(metric_value: float, metric_type: QualityMetric = QualityMetric.PSNR, for_csv: bool = False) -> str:
+        """Возвращает текстовую оценку качества для заданной метрики"""
+        thresholds = METRIC_QUALITY_THRESHOLDS.get(metric_type)
+        if thresholds is None:
+            raise ValueError(f"Нет порогов качества для метрики: {metric_type}")
+
+        sorted_levels = sorted(thresholds.keys(), key=lambda level: thresholds[level], reverse=True) # Sort levels by threshold DESC
+
+        for level in sorted_levels:
+            if metric_type == QualityMetric.PSNR and metric_value >= thresholds[level]:
+                return QUALITY_LEVEL_DESCRIPTIONS[level]
+            elif metric_type == QualityMetric.SSIM and metric_value >= thresholds[level]:
+                return QUALITY_LEVEL_DESCRIPTIONS[level]
+
+        return QUALITY_LEVEL_DESCRIPTIONS[QualityLevel.NOTICEABLE_LOSS]
+
 
     @staticmethod
     def get_style_for_hint(hint: str) -> str:
         """Возвращает ANSI-код стиля на основе текстовой подсказки о качестве"""
-        if hint == QUALITY_HINTS[QualityHintPSNR.EXCELLENT.value]: return STYLES['good']
-        if hint == QUALITY_HINTS[QualityHintPSNR.VERY_GOOD.value]: return STYLES['ok']
-        if hint == QUALITY_HINTS[QualityHintPSNR.GOOD.value]: return STYLES['medium']
+        if hint == QUALITY_LEVEL_DESCRIPTIONS[QualityLevel.EXCELLENT]: return STYLES['good']
+        if hint == QUALITY_LEVEL_DESCRIPTIONS[QualityLevel.VERY_GOOD]: return STYLES['ok']
+        if hint == QUALITY_LEVEL_DESCRIPTIONS[QualityLevel.GOOD]: return STYLES['medium']
         return STYLES['bad']
 
-    @staticmethod
-    def get_style(psnr: float) -> str:
-        """Возвращает ANSI-код стиля на основе значения PSNR (больше не используется для hint-ов)"""
-        if psnr >= QualityHintPSNR.EXCELLENT.value: return STYLES['good']
-        if psnr >= QualityHintPSNR.VERY_GOOD.value: return STYLES['ok']
-        if psnr >= QualityHintPSNR.GOOD.value: return STYLES['medium']
-        return STYLES['bad']
+    # @staticmethod
+    # def get_style(psnr: float) -> str:
+    #     """Возвращает ANSI-код стиля на основе значения PSNR (больше не используется для hint-ов)"""
+    #     thresholds = METRIC_QUALITY_THRESHOLDS[QualityMetric.PSNR] # Стиль пока привязан к PSNR уровням
+    #     if psnr >= thresholds[QualityLevel.EXCELLENT]: return STYLES['good']
+    #     if psnr >= thresholds[QualityLevel.VERY_GOOD]: return STYLES['ok']
+    #     if psnr >= thresholds[QualityLevel.GOOD]: return STYLES['medium']
+    #     return STYLES['bad']

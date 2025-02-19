@@ -118,7 +118,7 @@ def process_single_file(
                 channel_metrics = calculate_channel_ssim_gauss(img, upscaled, max_val, channels)
 
             min_metric = min(channel_metrics.values())
-            hint = QualityHelper.get_hint(min_metric)
+            hint = QualityHelper.get_hint(min_metric, args.metric)
             results.append((
                 f"{w}x{h}",
                 channel_metrics,
@@ -131,7 +131,7 @@ def process_single_file(
             else:
                 metric_value = calculate_ssim_gauss(img, upscaled, max_val)
 
-            hint = QualityHelper.get_hint(metric_value)
+            hint = QualityHelper.get_hint(metric_value, args.metric)
             results.append((
                 f"{w}x{h}",
                 metric_value,
