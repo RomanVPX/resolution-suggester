@@ -32,13 +32,6 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        '-m', '--metric',
-        default=DEFAULT_METRIC,
-        choices=[m.value for m in QualityMetric],
-        help=format_metric_help()
-    )
-
-    parser.add_argument(
         '-c', '--channels',
         action='store_true',
         help='Анализ по цветовым каналам'
@@ -48,6 +41,14 @@ def parse_arguments() -> argparse.Namespace:
         '-o', '--csv-output',
         action='store_true',
         help='Экспорт результатов в CSV'
+    )
+
+    parser.add_argument(
+        '-m', '--metric',
+        default=DEFAULT_METRIC,
+        choices=[m.value for m in QualityMetric],
+        metavar='METRIC',
+        help=format_metric_help()
     )
 
     parser.add_argument(
@@ -90,19 +91,19 @@ def parse_arguments() -> argparse.Namespace:
 
     return args
 
+def format_metric_help() -> str:
+    metrics = [
+        f"{m.value:<8}{' (default)' if m.value == DEFAULT_METRIC else '':<10} {desc}"
+        for m, desc in METRIC_DESCRIPTIONS.items()
+    ]
+    return "Доступные метрики качества:\n" + "\n".join(metrics)
+
 def format_interpolation_help() -> str:
     methods = [
         f"{m.value:<8}{' (default)' if m.value == DEFAULT_INTERPOLATION else '':<10} {desc}"
         for m, desc in INTERPOLATION_DESCRIPTIONS.items()
     ]
     return "Доступные методы интерполяции:\n" + "\n".join(methods)
-
-def format_metric_help() -> str:
-    metrics = [
-        f"{m.value:<6}{' (default)' if m.value == DEFAULT_METRIC else '':<10} {desc}"
-        for m, desc in METRIC_DESCRIPTIONS.items()
-    ]
-    return "Доступные метрики качества:\n" + "\n".join(metrics)
 
 def validate_paths(paths: list[str]) -> list[str]:
     valid_paths = []

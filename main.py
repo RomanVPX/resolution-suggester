@@ -29,7 +29,7 @@ def main():
         return
 
     if args.csv_output:
-        csv_path = generate_csv_filename()
+        csv_path = generate_csv_filename(args.metric, args.interpolation)
         with CSVReporter(csv_path) as reporter:
             reporter.write_header(args.channels)
             process_files(files, args, reporter)
@@ -76,7 +76,7 @@ def process_single_file(
 ) -> Tuple[Optional[list], Optional[dict]]:
     result = load_image(file_path)
     if result.error or result.data is None:
-        logging.error(f"Ошибка загрузки изображения {file_path}: {result.error}") # More informative log
+        logging.error(f"Ошибка загрузки изображения {file_path}: {result.error}")
         return None, None
 
     img = result.data
@@ -92,7 +92,7 @@ def process_single_file(
     try:
         resize_fn = get_resize_function(args.interpolation)
     except ValueError as e:
-        logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}") # More informative log
+        logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
         return None, None
 
     results = []
@@ -171,8 +171,6 @@ def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height
     Если (H,W) - тоже прям пишем как есть (Pillow поймёт такую матрицу как grayscale).
     Если (H,W,3) или (H,W,4) - запишем как RGB / RGBA.
     """
-    # Убедимся, что папка существует
-
     file_path_dir = os.path.dirname(file_path) + os.sep + SAVE_INTERMEDIATE_DIR
     if not os.path.exists(file_path_dir):
         os.makedirs(file_path_dir, exist_ok=True)

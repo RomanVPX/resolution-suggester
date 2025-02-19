@@ -5,7 +5,6 @@ from colorama import Fore, Back, Style
 
 SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png', '.jpg', '.jpeg']
 CSV_SEPARATOR = ';'
-DEFAULT_INTERPOLATION = 'mitchell'
 
 MITCHELL_B = 1/3
 MITCHELL_C = 1/3
@@ -30,6 +29,8 @@ PSNR_QUALITY_THRESHOLDS = sorted(QUALITY_HINTS.keys(), reverse=True)
 
 SAVE_INTERMEDIATE_DIR = '_intermediate'
 
+
+# === Interpolation methods ===
 class InterpolationMethod(str, Enum):
     BILINEAR = 'bilinear'
     BICUBIC = 'bicubic'
@@ -49,6 +50,10 @@ INTERPOLATION_DESCRIPTIONS = {
     InterpolationMethod.MITCHELL: 'Фильтр Митчелла-Нетравали',
 }
 
+DEFAULT_INTERPOLATION = 'mitchell'
+
+
+# === Quality metrics ===
 class QualityMetric(str, Enum):
     PSNR = 'psnr'
     SSIM = 'ssim'
@@ -61,10 +66,12 @@ METRIC_DESCRIPTIONS = {
 
 DEFAULT_METRIC = QualityMetric.PSNR.value
 
-# Стили для консольного вывода
+
+# === Styling for console output ===
+
 STYLES = {
-    'header': "\033[1;96;100m",
-    'warning': "\033[2;33m",
+    'header': f"{Style.BRIGHT}{Fore.LIGHTCYAN_EX}{Back.LIGHTBLACK_EX}",
+    'warning': f"{Style.DIM}{Back.LIGHTYELLOW_EX}",
     'original': Fore.CYAN,
     'good': Fore.LIGHTGREEN_EX,
     'ok': Fore.GREEN,

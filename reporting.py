@@ -14,10 +14,10 @@ from config import (
     QualityHintPSNR # Import QualityHint Enum
 )
 
-def generate_csv_filename() -> str:
+def generate_csv_filename(metric: str, interpolation: str) -> str:
     """Генерация имени CSV файла с временной меткой"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return f"texture_analysis_{timestamp}.csv"
+    return f"tx_analysis_{timestamp}_{interpolation}_{metric}.csv"
 
 class ConsoleReporter:
     @staticmethod
