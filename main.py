@@ -99,8 +99,7 @@ def process_single_file(
         logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
         return None, None
 
-    results = []
-    results.append(create_original_entry(width, height, channels, args.channels))
+    results = [create_original_entry(width, height, channels, args.channels)]
     resolutions = compute_resolutions(width, height, args.min_size)
     use_psnr = (args.metric == QualityMetric.PSNR.value)
 
@@ -108,17 +107,17 @@ def process_single_file(
         if w == width and h == height:
             continue
 
-        downscaled = resize_fn(img, w, h)
+        downscaled_img = resize_fn(img, w, h)
         if args.save_intermediate:
-            _save_intermediate(downscaled, file_path, w, h)
+            _save_intermediate(downscaled_img, file_path, w, h)
 
-        upscaled = resize_fn(downscaled, width, height)
+        upscaled_img = resize_fn(downscaled_img, width, height)
 
         if args.channels:
             if use_psnr:
-                channel_metrics = calculate_channel_psnr(img, upscaled, max_val, channels)
+                channel_metrics = calculate_channel_psnr(img, upscaled_img, max_val, channels)
             else:
-                channel_metrics = calculate_channel_ssim_gauss(img, upscaled, max_val, channels)
+                channel_metrics = calculate_channel_ssim_gauss(img, upscaled_img, max_val, channels)
 
             min_metric = min(channel_metrics.values())
             hint = QualityHelper.get_hint(min_metric, args.metric)
@@ -130,9 +129,9 @@ def process_single_file(
             ))
         else:
             if use_psnr:
-                metric_value = calculate_psnr(img, upscaled, max_val)
+                metric_value = calculate_psnr(img, upscaled_img, max_val)
             else:
-                metric_value = calculate_ssim_gauss(img, upscaled, max_val)
+                metric_value = calculate_ssim_gauss(img, upscaled_img, max_val)
 
             hint = QualityHelper.get_hint(metric_value, args.metric)
             results.append((
@@ -168,8 +167,8 @@ def print_console_results(
 def create_original_entry(width: int, height: int, channels: Optional[list[str]] = None, analyze_channels: bool = False) -> tuple:
     base_entry = (f"{width}x{height}",)
     if analyze_channels and channels:
-        return (*base_entry, {c: float('inf') for c in channels}, float('inf'), "Оригинал")
-    return (*base_entry, float('inf'), "Оригинал")
+        return *base_entry, {c: float('inf') for c in channels}, float('inf'), "Оригинал"
+    return *base_entry, float('inf'), "Оригинал"
 
 
 def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height: int):
