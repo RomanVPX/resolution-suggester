@@ -43,7 +43,7 @@ class InterpolationMethod(str, Enum):
     MITCHELL = 'mitchell'
 
 # Соответствие методов интерполяции OpenCV
-INTERPOLATION_METHODS = {
+INTERPOLATION_METHODS_CV2 = {
     InterpolationMethod.BILINEAR: 'INTER_LINEAR',
     InterpolationMethod.BICUBIC: 'INTER_CUBIC',
     InterpolationMethod.MITCHELL: 'mitchell', # 'mitchell' - это placeholder, т.к. Mitchell реализован отдельно

@@ -4,7 +4,7 @@ import numpy.typing as npt
 from functools import lru_cache, partial
 from typing import Callable
 from numba import njit, prange
-from config import MITCHELL_B, MITCHELL_C, TINY_EPSILON, INTERPOLATION_METHODS, InterpolationMethod
+from config import MITCHELL_B, MITCHELL_C, TINY_EPSILON, INTERPOLATION_METHODS_CV2, InterpolationMethod
 
 ResizeFunction = Callable[[npt.NDArray[np.float32], int, int], npt.NDArray[np.float32]]
 
@@ -143,18 +143,13 @@ def get_resize_function(interpolation: InterpolationMethod) -> ResizeFunction:
     Фабрика функций для ресайза:
     Если выбрали 'mitchell', берём resize_mitchell.
     """
-    try:
-        interpolation_method = InterpolationMethod(interpolation)
-    except ValueError:
-        raise ValueError(f"Неподдерживаемый метод интерполяции: {interpolation}")
-
-    if interpolation_method == InterpolationMethod.MITCHELL:
+    if interpolation == InterpolationMethod.MITCHELL:
         return partial(resize_mitchell)
 
     try:
-        cv2_flag = getattr(cv2, INTERPOLATION_METHODS[interpolation_method])
+        cv2_flag = getattr(cv2, INTERPOLATION_METHODS_CV2[interpolation])
     except AttributeError:
-        raise ValueError(f"Метод интерполяции OpenCV не найден: {interpolation_method}")
+        raise ValueError(f"Метод интерполяции OpenCV не найден: {interpolation}")
 
     def opencv_resize(img: np.ndarray, w: int, h: int) -> np.ndarray:
         return np.asarray(cv2.resize(img, (w, h), interpolation=cv2_flag), dtype=np.float32)
