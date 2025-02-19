@@ -49,6 +49,18 @@ INTERPOLATION_DESCRIPTIONS = {
     InterpolationMethod.MITCHELL: 'Фильтр Митчелла-Нетравали',
 }
 
+class QualityMetric(str, Enum):
+    PSNR = 'psnr'
+    SSIM = 'ssim'
+
+# Описания метрик для справки
+METRIC_DESCRIPTIONS = {
+    QualityMetric.PSNR: 'Пиковое отношение сигнала к шуму',
+    QualityMetric.SSIM: 'Индекс структурного сходства',
+}
+
+DEFAULT_METRIC = QualityMetric.PSNR.value
+
 # Стили для консольного вывода
 STYLES = {
     'header': "\033[1;96;100m",

@@ -17,7 +17,7 @@ from metrics import (
     calculate_channel_ssim_gauss
 )
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
-from config import SAVE_INTERMEDIATE_DIR
+from config import SAVE_INTERMEDIATE_DIR, QualityMetric
 
 def main():
     setup_logging()
@@ -98,7 +98,7 @@ def process_single_file(
     results = []
     results.append(create_original_entry(width, height, channels, args.channels)) # Pass analyze_channels flag
     resolutions = compute_resolutions(width, height, args.min_size)
-    use_psnr = (args.metric == 'psnr')
+    use_psnr = (args.metric == QualityMetric.PSNR.value)
 
     for (w, h) in resolutions:
         if w == width and h == height:

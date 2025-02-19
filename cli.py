@@ -7,7 +7,10 @@ from config import (
     INTERPOLATION_DESCRIPTIONS,
     DEFAULT_INTERPOLATION,
     SUPPORTED_EXTENSIONS,
-    InterpolationMethod
+    InterpolationMethod,
+    METRIC_DESCRIPTIONS,
+    DEFAULT_METRIC,
+    QualityMetric
 )
 
 def setup_logging():
@@ -30,9 +33,9 @@ def parse_arguments() -> argparse.Namespace:
 
     parser.add_argument(
         '-m', '--metric',
-        default='psnr',
-        choices=['psnr', 'ssim'],
-        help='Метрика для оценки качества (PSNR или SSIM). По умолчанию PSNR.'
+        default=DEFAULT_METRIC,
+        choices=[m.value for m in QualityMetric],
+        help=format_metric_help()
     )
 
     parser.add_argument(
@@ -93,6 +96,13 @@ def format_interpolation_help() -> str:
         for m, desc in INTERPOLATION_DESCRIPTIONS.items()
     ]
     return "Доступные методы интерполяции:\n" + "\n".join(methods)
+
+def format_metric_help() -> str:
+    metrics = [
+        f"{m.value:<6}{' (default)' if m.value == DEFAULT_METRIC else '':<10} {desc}"
+        for m, desc in METRIC_DESCRIPTIONS.items()
+    ]
+    return "Доступные метрики качества:\n" + "\n".join(metrics)
 
 def validate_paths(paths: list[str]) -> list[str]:
     valid_paths = []
