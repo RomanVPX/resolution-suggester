@@ -1,4 +1,8 @@
-# config.py
+"""
+Configuration constants for the image quality analysis tool.
+
+This module provides constants for configuration and output formatting.
+"""
 
 from enum import Enum
 from colorama import Fore, Back, Style
@@ -15,6 +19,14 @@ TINY_EPSILON = 1e-8
 
 # === Quality levels ===
 class QualityLevel(Enum):
+    """
+    Enumeration of quality levels for image analysis.
+
+    This class defines different quality levels for image analysis results,
+    ranging from 'excellent' to 'noticeable loss'. These levels can be used
+    to categorize the perceived quality of images based on specific metrics.
+    """
+
     EXCELLENT = "excellent"
     VERY_GOOD = "very_good"
     GOOD = "good"
@@ -29,6 +41,15 @@ QUALITY_LEVEL_DESCRIPTIONS = {
 
 # === Quality metrics ===
 class QualityMetric(str, Enum):
+    """
+    Enumeration of quality metrics for image analysis.
+
+    This class defines different quality metrics that can be used to assess
+    the quality of images, such as PSNR (Peak Signal-to-Noise Ratio) and SSIM
+    (Structural Similarity Index). These metrics provide numerical values that
+    can be used to determine the perceived quality of images.
+    """
+
     PSNR = 'psnr'
     SSIM = 'ssim'
 
@@ -58,6 +79,15 @@ METRIC_QUALITY_THRESHOLDS = {
 
 # === Interpolation methods ===
 class InterpolationMethod(str, Enum):
+    """
+    Enumeration of interpolation methods for image resampling.
+
+    This class defines different interpolation methods that can be used to
+    resample images, such as bilinear and bicubic interpolation. These
+    methods are used to calculate the pixel values at fractional coordinates
+    when resizing an image.
+    """
+
     BILINEAR = 'bilinear'
     BICUBIC = 'bicubic'
     MITCHELL = 'mitchell'
@@ -65,7 +95,7 @@ class InterpolationMethod(str, Enum):
 INTERPOLATION_METHODS_CV2 = {
     InterpolationMethod.BILINEAR: 'INTER_LINEAR',
     InterpolationMethod.BICUBIC: 'INTER_CUBIC',
-    InterpolationMethod.MITCHELL: 'mitchell', # 'mitchell' - это placeholder, т.к. Mitchell реализован отдельно
+    InterpolationMethod.MITCHELL: 'mitchell', # placeholder: Mitchell реализован отдельно
 }
 
 INTERPOLATION_DESCRIPTIONS = {
@@ -95,7 +125,8 @@ def get_output_csv_header(analyze_channels: bool, metric: str) -> list[str]:
     header = ["Файл", "Разрешение"]
     metric_str = str(metric.upper())
     if analyze_channels:
-        header.extend([f"R(L) {metric_str}", f"G {metric_str}", f"B {metric_str}", f"A {metric_str}", f"Min {metric_str}", "Качество (min)"])
+        header.extend([f"R(L) {metric_str}", f"G {metric_str}", f"B {metric_str}",
+                        f"A {metric_str}", f"Min {metric_str}", "Качество (min)"])
     else:
         header.extend([f"{metric_str}", "Качество"])
     return header
