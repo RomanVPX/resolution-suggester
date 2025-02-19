@@ -70,7 +70,7 @@ def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
         logging.error("Недостаточно памяти для загрузки изображения %s", file_path)
         return ImageLoadResult(None, None, None, "Недостаточно памяти для загрузки изображения")
     except Exception as e:
-        logging.error(f"Ошибка при чтении {file_path}: {str(e)}")
+        logging.error("Ошибка при чтении %s: %s", file_path, str(e))
         return ImageLoadResult(None, None, None, str(e))
 
 def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
@@ -97,11 +97,11 @@ def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
                 if range_val > 1e-7:
                     img = (img - min_val) / range_val
                     max_val = 1.0
-                    logging.debug(f"EXR normalized to [0, 1], min={min_val:.3f}, max={max_val:.3f} from {file_path}") # Added logging
+                    logging.debug("EXR нормализован в [0, 1], min=%.3f, max=%.3f у %s" % (min_val, max_val, file_path))
                 else:
                     # Избежать деления на ноль в вырожденном случае
                     max_val = 1.0
-                    logging.debug(f"EXR normalization skipped (small range), max={max_val:.3f} from {file_path}") # Added logging
+                    logging.debug("Нормализация EXR пропущена (малый диапазон), max={:.3f} у {}".format(max_val, file_path))
             else:
                 max_val = np.max(np.abs(img))
 
@@ -109,7 +109,7 @@ def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
         finally:
             exr_file.close() # Ensure EXR file is closed
     except Exception as e:
-        logging.error(f"Ошибка обработки EXR {file_path}: {str(e)}")
+        logging.error("Ошибка обработки EXR %s: %s", file_path, str(e))
         return ImageLoadResult(None, None, None, str(e))
 
 def load_raster(file_path: str) -> ImageLoadResult:
@@ -133,11 +133,11 @@ def load_raster(file_path: str) -> ImageLoadResult:
             # Максимальное значение после нормализации всегда 1.0 для PNG/TGA
             return ImageLoadResult(img_array, 1.0, channels)
     except FileNotFoundError:
-        logging.error(f"Файл не найден: {file_path}")
+        logging.error("Файл не найден: %s", file_path)
         return ImageLoadResult(None, None, None, f"Файл не найден: {file_path}")
     except UnidentifiedImageError:
-        logging.error(f"Невозможно декодировать изображение: {file_path}")
+        logging.error("Невозможно декодировать изображение: %s", file_path)
         return ImageLoadResult(None, None, None, f"Невозможно декодировать изображение: {file_path}")
     except Exception as e:
-        logging.error(f"Ошибка обработки растрового изображения {file_path}: {str(e)}")
+        logging.error("Ошибка обработки растрового изображения %s: %s", file_path, e)
         return ImageLoadResult(None, None, None, str(e))
