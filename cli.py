@@ -107,7 +107,8 @@ def format_interpolation_help() -> str:
 
 def validate_paths(paths: list[str]) -> list[str]:
     valid_paths = []
-    invalid_paths_str = [] # To collect invalid paths for better error message
+    invalid_paths_str = []
+
     for path in paths:
         if os.path.isfile(path):
             valid_paths.append(path)
@@ -115,11 +116,11 @@ def validate_paths(paths: list[str]) -> list[str]:
             valid_paths.extend(collect_files_from_dir(path))
         else:
             logging.warning(f"Неверный путь: {path}")
-            invalid_paths_str.append(path) # Collect invalid paths
+            invalid_paths_str.append(path)
 
     if not valid_paths:
         error_message = "Не найдено ни одного валидного файла или директории."
-        if invalid_paths_str: # Add details about invalid paths if any
+        if invalid_paths_str:
             error_message += " Проверьте следующие пути: " + ", ".join(invalid_paths_str)
         raise ValueError(error_message)
     return valid_paths

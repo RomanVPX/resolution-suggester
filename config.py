@@ -11,7 +11,6 @@ SAVE_INTERMEDIATE_DIR = '_intermediate'
 MITCHELL_B = 1/3
 MITCHELL_C = 1/3
 
-MITCHELL_RADIUS = 2
 TINY_EPSILON = 1e-8
 
 # === Quality levels ===
