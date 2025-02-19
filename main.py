@@ -1,3 +1,4 @@
+# main.py
 import os
 import argparse
 import logging
@@ -5,7 +6,7 @@ import concurrent.futures
 
 from PIL import Image
 import numpy as np
-from typing import List, Tuple, Optional
+from typing import Tuple, Optional
 from cli import parse_arguments, setup_logging, validate_paths
 from image_loader import load_image
 from image_processing import get_resize_function
@@ -19,6 +20,7 @@ from metrics import (
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
 from config import SAVE_INTERMEDIATE_DIR, QualityMetric
 
+
 def main():
     setup_logging()
     args = parse_arguments()
@@ -29,12 +31,14 @@ def main():
 
     if args.csv_output:
         csv_path = generate_csv_filename(args.metric, args.interpolation)
-        with CSVReporter(csv_path) as reporter:
+
+        with CSVReporter(csv_path, args.metric) as reporter:
             reporter.write_header(args.channels)
             process_files(files, args, reporter)
         print(f"\nМетрики сохранены в: {csv_path}")
     else:
         process_files(files, args)
+
 
 def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
     if args.no_parallel:
@@ -46,7 +50,7 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
                 continue
 
             if results:
-                print_console_results(file_path, results, args.channels, meta)
+                print_console_results(file_path, results, args.channels, meta, args.metric)
                 if reporter:
                     reporter.write_results(os.path.basename(file_path), results, args.channels)
     else:
@@ -65,9 +69,10 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
                     continue
 
                 if results:
-                    print_console_results(file_path, results, args.channels, meta)
+                    print_console_results(file_path, results, args.channels, meta, args.metric)
                     if reporter:
                         reporter.write_results(os.path.basename(file_path), results, args.channels)
+
 
 def process_single_file(
     file_path: str,
@@ -95,7 +100,7 @@ def process_single_file(
         return None, None
 
     results = []
-    results.append(create_original_entry(width, height, channels, args.channels)) # Pass analyze_channels flag
+    results.append(create_original_entry(width, height, channels, args.channels))
     resolutions = compute_resolutions(width, height, args.min_size)
     use_psnr = (args.metric == QualityMetric.PSNR.value)
 
@@ -113,7 +118,6 @@ def process_single_file(
             if use_psnr:
                 channel_metrics = calculate_channel_psnr(img, upscaled, max_val, channels)
             else:
-                # Считаем SSIM для каждого канала
                 channel_metrics = calculate_channel_ssim_gauss(img, upscaled, max_val, channels)
 
             min_metric = min(channel_metrics.values())
@@ -139,22 +143,27 @@ def process_single_file(
 
     return results, {'max_val': max_val, 'channels': channels}
 
+
 def print_console_results(
     file_path: str,
     results: list,
     analyze_channels: bool,
-    meta: dict
+    meta: dict,
+    metric: str  # <-- добавили передачу метрики
 ):
     ConsoleReporter.print_file_header(file_path)
 
     if meta['max_val'] < 0.001:
         logging.warning(f"Низкое максимальное значение: {meta['max_val']:.3e}")
 
+    # Передаём metric в print_quality_table
     ConsoleReporter.print_quality_table(
         results,
         analyze_channels,
-        meta.get('channels')
+        meta.get('channels'),
+        metric
     )
+
 
 def create_original_entry(width: int, height: int, channels: Optional[list[str]] = None, analyze_channels: bool = False) -> tuple:
     base_entry = (f"{width}x{height}",)
@@ -162,12 +171,10 @@ def create_original_entry(width: int, height: int, channels: Optional[list[str]]
         return (*base_entry, {c: float('inf') for c in channels}, float('inf'), "Оригинал")
     return (*base_entry, float('inf'), "Оригинал")
 
+
 def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height: int):
     """
     Сохраняет промежуточный результат в PNG.
-    Если монохром (H,W,1) - избавляемся от оси каналов для записи.
-    Если (H,W) - тоже прям пишем как есть (Pillow поймёт такую матрицу как grayscale).
-    Если (H,W,3) или (H,W,4) - запишем как RGB / RGBA.
     """
     file_path_dir = os.path.dirname(file_path) + os.sep + SAVE_INTERMEDIATE_DIR
     if not os.path.exists(file_path_dir):
@@ -183,14 +190,13 @@ def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height
 
     arr_for_save = img_array
     if arr_for_save.ndim == 3 and arr_for_save.shape[2] == 1:
-        # (H, W, 1) -> (H, W)
         arr_for_save = arr_for_save.squeeze(axis=-1)
 
-    # Pillow требует, чтобы данные были в [0..255], uint8 - конвертируем
     arr_uint8 = np.clip(arr_for_save * 255.0, 0, 255).astype(np.uint8)
 
     pil_img = Image.fromarray(arr_uint8)
     pil_img.save(output_path, format="PNG")
+
 
 if __name__ == "__main__":
     main()

@@ -56,21 +56,18 @@ METRIC_QUALITY_THRESHOLDS = {
     }
 }
 
-
 # === Interpolation methods ===
 class InterpolationMethod(str, Enum):
     BILINEAR = 'bilinear'
     BICUBIC = 'bicubic'
     MITCHELL = 'mitchell'
 
-# Соответствие методов интерполяции OpenCV
 INTERPOLATION_METHODS_CV2 = {
     InterpolationMethod.BILINEAR: 'INTER_LINEAR',
     InterpolationMethod.BICUBIC: 'INTER_CUBIC',
     InterpolationMethod.MITCHELL: 'mitchell', # 'mitchell' - это placeholder, т.к. Mitchell реализован отдельно
 }
 
-# Описания методов интерполяции для справки
 INTERPOLATION_DESCRIPTIONS = {
     InterpolationMethod.BILINEAR: 'Билинейная интерполяция',
     InterpolationMethod.BICUBIC: 'Бикубическая интерполяция',
@@ -78,7 +75,6 @@ INTERPOLATION_DESCRIPTIONS = {
 }
 
 DEFAULT_INTERPOLATION = 'mitchell'
-
 
 # === Styling for console output ===
 
@@ -92,11 +88,14 @@ STYLES = {
     'bad': Fore.RED,
 }
 
-
-def get_output_csv_header(analyze_channels: bool) -> list[str]:
+def get_output_csv_header(analyze_channels: bool, metric: str) -> list[str]:
+    """
+    Формирует заголовок CSV с учётом метрики
+    """
     header = ["Файл", "Разрешение"]
+    metric_str = str(metric.upper())
     if analyze_channels:
-        header.extend(["R(L) PSNR", "G PSNR", "B PSNR", "A PSNR", "Min PSNR", "Качество (min)"])
+        header.extend([f"R(L) {metric_str}", f"G {metric_str}", f"B {metric_str}", f"A {metric_str}", f"Min {metric_str}", "Качество (min)"])
     else:
-        header.extend(["PSNR", "Качество"])
+        header.extend([f"{metric_str}", "Качество"])
     return header
