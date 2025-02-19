@@ -29,6 +29,13 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        '-m', '--metric',
+        default='psnr',
+        choices=['psnr', 'ssim'],
+        help='Метрика для оценки качества (PSNR или SSIM). По умолчанию PSNR.'
+    )
+
+    parser.add_argument(
         '-c', '--channels',
         action='store_true',
         help='Анализ по цветовым каналам'
@@ -49,7 +56,7 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        '-m', '--min-size',
+        '--min-size',
         type=int,
         default=16,
         metavar='SIZE',

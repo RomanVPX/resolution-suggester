@@ -14,7 +14,6 @@ def calculate_psnr(
     if original.shape != processed.shape:
         raise ValueError("Image dimensions must match for PSNR calculation")
 
-    # Оптимизированный расчет MSE
     diff = original - processed
     mse = np.mean(diff * diff)
 
@@ -35,6 +34,159 @@ def calculate_channel_psnr(
         channel: calculate_psnr(original[..., i], processed[..., i], max_val)
         for i, channel in enumerate(channels)
     }
+
+def gaussian_kernel(window_size: int = 11, sigma: float = 1.5) -> np.ndarray:
+    """Формируем 2D-ядро Гаусса"""
+    ax = np.linspace(-(window_size-1)/2., (window_size-1)/2., window_size)
+    xx, yy = np.meshgrid(ax, ax)
+    kernel = np.exp(-0.5 * (np.square(xx) + np.square(yy)) / np.square(sigma))
+    return kernel / np.sum(kernel)
+
+def filter_2d(img: np.ndarray, kernel: np.ndarray) -> np.ndarray:
+    """
+    Свёртка img (H,W) с ядром kernel (kH,kW).
+    На границах используем reflect-паддинг.
+    Для (H,W) считаем моно, для (H,W,C) — применяем пому channel.
+    """
+    if img.ndim == 2:
+        return _filter_2d_singlechannel(img, kernel)
+    else:
+        # (H,W,C)
+        out = np.zeros_like(img)
+        for c in range(img.shape[2]):
+            out[..., c] = _filter_2d_singlechannel(img[..., c], kernel)
+        return out
+
+def _filter_2d_singlechannel(channel: np.ndarray, kernel: np.ndarray) -> np.ndarray:
+    """
+    Наивная реализация 2D свёртки с reflect-паддингом.
+    channel: (H,W)
+    kernel: (kH,kW)
+    """
+    H, W = channel.shape
+    kH, kW = kernel.shape
+    padH, padW = kH // 2, kW // 2
+
+    # Расширенное изображение
+    extended = np.pad(channel, ((padH, padH), (padW, padW)), mode='reflect')
+    out = np.zeros_like(channel)
+
+    for i in range(H):
+        for j in range(W):
+            roi = extended[i:i+kH, j:j+kW]
+            out[i, j] = np.sum(roi * kernel)
+
+    return out
+
+def calculate_ssim_gauss_single(
+    original: np.ndarray,
+    processed: np.ndarray,
+    K1: float = 0.01,
+    K2: float = 0.03,
+    L: float = 1.0,
+    window_size: int = 11,
+    sigma: float = 1.5
+) -> float:
+    """
+    Более точный расчёт SSIM на одном канале. Используем Гауссово окно:
+      muX = conv(X) ...
+      sigmaX = conv(X^2) - muX^2
+      и т.д.
+    Результат — среднее по всей карте SSIM.
+    """
+    if original.shape != processed.shape:
+        raise ValueError("SSIM: image dimensions must match")
+
+    kernel = gaussian_kernel(window_size, sigma)
+
+    muX = filter_2d(original, kernel)
+    muY = filter_2d(processed, kernel)
+
+    sigmaX = filter_2d(original * original, kernel) - muX * muX
+    sigmaY = filter_2d(processed * processed, kernel) - muY * muY
+    sigmaXY = filter_2d(original * processed, kernel) - muX * muY
+
+    C1 = (K1 * L) ** 2
+    C2 = (K2 * L) ** 2
+
+    numerator   = (2.0 * muX * muY + C1) * (2.0 * sigmaXY + C2)
+    denominator = (muX**2 + muY**2 + C1) * (sigmaX + sigmaY + C2)
+    ssim_map = numerator / np.maximum(denominator, TINY_EPSILON)
+
+    # Возвращаем среднее по всей карте
+    return float(np.mean(ssim_map))
+
+def calculate_ssim_gauss(
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float,
+    K1: float = 0.01,
+    K2: float = 0.03,
+    window_size: int = 11,
+    sigma: float = 1.5
+) -> float:
+    """
+    SSIM с Гауссовым окном.
+    Если изображение многоканальное — берём среднее по каналам.
+    Предполагаем, что original, processed в диапазоне [0..max_val].
+    Если max_val > 1, нормализуем.
+    """
+    if original.shape != processed.shape:
+        raise ValueError("SSIM: image dimensions must match")
+
+    # Нормализуем если max_val > 1
+    if max_val > 1.00001:
+        original = original / max_val
+        processed = processed / max_val
+
+    # Если (H,W)
+    if original.ndim == 2:
+        return calculate_ssim_gauss_single(original, processed, K1, K2, 1.0, window_size, sigma)
+    elif original.ndim == 3:
+        # Среднее по каналам
+        c = original.shape[2]
+        ssim_sum = 0.0
+        for i in range(c):
+            ssim_sum += calculate_ssim_gauss_single(
+                original[..., i],
+                processed[..., i],
+                K1, K2, 1.0, window_size, sigma
+            )
+        return ssim_sum / c
+
+    raise ValueError("Unsupported image dimension for SSIM")
+
+def calculate_channel_ssim_gauss(
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float,
+    channels: list[str],
+    window_size: int = 11,
+    sigma: float = 1.5
+) -> Dict[str, float]:
+    """
+    Померный SSIM для (H,W,C). Возвращаем словарь {channel_name: ssim_value}.
+    """
+    if original.shape != processed.shape:
+        raise ValueError("SSIM: image dimensions must match")
+
+    ssim_dict: Dict[str, float] = {}
+
+    if max_val > 1.00001:
+        original = original / max_val
+        processed = processed / max_val
+
+    # Если вдруг (H,W) — значит один канал
+    if original.ndim == 2:
+        ssim_dict['L'] = calculate_ssim_gauss_single(original, processed, window_size=window_size, sigma=sigma)
+        return ssim_dict
+
+    for i, ch in enumerate(channels):
+        s = calculate_ssim_gauss_single(original[..., i], processed[..., i],
+                                        window_size=window_size, sigma=sigma)
+        ssim_dict[ch] = s
+
+    return ssim_dict
 
 def compute_resolutions(
     original_width: int,

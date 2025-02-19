@@ -9,6 +9,13 @@ from typing import List, Tuple, Optional
 from cli import parse_arguments, setup_logging, validate_paths
 from image_loader import load_image
 from image_processing import get_resize_function
+from metrics import (
+    calculate_psnr,
+    calculate_channel_psnr,
+    compute_resolutions,
+    calculate_ssim_gauss,
+    calculate_channel_ssim_gauss
+)
 from metrics import calculate_psnr, calculate_channel_psnr, compute_resolutions
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
 from config import SAVE_INTERMEDIATE_DIR
@@ -95,6 +102,8 @@ def process_single_file(
 
     resolutions = compute_resolutions(width, height, args.min_size)
 
+    use_psnr = (args.metric == 'psnr')
+
     for (w, h) in resolutions:
         if w == width and h == height:
             continue
@@ -106,20 +115,33 @@ def process_single_file(
         upscaled = resize_fn(downscaled, width, height)
 
         if args.channels:
-            channel_psnr = calculate_channel_psnr(img, upscaled, max_val, channels)
-            min_psnr = min(channel_psnr.values())
+            if use_psnr:
+                channel_metrics = calculate_channel_psnr(img, upscaled, max_val, channels)
+            else:
+                # Считаем SSIM для каждого канала
+                channel_metrics = calculate_channel_ssim_gauss(img, upscaled, max_val, channels)
+
+            min_metric = min(channel_metrics.values())
+            # Для PSNR мы даём подсказку через QualityHelper.get_hint()
+            # Для SSIM можно тоже какую-то шкалу задать, но оставим так же
+            hint = QualityHelper.get_hint(min_metric)
             results.append((
                 f"{w}x{h}",
-                channel_psnr,
-                min_psnr,
-                QualityHelper.get_hint(min_psnr)
+                channel_metrics,
+                min_metric,
+                hint
             ))
         else:
-            psnr = calculate_psnr(img, upscaled, max_val)
+            if use_psnr:
+                metric_value = calculate_psnr(img, upscaled, max_val)
+            else:
+                metric_value = calculate_ssim_gauss(img, upscaled, max_val)
+
+            hint = QualityHelper.get_hint(metric_value)
             results.append((
                 f"{w}x{h}",
-                psnr,
-                QualityHelper.get_hint(psnr)
+                metric_value,
+                hint
             ))
 
     return results, {'max_val': max_val, 'channels': channels}
