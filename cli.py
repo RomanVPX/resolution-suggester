@@ -9,6 +9,7 @@ arguments.
 import argparse
 import logging
 import os
+import multiprocessing
 
 from config import (
     INTERPOLATION_DESCRIPTIONS,
@@ -100,10 +101,9 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '-t', '--threads',
         type=int,
-        default=8,
+        default=multiprocessing.cpu_count(),
         metavar='N',
-        help='Число параллельных процессов для обработки файлов\
-              (игнорируется при --no-parallel, по умолчанию 8)'
+        help=format_threads_help()
     )
 
     parser.add_argument(
@@ -122,13 +122,15 @@ def parse_arguments() -> argparse.Namespace:
 
     return args
 
+def format_threads_help() -> str:
+    return ("Число параллельных процессов для обработки файлов. Игнорируется при --no-parallel,\n"
+            "по умолчанию равно количеству логических ядер процессора (сейчас обнаружено " + str(multiprocessing.cpu_count()) + ")")
+
 def format_metric_help() -> str:
     """
     Return a string containing the list of available quality metrics.
-
     Each metric is represented as a string with the following format:
     <metric name> <(default)> <metric description>
-
     The <(default)> part is only present if the metric is the default one.
     """
     metrics = [
@@ -140,10 +142,8 @@ def format_metric_help() -> str:
 def format_interpolation_help() -> str:
     """
     Return a string containing the list of available interpolation methods.
-
     Each method is represented as a string with the following format:
     <method name> <(default)> <method description>
-
     The <(default)> part is only present if the method is the default one.
     """
     methods = [
@@ -186,13 +186,10 @@ def validate_paths(paths: list[str]) -> list[str]:
 def collect_files_from_dir(directory: str) -> list[str]:
     """
     Recursively collects and returns a list of file paths from the specified directory.
-
     Args:
         directory: The path to the directory to search for files.
-
     Returns:
         A list of file paths with extensions matching the SUPPORTED_EXTENSIONS.
-
     Logs:
         Logs an error if access to a directory is denied or if an unexpected error occurs.
     """

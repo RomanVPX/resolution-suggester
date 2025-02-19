@@ -176,17 +176,12 @@ def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height
     """
     Сохраняет промежуточный результат в PNG.
     """
-    file_path_dir = os.path.dirname(file_path) + os.sep + SAVE_INTERMEDIATE_DIR
+    file_path_dir = os.path.join(os.path.dirname(file_path), SAVE_INTERMEDIATE_DIR)
     if not os.path.exists(file_path_dir):
         os.makedirs(file_path_dir, exist_ok=True)
 
-    output_path = os.path.join(
-        file_path_dir,
-        os.path.basename(file_path).split('.')[0] + f"_{width}x{height}.png"
-    )
-    out_dir = os.path.dirname(output_path)
-    if out_dir and not os.path.exists(out_dir):
-        os.makedirs(out_dir, exist_ok=True)
+    output_filename = os.path.splitext(os.path.basename(file_path))[0] + f"_{width}x{height}.png"
+    output_path = os.path.join(file_path_dir, output_filename)
 
     arr_for_save = img_array
     if arr_for_save.ndim == 3 and arr_for_save.shape[2] == 1:

@@ -169,7 +169,6 @@ class CSVReporter:
                         ])
             else:
                 metric_val = values
-                hint = result_item[2]
                 if i == 0:
                     row.extend(["", ""])
                 else:

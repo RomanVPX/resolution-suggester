@@ -32,6 +32,7 @@ class ImageLoadResult:
     channels: Optional[list[str]]
     error: Optional[str] = None
 
+
 def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
     """
     Загружает изображение из файла и возвращает массив numpy, максимальное значение и каналы.
@@ -73,6 +74,7 @@ def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
         logging.error("Ошибка при чтении %s: %s", file_path, str(e))
         return ImageLoadResult(None, None, None, str(e))
 
+
 def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
     """Загружает EXR файл с обработкой каналов (опционально нормализуя к [0, 1])."""
     try:
@@ -107,10 +109,11 @@ def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
 
             return ImageLoadResult(img, float(max_val), channels)
         finally:
-            exr_file.close() # Ensure EXR file is closed
+            exr_file.close()  # Ensure EXR file is closed
     except Exception as e:
         logging.error("Ошибка обработки EXR %s: %s", file_path, str(e))
         return ImageLoadResult(None, None, None, str(e))
+
 
 def load_raster(file_path: str) -> ImageLoadResult:
     """
@@ -122,14 +125,14 @@ def load_raster(file_path: str) -> ImageLoadResult:
         with Image.open(file_path) as img:
             if img.mode not in MODE_CHANNEL_MAP:
                 img = img.convert('RGB')
-
-            divisor = BIT_DEPTH_16 if img.mode.startswith('I;16') else BIT_DEPTH_8
+            mode = img.mode  # фиксируем режим после возможного преобразования
+            divisor = BIT_DEPTH_16 if mode.startswith('I;16') else BIT_DEPTH_8
             img_array = np.array(img).astype(np.float32) / divisor
 
             if img_array.ndim == 2:
                 img_array = np.expand_dims(img_array, axis=-1)
 
-            channels = MODE_CHANNEL_MAP[img.mode]
+            channels = MODE_CHANNEL_MAP[mode]
             # Максимальное значение после нормализации всегда 1.0 для PNG/TGA
             return ImageLoadResult(img_array, 1.0, channels)
     except FileNotFoundError:
