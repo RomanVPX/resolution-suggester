@@ -152,6 +152,15 @@ def get_resize_function(interpolation: InterpolationMethod) -> ResizeFunction:
         raise ValueError(f"Метод интерполяции OpenCV не найден: {interpolation}")
 
     def opencv_resize(img: np.ndarray, w: int, h: int) -> np.ndarray:
-        return np.asarray(cv2.resize(img, (w, h), interpolation=cv2_flag), dtype=np.float32)
+        # Выполняем ресайз через OpenCV
+        out = cv2.resize(img, (w, h), interpolation=cv2_flag)
+
+        # Если out.ndim == 2, то OpenCV вернул двумерное изображение (H, W);
+        # для согласованности с данными вида (H, W, 1) добавляем ось канала.
+        if out.ndim == 2:
+            out = out[..., np.newaxis]
+
+        # Переводим к float32
+        return np.asarray(out, dtype=np.float32)
 
     return opencv_resize
