@@ -1,16 +1,18 @@
-import logging
 import cv2
 import numpy as np
 import numpy.typing as npt
 from functools import lru_cache, partial
 from typing import Callable
 from numba import njit, prange
-from config import MITCHELL_B, MITCHELL_C, TINY_EPSILON, MITCHELL_RADIUS, INTERPOLATION_METHODS, InterpolationMethod
+from config import MITCHELL_B, MITCHELL_C, TINY_EPSILON, INTERPOLATION_METHODS, InterpolationMethod
 
 ResizeFunction = Callable[[npt.NDArray[np.float32], int, int], npt.NDArray[np.float32]]
 
 @njit(cache=True)
 def mitchell_netravali(x: float, B: float = MITCHELL_B, C: float = MITCHELL_C) -> float:
+    """
+    Ядро фильтра Mitchell-Netravali.
+    """
     x = abs(x)
     x2 = x * x
     x3 = x2 * x
@@ -18,13 +20,18 @@ def mitchell_netravali(x: float, B: float = MITCHELL_B, C: float = MITCHELL_C) -
         coeff1 = 12 - 9 * B - 6 * C
         coeff2 = -18 + 12 * B + 6 * C
         coeff3 = 6 - 2 * B
-        return coeff1 * x3 + coeff2 * x2 + coeff3
+        return (coeff1 * x3 +
+                coeff2 * x2 +
+                coeff3)
     elif x < 2.0:
         coeff1 = -B - 6 * C
         coeff2 = 6 * B + 30 * C
         coeff3 = -12 * B - 48 * C
         coeff4 = 8 * B + 24 * C
-        return coeff1 * x3 + coeff2 * x2 + coeff3 * x + coeff4
+        return (coeff1 * x3 +
+                coeff2 * x2 +
+                coeff3 * x +
+                coeff4)
     return 0.0
 
 @njit(cache=True)
@@ -35,6 +42,9 @@ def _resize_mitchell_single_channel(
     B: float,
     C: float
 ) -> npt.NDArray[np.float32]:
+    """
+    Ресайз одноканального изображения с использованием фильтра Mitchell-Netravali..
+    """
     height, width = channel.shape
     resized = np.zeros((target_height, target_width), dtype=channel.dtype)
 
@@ -101,7 +111,9 @@ def _resize_mitchell(
     B: float = MITCHELL_B,
     C: float = MITCHELL_C
 ) -> npt.NDArray[np.float32]:
-    """Полный митчелловский ресайз без чанкинга (канальная параллелизация)."""
+    """
+    Полный митчелловский ресайз без чанкинга (канальная параллелизация).
+    """
     if img.ndim == 2:
         return _resize_mitchell_single_channel(img, target_width, target_height, B, C)
 
@@ -134,7 +146,7 @@ def get_resize_function(interpolation: str) -> ResizeFunction:
     try:
         interpolation_method = InterpolationMethod(interpolation)
     except ValueError:
-        raise ValueError(f"Unsupported interpolation method: {interpolation}")
+        raise ValueError(f"Неподдерживаемый метод интерполяции: {interpolation}")
 
     if interpolation_method == InterpolationMethod.MITCHELL:
         return partial(resize_mitchell)
@@ -142,7 +154,7 @@ def get_resize_function(interpolation: str) -> ResizeFunction:
     try:
         cv2_flag = getattr(cv2, INTERPOLATION_METHODS[interpolation_method])
     except AttributeError:
-        raise ValueError(f"OpenCV interpolation method not found: {interpolation_method}")
+        raise ValueError(f"Метод интерполяции OpenCV не найден: {interpolation_method}")
 
     def opencv_resize(img: np.ndarray, w: int, h: int) -> np.ndarray:
         return np.asarray(cv2.resize(img, (w, h), interpolation=cv2_flag), dtype=np.float32)

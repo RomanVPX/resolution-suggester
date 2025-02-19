@@ -2,7 +2,7 @@
 from datetime import datetime
 import csv
 import os
-from typing import List, Optional, Union
+from typing import List, Optional
 from colorama import Style
 
 from config import (
@@ -10,7 +10,8 @@ from config import (
     CSV_SEPARATOR,
     QUALITY_HINTS,
     PSNR_QUALITY_THRESHOLDS,
-    get_output_csv_header
+    get_output_csv_header,
+    QualityHintPSNR # Import QualityHint Enum
 )
 
 def generate_csv_filename() -> str:
@@ -33,12 +34,6 @@ class ConsoleReporter:
 
     @staticmethod
     def _print_channel_table(results: list, channels: List[str]):
-        """
-        Переработанная табличная печать для произвольного количества каналов.
-        results: список кортежей вида:
-            ( 'WxH', {channel: psnr_value, ...}, min_psnr, hint )
-        channels: список каналов, соответствующих порядку в изображении
-        """
         # Сформируем динамический заголовок по именам каналов
         channel_headers = [c.center(9) for c in channels]
         header = (
@@ -187,20 +182,20 @@ class QualityHelper:
         for threshold in PSNR_QUALITY_THRESHOLDS:
             if psnr >= threshold:
                 return QUALITY_HINTS[threshold]
-        return QUALITY_HINTS[0]
+        return QUALITY_HINTS[QualityHintPSNR.NOTICEABLE_LOSS.value] # Use enum value
 
     @staticmethod
     def get_style_for_hint(hint: str) -> str:
         """Возвращает ANSI-код стиля на основе текстовой подсказки о качестве"""
-        if hint == QUALITY_HINTS[50]: return STYLES['good']
-        if hint == QUALITY_HINTS[40]: return STYLES['ok']
-        if hint == QUALITY_HINTS[30]: return STYLES['medium']
+        if hint == QUALITY_HINTS[QualityHintPSNR.EXCELLENT.value]: return STYLES['good']
+        if hint == QUALITY_HINTS[QualityHintPSNR.VERY_GOOD.value]: return STYLES['ok']
+        if hint == QUALITY_HINTS[QualityHintPSNR.GOOD.value]: return STYLES['medium']
         return STYLES['bad']
 
     @staticmethod
     def get_style(psnr: float) -> str:
         """Возвращает ANSI-код стиля на основе значения PSNR (больше не используется для hint-ов)"""
-        if psnr >= 50: return STYLES['good']
-        if psnr >= 40: return STYLES['ok']
-        if psnr >= 30: return STYLES['medium']
+        if psnr >= QualityHintPSNR.EXCELLENT.value: return STYLES['good']
+        if psnr >= QualityHintPSNR.VERY_GOOD.value: return STYLES['ok']
+        if psnr >= QualityHintPSNR.GOOD.value: return STYLES['medium']
         return STYLES['bad']

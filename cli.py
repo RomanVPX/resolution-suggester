@@ -68,7 +68,7 @@ def parse_arguments() -> argparse.Namespace:
         type=int,
         default=8,
         metavar='N',
-        help='Число параллельных процессов (по умолчанию 8)'
+        help='Число параллельных процессов для обработки файлов (игнорируется при --no-parallel, по умолчанию 8)'
     )
 
     parser.add_argument(
@@ -80,7 +80,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--no-parallel',
         action='store_true',
-        help='Отключить параллельную обработку и использовать однопроходную схему'
+        help='Отключить параллельную обработку и использовать однопоточную схему'
     )
 
     args = parser.parse_args()
@@ -96,16 +96,21 @@ def format_interpolation_help() -> str:
 
 def validate_paths(paths: list[str]) -> list[str]:
     valid_paths = []
+    invalid_paths_str = [] # To collect invalid paths for better error message
     for path in paths:
         if os.path.isfile(path):
             valid_paths.append(path)
         elif os.path.isdir(path):
             valid_paths.extend(collect_files_from_dir(path))
         else:
-            logging.warning(f"Invalid path: {path}")
+            logging.warning(f"Неверный путь: {path}")
+            invalid_paths_str.append(path) # Collect invalid paths
 
     if not valid_paths:
-        raise ValueError("No valid files/directories found. Please check the provided paths.")
+        error_message = "Не найдено ни одного валидного файла или директории."
+        if invalid_paths_str: # Add details about invalid paths if any
+            error_message += " Проверьте следующие пути: " + ", ".join(invalid_paths_str)
+        raise ValueError(error_message)
     return valid_paths
 
 def collect_files_from_dir(directory: str) -> list[str]:

@@ -1,4 +1,5 @@
 # config.py
+
 from enum import Enum
 from colorama import Fore, Back, Style
 
@@ -12,12 +13,20 @@ MITCHELL_C = 1/3
 MITCHELL_RADIUS = 2
 TINY_EPSILON = 1e-8
 
+class QualityHintPSNR(Enum):
+    EXCELLENT = 50
+    VERY_GOOD = 40
+    GOOD = 30
+    NOTICEABLE_LOSS = 0
+
 QUALITY_HINTS = {
-    50: "практически идентичные изображения",
-    40: "очень хорошее качество",
-    30: "приемлемое качество",
-    0: "заметные потери",
+    QualityHintPSNR.EXCELLENT.value: "практически идентичные изображения",
+    QualityHintPSNR.VERY_GOOD.value: "очень хорошее качество",
+    QualityHintPSNR.GOOD.value: "приемлемое качество",
+    QualityHintPSNR.NOTICEABLE_LOSS.value: "заметные потери",
 }
+
+PSNR_QUALITY_THRESHOLDS = sorted(QUALITY_HINTS.keys(), reverse=True)
 
 SAVE_INTERMEDIATE_DIR = '_intermediate'
 
@@ -26,18 +35,21 @@ class InterpolationMethod(str, Enum):
     BICUBIC = 'bicubic'
     MITCHELL = 'mitchell'
 
+# Соответствие методов интерполяции OpenCV
 INTERPOLATION_METHODS = {
     InterpolationMethod.BILINEAR: 'INTER_LINEAR',
     InterpolationMethod.BICUBIC: 'INTER_CUBIC',
-    InterpolationMethod.MITCHELL: 'mitchell',
+    InterpolationMethod.MITCHELL: 'mitchell', # 'mitchell' - это placeholder, т.к. Mitchell реализован отдельно
 }
 
+# Описания методов интерполяции для справки
 INTERPOLATION_DESCRIPTIONS = {
     InterpolationMethod.BILINEAR: 'Билинейная интерполяция',
     InterpolationMethod.BICUBIC: 'Бикубическая интерполяция',
     InterpolationMethod.MITCHELL: 'Фильтр Митчелла-Нетравали',
 }
 
+# Стили для консольного вывода
 STYLES = {
     'header': "\033[1;96;100m",
     'warning': "\033[2;33m",
@@ -47,8 +59,6 @@ STYLES = {
     'medium': Fore.YELLOW,
     'bad': Fore.RED,
 }
-
-PSNR_QUALITY_THRESHOLDS = sorted(QUALITY_HINTS.keys(), reverse=True)
 
 
 def get_output_csv_header(analyze_channels: bool) -> list[str]:

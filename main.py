@@ -16,7 +16,6 @@ from metrics import (
     calculate_ssim_gauss,
     calculate_channel_ssim_gauss
 )
-from metrics import calculate_psnr, calculate_channel_psnr, compute_resolutions
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
 from config import SAVE_INTERMEDIATE_DIR
 
@@ -26,7 +25,7 @@ def main():
     files = validate_paths(args.paths)
 
     if not files:
-        logging.error("No valid files found")
+        logging.error("Не найдено ни одного валидного файла")
         return
 
     if args.csv_output:
@@ -44,7 +43,7 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
             try:
                 results, meta = process_single_file(file_path, args)
             except Exception as e:
-                logging.error(f"Error processing {file_path}: {e}")
+                logging.error(f"Ошибка обработки {file_path}: {e}")
                 continue
 
             if results:
@@ -63,7 +62,7 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
                 try:
                     results, meta = future.result()
                 except Exception as e:
-                    logging.error(f"Error processing {file_path}: {e}")
+                    logging.error(f"Ошибка обработки {file_path}: {e}")
                     continue
 
                 if results:
@@ -77,6 +76,7 @@ def process_single_file(
 ) -> Tuple[Optional[list], Optional[dict]]:
     result = load_image(file_path)
     if result.error or result.data is None:
+        logging.error(f"Ошибка загрузки изображения {file_path}: {result.error}") # More informative log
         return None, None
 
     img = result.data
@@ -86,22 +86,18 @@ def process_single_file(
     height, width = img.shape[:2]
 
     if height < args.min_size or width < args.min_size:
-        logging.info(f"Skipping {file_path} (size {width}x{height}) - smaller than min_size = {args.min_size}")
+        logging.info(f"Пропуск {file_path} (размер {width}x{height}) - меньше, чем min_size = {args.min_size}")
         return None, None
 
     try:
         resize_fn = get_resize_function(args.interpolation)
-    except ValueError:
+    except ValueError as e:
+        logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}") # More informative log
         return None, None
 
     results = []
-    if args.channels:
-        results.append(create_original_entry(width, height, channels))
-    else:
-        results.append(create_original_entry(width, height))
-
+    results.append(create_original_entry(width, height, channels, args.channels)) # Pass analyze_channels flag
     resolutions = compute_resolutions(width, height, args.min_size)
-
     use_psnr = (args.metric == 'psnr')
 
     for (w, h) in resolutions:
@@ -122,8 +118,6 @@ def process_single_file(
                 channel_metrics = calculate_channel_ssim_gauss(img, upscaled, max_val, channels)
 
             min_metric = min(channel_metrics.values())
-            # Для PSNR мы даём подсказку через QualityHelper.get_hint()
-            # Для SSIM можно тоже какую-то шкалу задать, но оставим так же
             hint = QualityHelper.get_hint(min_metric)
             results.append((
                 f"{w}x{h}",
@@ -155,7 +149,7 @@ def print_console_results(
     ConsoleReporter.print_file_header(file_path)
 
     if meta['max_val'] < 0.001:
-        logging.warning(f"Low max value: {meta['max_val']:.3e}")
+        logging.warning(f"Низкое максимальное значение: {meta['max_val']:.3e}")
 
     ConsoleReporter.print_quality_table(
         results,
@@ -163,11 +157,12 @@ def print_console_results(
         meta.get('channels')
     )
 
-def create_original_entry(width: int, height: int, channels: Optional[List[str]] = None) -> tuple:
+def create_original_entry(width: int, height: int, channels: Optional[List[str]] = None, analyze_channels: bool = False) -> tuple:
     base_entry = (f"{width}x{height}",)
-    if channels:
+    if analyze_channels and channels:
         return (*base_entry, {c: float('inf') for c in channels}, float('inf'), "Оригинал")
     return (*base_entry, float('inf'), "Оригинал")
+
 
 def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height: int):
     """

@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import pyexr
 import os
-from PIL import Image, ImageFile
+from PIL import Image, ImageFile, UnidentifiedImageError
 from typing import Dict, Optional
 from dataclasses import dataclass
 
@@ -49,12 +49,12 @@ def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
 
         # Existence check
         if not os.path.exists(file_path):
-            return ImageLoadResult(None, None, None, f"File not found: {file_path}")
+            return ImageLoadResult(None, None, None, f"Файл не найден: {file_path}")
 
         # Size check
         file_size = os.path.getsize(file_path)
         if file_size == 0:
-            return ImageLoadResult(None, None, None, f"Empty file: {file_path}")
+            return ImageLoadResult(None, None, None, f"Пустой файл: {file_path}")
 
         match ext:
             case '.exr':
@@ -62,51 +62,54 @@ def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
             case '.png' | '.tga' | '.jpg' | '.jpeg':
                 return load_raster(file_path)
             case _:
-                msg = f"Unsupported format: {file_path}"
+                msg = f"Неподдерживаемый формат файла: {file_path}"
                 logging.warning(msg)
                 return ImageLoadResult(None, None, None, msg)
 
     except MemoryError:
-        logging.error("Not enough memory to load image %s", file_path)
-        return ImageLoadResult(None, None, None, "Not enough memory to load image")
+        logging.error("Недостаточно памяти для загрузки изображения %s", file_path)
+        return ImageLoadResult(None, None, None, "Недостаточно памяти для загрузки изображения")
     except Exception as e:
-        logging.error(f"Error reading {file_path}: {str(e)}")
+        logging.error(f"Ошибка при чтении {file_path}: {str(e)}")
         return ImageLoadResult(None, None, None, str(e))
 
 def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
     """Загружает EXR файл с обработкой каналов (опционально нормализуя к [0, 1])."""
     try:
         exr_file = pyexr.open(file_path)
-        channels = exr_file.channels if hasattr(exr_file, 'channels') else []
+        try:
+            channels = exr_file.channels if hasattr(exr_file, 'channels') else []
+            img = exr_file.get().astype(np.float32)
 
-        img = exr_file.get().astype(np.float32)
+            if not channels:
+                # Определяем число каналов, если не удалось вычитать явно
+                num_channels = img.shape[2] if img.ndim > 2 else 1
+                if num_channels > 1:
+                    channels = ['R', 'G', 'B', 'A'][:num_channels]
+                else:
+                    channels = ['L']
 
-        if not channels:
-            # Определяем число каналов, если не удалось вычитать явно
-            num_channels = img.shape[2] if img.ndim > 2 else 1
-            if num_channels > 1:
-                channels = ['R', 'G', 'B', 'A'][:num_channels]
+            # Если задано normalize_exr=True, приводим к диапазону [0..1]
+            if normalize_exr:
+                min_val = np.min(img)
+                max_val = np.max(img)
+                range_val = max_val - min_val
+                if range_val > 1e-7:
+                    img = (img - min_val) / range_val
+                    max_val = 1.0
+                    logging.debug(f"EXR normalized to [0, 1], min={min_val:.3f}, max={max_val:.3f} from {file_path}") # Added logging
+                else:
+                    # Избежать деления на ноль в вырожденном случае
+                    max_val = 1.0
+                    logging.debug(f"EXR normalization skipped (small range), max={max_val:.3f} from {file_path}") # Added logging
             else:
-                channels = ['L']
+                max_val = np.max(np.abs(img))
 
-        # Если задано normalize_exr=True, приводим к диапазону [0..1]
-        if normalize_exr:
-            min_val = np.min(img)
-            max_val = np.max(img)
-            range_val = max_val - min_val
-            if range_val > 1e-7:
-                img = (img - min_val) / range_val
-                max_val = 1.0
-            else:
-                # Избежать деления на ноль в вырожденном случае
-                max_val = 1.0
-        else:
-            max_val = np.max(np.abs(img))
-
-        return ImageLoadResult(img, float(max_val), channels)
-
+            return ImageLoadResult(img, float(max_val), channels)
+        finally:
+            exr_file.close() # Ensure EXR file is closed
     except Exception as e:
-        logging.error(f"EXR processing error {file_path}: {str(e)}")
+        logging.error(f"Ошибка обработки EXR {file_path}: {str(e)}")
         return ImageLoadResult(None, None, None, str(e))
 
 def load_raster(file_path: str) -> ImageLoadResult:
@@ -129,6 +132,12 @@ def load_raster(file_path: str) -> ImageLoadResult:
             channels = MODE_CHANNEL_MAP[img.mode]
             # Максимальное значение после нормализации всегда 1.0 для PNG/TGA
             return ImageLoadResult(img_array, 1.0, channels)
+    except FileNotFoundError:
+        logging.error(f"Файл не найден: {file_path}")
+        return ImageLoadResult(None, None, None, f"Файл не найден: {file_path}")
+    except UnidentifiedImageError:
+        logging.error(f"Невозможно декодировать изображение: {file_path}")
+        return ImageLoadResult(None, None, None, f"Невозможно декодировать изображение: {file_path}")
     except Exception as e:
-        logging.error(f"Raster processing error {file_path}: {str(e)}")
+        logging.error(f"Ошибка обработки растрового изображения {file_path}: {str(e)}")
         return ImageLoadResult(None, None, None, str(e))

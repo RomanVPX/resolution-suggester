@@ -3,7 +3,7 @@ import math
 import numpy as np
 from numba import njit
 from typing import Dict, Tuple
-from config import TINY_EPSILON
+from config import TINY_EPSILON # Consider adding SSIM constants to config if needed
 
 @njit(cache=True)
 def calculate_psnr(
@@ -12,7 +12,7 @@ def calculate_psnr(
     max_val: float
 ) -> float:
     if original.shape != processed.shape:
-        raise ValueError("Image dimensions must match for PSNR calculation")
+        raise ValueError("Размеры изображений должны совпадать для расчета PSNR")
 
     diff = original - processed
     mse = np.mean(diff * diff)
@@ -36,7 +36,16 @@ def calculate_channel_psnr(
     }
 
 def gaussian_kernel(window_size: int = 11, sigma: float = 1.5) -> np.ndarray:
-    """Формируем 2D-ядро Гаусса"""
+    """
+    Формирует 2D-ядро Гаусса.
+
+    Args:
+        window_size: Размер окна ядра (нечетное число, по умолчанию 11).
+        sigma: Стандартное отклонение Гауссианы (по умолчанию 1.5).
+
+    Returns:
+        np.ndarray: Нормированное 2D-ядро Гаусса.
+    """
     ax = np.linspace(-(window_size-1)/2., (window_size-1)/2., window_size)
     xx, yy = np.meshgrid(ax, ax)
     kernel = np.exp(-0.5 * (np.square(xx) + np.square(yy)) / np.square(sigma))
@@ -44,9 +53,15 @@ def gaussian_kernel(window_size: int = 11, sigma: float = 1.5) -> np.ndarray:
 
 def filter_2d(img: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     """
-    Свёртка img (H,W) с ядром kernel (kH,kW).
-    На границах используем reflect-паддинг.
-    Для (H,W) считаем моно, для (H,W,C) — применяем пому channel.
+    Свёртка img (H,W) или (H,W,C) с ядром kernel (kH,kW).
+    На границах используется reflect-паддинг.
+
+    Args:
+        img: Входное изображение (H,W) или (H,W,C).
+        kernel: Ядро свертки (kH,kW).
+
+    Returns:
+        np.ndarray: Результат свертки, изображение той же размерности, что и входное.
     """
     if img.ndim == 2:
         return _filter_2d_singlechannel(img, kernel)
@@ -59,7 +74,7 @@ def filter_2d(img: np.ndarray, kernel: np.ndarray) -> np.ndarray:
 
 def _filter_2d_singlechannel(channel: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     """
-    Наивная реализация 2D свёртки с reflect-паддингом.
+    Наивная реализация 2D свёртки с reflect-паддингом для одноканального изображения.
     channel: (H,W)
     kernel: (kH,kW)
     """
@@ -81,7 +96,7 @@ def _filter_2d_singlechannel(channel: np.ndarray, kernel: np.ndarray) -> np.ndar
 def calculate_ssim_gauss_single(
     original: np.ndarray,
     processed: np.ndarray,
-    K1: float = 0.01,
+    K1: float = 0.01, # Consider making these constants in config.py
     K2: float = 0.03,
     L: float = 1.0,
     window_size: int = 11,
@@ -95,7 +110,7 @@ def calculate_ssim_gauss_single(
     Результат — среднее по всей карте SSIM.
     """
     if original.shape != processed.shape:
-        raise ValueError("SSIM: image dimensions must match")
+        raise ValueError("SSIM: размеры изображений должны совпадать")
 
     kernel = gaussian_kernel(window_size, sigma)
 
@@ -132,7 +147,7 @@ def calculate_ssim_gauss(
     Если max_val > 1, нормализуем.
     """
     if original.shape != processed.shape:
-        raise ValueError("SSIM: image dimensions must match")
+        raise ValueError("SSIM: размеры изображений должны совпадать")
 
     # Нормализуем если max_val > 1
     if max_val > 1.00001:
@@ -154,7 +169,7 @@ def calculate_ssim_gauss(
             )
         return ssim_sum / c
 
-    raise ValueError("Unsupported image dimension for SSIM")
+    raise ValueError("Неподдерживаемая размерность изображения для SSIM")
 
 def calculate_channel_ssim_gauss(
     original: np.ndarray,
@@ -168,7 +183,7 @@ def calculate_channel_ssim_gauss(
     Померный SSIM для (H,W,C). Возвращаем словарь {channel_name: ssim_value}.
     """
     if original.shape != processed.shape:
-        raise ValueError("SSIM: image dimensions must match")
+        raise ValueError("SSIM: размеры изображений должны совпадать")
 
     ssim_dict: Dict[str, float] = {}
 
