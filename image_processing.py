@@ -48,6 +48,10 @@ def _resize_mitchell_single_channel(
     height, width = channel.shape
     resized = np.zeros((target_height, target_width), dtype=channel.dtype)
 
+    # Ранний выход, если размеры совпадают
+    if target_width == width and target_height == height:
+        return channel.copy()
+
     x_ratio = width / target_width
     y_ratio = height / target_height
 
