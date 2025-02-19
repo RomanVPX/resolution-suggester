@@ -34,12 +34,12 @@ class ConsoleReporter:
         metric: str  # <-- добавлен параметр
     ):
         if analyze_channels and channels:
-            ConsoleReporter._print_channel_table(results, channels, metric)
+            ConsoleReporter._print_channel_table(results, channels)
         else:
             ConsoleReporter._print_simple_table(results, metric)
 
     @staticmethod
-    def _print_channel_table(results: list, channels: List[str], metric: str):
+    def _print_channel_table(results: list, channels: List[str]):
         channel_headers = [c.center(9) for c in channels]
         header = (
             f"{Style.BRIGHT}{'Разрешение':<12} | "
@@ -146,7 +146,6 @@ class CSVReporter:
             if analyze_channels:
                 ch_vals = values  # dict канал->значение
                 min_val = result_item[2]
-                hint = result_item[3]
                 if i == 0:
                     # Пустая строка для «Оригинал»
                     row.extend([""] * 6)
@@ -157,7 +156,7 @@ class CSVReporter:
                             f"{ch_vals.get('L', float('inf')):.2f}",
                             "", "", "",
                             f"{min_val:.2f}",
-                            QualityHelper.get_hint(min_val, for_csv=True)
+                            QualityHelper.get_hint(min_val)
                         ])
                     else:
                         row.extend([
@@ -166,7 +165,7 @@ class CSVReporter:
                             f"{ch_vals.get('B', float('inf')):.2f}",
                             f"{ch_vals.get('A', float('inf')):.2f}",
                             f"{min_val:.2f}",
-                            QualityHelper.get_hint(min_val, for_csv=True)
+                            QualityHelper.get_hint(min_val)
                         ])
             else:
                 metric_val = values
@@ -176,7 +175,7 @@ class CSVReporter:
                 else:
                     row.extend([
                         f"{metric_val:.2f}",
-                        QualityHelper.get_hint(metric_val, for_csv=True)
+                        QualityHelper.get_hint(metric_val)
                     ])
                 if len(row) < 4:
                     row.extend([""] * (4 - len(row)))
@@ -185,7 +184,7 @@ class CSVReporter:
 
 class QualityHelper:
     @staticmethod
-    def get_hint(metric_value: float, metric_type: QualityMetric = QualityMetric.PSNR, for_csv: bool = False) -> str:
+    def get_hint(metric_value: float, metric_type: QualityMetric = QualityMetric.PSNR) -> str:
         """Возвращает текстовую оценку качества для заданной метрики"""
         thresholds = METRIC_QUALITY_THRESHOLDS.get(metric_type)
         if thresholds is None:

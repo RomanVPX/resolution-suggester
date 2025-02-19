@@ -3,9 +3,9 @@ import os
 import argparse
 import logging
 import concurrent.futures
+import numpy as np
 
 from PIL import Image
-import numpy as np
 from typing import Tuple, Optional
 from cli import parse_arguments, setup_logging, validate_paths
 from image_loader import load_image

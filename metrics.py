@@ -62,7 +62,7 @@ def reflect_coordinate(x: int, size: int) -> int:
     """
     if x < 0:
         return -x - 1
-    elif x >= size:
+    if x >= size:
         return 2*size - x - 1
     return x
 
@@ -124,15 +124,15 @@ def filter_2d_separable(img: np.ndarray, size: int, sigma: float) -> np.ndarray:
         tmp = convolve_1d_horiz(img, kernel_1d)
         out = convolve_1d_vert(tmp, kernel_1d)
         return out
-    else:
-        # (H,W,C) — многоканальное изображение
-        h, w, c = img.shape
-        result = np.zeros_like(img)
-        for ch in range(c):
-            tmp = convolve_1d_horiz(img[..., ch], kernel_1d)
-            out = convolve_1d_vert(tmp, kernel_1d)
-            result[..., ch] = out
-        return result
+
+    # (H,W,C) — многоканальное изображение
+    h, w, c = img.shape
+    result = np.zeros_like(img)
+    for ch in range(c):
+        tmp = convolve_1d_horiz(img[..., ch], kernel_1d)
+        out = convolve_1d_vert(tmp, kernel_1d)
+        result[..., ch] = out
+    return result
 
 
 @njit(cache=True)
@@ -186,7 +186,7 @@ def calculate_ssim_gauss(
 
     if original.ndim == 2:
         return calculate_ssim_gauss_single(original, processed, K1, K2, 1.0, window_size, sigma)
-    elif original.ndim == 3:
+    if original.ndim == 3:
         c = original.shape[2]
         ssim_sum = 0.0
         for i in range(c):
@@ -196,8 +196,8 @@ def calculate_ssim_gauss(
                 K1, K2, 1.0, window_size, sigma
             )
         return ssim_sum / c
-    else:
-        raise ValueError("Неподдерживаемая размерность изображения для SSIM")
+
+    raise ValueError("Неподдерживаемая размерность изображения для SSIM")
 
 def calculate_channel_ssim_gauss(
     original: np.ndarray,

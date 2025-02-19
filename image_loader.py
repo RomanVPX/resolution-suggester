@@ -1,11 +1,11 @@
 # image_loader.py
+import os
 import logging
 import numpy as np
 import pyexr
-import os
-from PIL import Image, ImageFile, UnidentifiedImageError
-from typing import Dict, Optional
 from dataclasses import dataclass
+from typing import Dict, Optional
+from PIL import Image, ImageFile, UnidentifiedImageError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -97,11 +97,11 @@ def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
                 if range_val > 1e-7:
                     img = (img - min_val) / range_val
                     max_val = 1.0
-                    logging.debug("EXR нормализован в [0, 1], min=%.3f, max=%.3f у %s" % (min_val, max_val, file_path))
+                    logging.debug(f"EXR normalized to [0, 1], min={min_val:.3f}, max={max_val:.3f} from {file_path}")
                 else:
                     # Избежать деления на ноль в вырожденном случае
                     max_val = 1.0
-                    logging.debug("Нормализация EXR пропущена (малый диапазон), max={:.3f} у {}".format(max_val, file_path))
+                    logging.debug(f"EXR normalization skipped (small range), max={max_val:.3f} from {file_path}")
             else:
                 max_val = np.max(np.abs(img))
 

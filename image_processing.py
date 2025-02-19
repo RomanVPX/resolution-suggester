@@ -23,7 +23,7 @@ def mitchell_netravali(x: float, B: float = MITCHELL_B, C: float = MITCHELL_C) -
         return (coeff1 * x3 +
                 coeff2 * x2 +
                 coeff3)
-    elif x < 2.0:
+    if x < 2.0:
         coeff1 = -B - 6 * C
         coeff2 = 6 * B + 30 * C
         coeff3 = -12 * B - 48 * C
@@ -148,8 +148,8 @@ def get_resize_function(interpolation: InterpolationMethod) -> ResizeFunction:
 
     try:
         cv2_flag = getattr(cv2, INTERPOLATION_METHODS_CV2[interpolation])
-    except AttributeError:
-        raise ValueError(f"Метод интерполяции OpenCV не найден: {interpolation}")
+    except AttributeError as exc:
+        raise ValueError(f'Метод интерполяции OpenCV не найден: {interpolation}') from exc
 
     def opencv_resize(img: np.ndarray, w: int, h: int) -> np.ndarray:
         # Выполняем ресайз через OpenCV
