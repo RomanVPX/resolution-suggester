@@ -23,9 +23,8 @@ def main():
     setup_logging()
     args = parse_arguments()
     files = validate_paths(args.paths)
-
     if not files:
-        logging.error("Не найдено ни одного валидного файла")
+        logging.error("Не найдено ни одного валидного файла или директории. Завершение работы.")
         return
 
     if args.csv_output:
@@ -157,12 +156,11 @@ def print_console_results(
         meta.get('channels')
     )
 
-def create_original_entry(width: int, height: int, channels: Optional[List[str]] = None, analyze_channels: bool = False) -> tuple:
+def create_original_entry(width: int, height: int, channels: Optional[list[str]] = None, analyze_channels: bool = False) -> tuple:
     base_entry = (f"{width}x{height}",)
     if analyze_channels and channels:
         return (*base_entry, {c: float('inf') for c in channels}, float('inf'), "Оригинал")
     return (*base_entry, float('inf'), "Оригинал")
-
 
 def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height: int):
     """
@@ -175,7 +173,10 @@ def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height
     if not os.path.exists(file_path_dir):
         os.makedirs(file_path_dir, exist_ok=True)
 
-    output_path = os.path.join(file_path_dir, os.path.basename(file_path).split('.')[0] + f"_{width}x{height}.png")
+    output_path = os.path.join(
+        file_path_dir,
+        os.path.basename(file_path).split('.')[0] + f"_{width}x{height}.png"
+    )
     out_dir = os.path.dirname(output_path)
     if out_dir and not os.path.exists(out_dir):
         os.makedirs(out_dir, exist_ok=True)

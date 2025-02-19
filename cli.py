@@ -1,4 +1,3 @@
-# cli.py
 import argparse
 import logging
 import os
@@ -122,7 +121,8 @@ def validate_paths(paths: list[str]) -> list[str]:
         error_message = "Не найдено ни одного валидного файла или директории."
         if invalid_paths_str:
             error_message += " Проверьте следующие пути: " + ", ".join(invalid_paths_str)
-        raise ValueError(error_message)
+        logging.error(error_message)
+        return []  # Ноу эксепшенс!
     return valid_paths
 
 def collect_files_from_dir(directory: str) -> list[str]:
