@@ -6,6 +6,8 @@ from colorama import Fore, Back, Style
 SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png', '.jpg', '.jpeg']
 CSV_SEPARATOR = ';'
 
+SAVE_INTERMEDIATE_DIR = '_intermediate'
+
 MITCHELL_B = 1/3
 MITCHELL_C = 1/3
 
@@ -18,6 +20,12 @@ class QualityHintPSNR(Enum):
     GOOD = 30
     NOTICEABLE_LOSS = 0
 
+class QualityHintSSIM(Enum):
+    EXCELLENT = 0.9
+    VERY_GOOD = 0.8
+    GOOD = 0.65
+    NOTICEABLE_LOSS = 0.0
+
 QUALITY_HINTS = {
     QualityHintPSNR.EXCELLENT.value: "практически идентичные изображения",
     QualityHintPSNR.VERY_GOOD.value: "очень хорошее качество",
@@ -26,8 +34,6 @@ QUALITY_HINTS = {
 }
 
 PSNR_QUALITY_THRESHOLDS = sorted(QUALITY_HINTS.keys(), reverse=True)
-
-SAVE_INTERMEDIATE_DIR = '_intermediate'
 
 
 # === Interpolation methods ===

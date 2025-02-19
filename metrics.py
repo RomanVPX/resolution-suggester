@@ -1,7 +1,6 @@
 import math
 import numpy as np
 from numba import njit, prange
-from typing import Dict, Tuple
 from config import TINY_EPSILON
 
 @njit(cache=True)
@@ -27,7 +26,7 @@ def calculate_channel_psnr(
     processed: np.ndarray,
     max_val: float,
     channels: list[str]
-) -> Dict[str, float]:
+) -> dict[str, float]:
     return {
         channel: calculate_psnr(original[..., i], processed[..., i], max_val)
         for i, channel in enumerate(channels)
@@ -207,7 +206,7 @@ def calculate_channel_ssim_gauss(
     channels: list[str],
     window_size: int = 11,
     sigma: float = 1.5
-) -> Dict[str, float]:
+) -> dict[str, float]:
     if original.shape != processed.shape:
         raise ValueError("SSIM: размеры изображений должны совпадать")
 
@@ -225,7 +224,7 @@ def calculate_channel_ssim_gauss(
         }
 
     # (H,W,C)
-    ssim_dict: Dict[str, float] = {}
+    ssim_dict: dict[str, float] = {}
     for i, ch in enumerate(channels):
         ssim_val = calculate_ssim_gauss_single(
             original[..., i],
@@ -240,7 +239,7 @@ def compute_resolutions(
     original_width: int,
     original_height: int,
     min_size: int = 16
-) -> list[Tuple[int, int]]:
+) -> list[tuple[int, int]]:
     resolutions = []
     w, h = original_width, original_height
     while w >= min_size * 2 and h >= min_size * 2:

@@ -138,7 +138,7 @@ def resize_mitchell(
     return _resize_mitchell(img, target_width, target_height, B, C)
 
 @lru_cache(maxsize=4)
-def get_resize_function(interpolation: str) -> ResizeFunction:
+def get_resize_function(interpolation: InterpolationMethod) -> ResizeFunction:
     """
     Фабрика функций для ресайза:
     Если выбрали 'mitchell', берём resize_mitchell.
