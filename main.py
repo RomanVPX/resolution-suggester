@@ -17,7 +17,7 @@ from metrics import (
     calculate_channel_psnr,
     compute_resolutions,
     calculate_ssim_gauss,
-    calculate_channel_ssim_gauss, calculate_msssim, calculate_channel_msssim
+    calculate_channel_ssim_gauss, calculate_ms_ssim, calculate_channel_ms_ssim
 )
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
 from config import SAVE_INTERMEDIATE_DIR, QualityMetric, InterpolationMethod
@@ -165,7 +165,7 @@ def process_single_file(
                 elif args.metric == QualityMetric.SSIM:
                     channel_metrics = calculate_channel_ssim_gauss(img, upscaled_img, max_val, channels)
                 else:
-                    channel_metrics = calculate_channel_msssim(img, upscaled_img, max_val, channels)
+                    channel_metrics = calculate_channel_ms_ssim(img, upscaled_img, max_val, channels)
 
                 min_metric = min(channel_metrics.values())
                 hint = QualityHelper.get_hint(min_metric, args.metric)
@@ -199,7 +199,7 @@ def process_single_file(
                 elif args.metric == QualityMetric.SSIM:
                     metric_value = calculate_ssim_gauss(img, upscaled_img, max_val)
                 else:
-                    metric_value = calculate_msssim(img, upscaled_img, max_val)
+                    metric_value = calculate_ms_ssim(img, upscaled_img, max_val)
 
                 hint = QualityHelper.get_hint(metric_value, args.metric)
                 results.append((
@@ -263,13 +263,13 @@ def generate_dataset(files: list[str], args) -> tuple[str, str]:
 
                         psnr_val = calculate_psnr(img, upscaled_img, max_val)
                         ssim_val = calculate_ssim_gauss(img, upscaled_img, max_val)
-                        msssim_val = calculate_msssim(img, upscaled_img, max_val)
+                        ms_ssim_val = calculate_ms_ssim(img, upscaled_img, max_val)
 
                         all_features.append(feats_dict)
                         all_targets.append({
                             'psnr': psnr_val,
                             'ssim': ssim_val,
-                            'msssim': msssim_val
+                            'ms_ssim': ms_ssim_val
                         })
                         progressbar_res.update(1)
             progressbar_files.update(1)

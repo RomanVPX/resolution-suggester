@@ -50,7 +50,7 @@ class QuickPredictor:
         """
         Обучает модель на данных.
         :param features_csv: CSV (или parquet) с признаками
-        :param targets_csv: CSV (или parquet) с колонками 'psnr', 'ssim', 'msssim'
+        :param targets_csv: CSV (или parquet) с метриками в колонками ('psnr', 'ssim', 'ms_ssim'...)
         """
         if not os.path.exists(features_csv) or not os.path.exists(targets_csv):
             logging.error("Не найдены файлы с фичами/таргетами: %s, %s", features_csv, targets_csv)
@@ -67,11 +67,11 @@ class QuickPredictor:
         df_targets = df_targets.dropna()
 
         # Проверяем наличие всех трёх колонок
-        assert {'psnr', 'ssim', 'msssim'}.issubset(df_targets.columns)
+        assert {'psnr', 'ssim', 'ms_ssim'}.issubset(df_targets.columns)
 
-        # Условимся, что df_targets = [psnr, ssim, msssim]
-        # y = df_targets[['psnr', 'ssim', 'msssim']].values  # shape: (N, 2)
-        y = df_targets[['psnr', 'ssim', 'msssim']].to_numpy()
+        # Условимся, что df_targets = [psnr, ssim, ms_ssim]
+        # y = df_targets[['psnr', 'ssim', 'ms_ssim']].values  # shape: (N, 2)
+        y = df_targets[['psnr', 'ssim', 'ms_ssim']].to_numpy()
 
         self.pipeline = self._build_pipeline()
         self.pipeline.fit(df_features, y)
@@ -92,8 +92,8 @@ class QuickPredictor:
 
     def predict(self, features: Dict[str, Any]) -> Dict[str, float]:
         """
-        Предсказывает PSNR, SSIM и MSSSIM на одном примере (словарь).
-        Возвращает {'psnr': float, 'ssim': float, 'msssim': float }.
+        Предсказывает PSNR, SSIM и MS_SSIM на одном примере (словарь).
+        Возвращает {'psnr': float, 'ssim': float, 'ms_ssim': float }.
         """
         if not self.pipeline:
             raise ValueError("Модель не загружена. Сначала вызовите load().")
@@ -103,7 +103,7 @@ class QuickPredictor:
         return {
             'psnr': float(pred[0, 0]),
             'ssim': float(pred[0, 1]),
-            'msssim': float(pred[0, 2])
+            'ms_ssim': float(pred[0, 2])
         }
 
 #############################################################################

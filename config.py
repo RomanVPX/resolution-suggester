@@ -52,13 +52,13 @@ class QualityMetric(str, Enum):
 
     PSNR = 'psnr'
     SSIM = 'ssim'
-    MSSSIM = 'msssim'
+    MS_SSIM = 'ms_ssim'
 
 # Описания метрик для справки
 METRIC_DESCRIPTIONS = {
     QualityMetric.PSNR: 'Пиковое отношение сигнала к шуму',
     QualityMetric.SSIM: 'Индекс структурного сходства',
-    QualityMetric.MSSSIM: 'Многоуровневый индекс структурного сходства',
+    QualityMetric.MS_SSIM: 'Многоуровневый индекс структурного сходства',
 }
 
 DEFAULT_METRIC = QualityMetric.PSNR.value
@@ -77,7 +77,7 @@ METRIC_QUALITY_THRESHOLDS = {
         QualityLevel.GOOD: 0.75,
         QualityLevel.NOTICEABLE_LOSS: 0.0,
     },
-    QualityMetric.MSSSIM: {
+    QualityMetric.MS_SSIM: {
         QualityLevel.EXCELLENT: 0.97,
         QualityLevel.VERY_GOOD: 0.95,
         QualityLevel.GOOD: 0.90,

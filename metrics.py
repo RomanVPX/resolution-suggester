@@ -5,32 +5,45 @@ from sewar.full_ref import msssim
 from config import TINY_EPSILON
 
 
-def calculate_msssim(
-        original: np.ndarray,
-        processed: np.ndarray,
-        max_val: float
+def calculate_ms_ssim(
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float
 ) -> float:
-    # Normalize if necessary
-    if max_val > 1.00001:
-        original = original / max_val
-        processed = processed / max_val
+    if original.shape != processed.shape:
+        raise ValueError("MS-SSIM: размеры изображений должны совпадать")
 
-    original_uint8 = (np.clip(original, 0, 1) * 255).astype(np.uint8)
-    processed_uint8 = (np.clip(processed, 0, 1) * 255).astype(np.uint8)
+    # Нормализация для EXR
+    if max_val > 1.0 + 1e-5:
+        original = original.astype(np.float32) / max_val
+        processed = processed.astype(np.float32) / max_val
+        data_range = 1.0
+    else:
+        data_range = max_val
 
-    # msssim возвращает комплексное число, поэтому преобразуем его
-    return float(np.real(msssim(original_uint8, processed_uint8)))
+    # Для многоканальных изображений sewar ожидает (H,W,C)
+    if original.ndim == 2:
+        original = original[..., np.newaxis]
+        processed = processed[..., np.newaxis]
 
-def calculate_channel_msssim(
+    # Защита от артефактов округления
+    original = np.clip(original, 0.0, 1.0)
+    processed = np.clip(processed, 0.0, 1.0)
+
+    return float(np.real(msssim(original, processed, MAX=data_range)))
+
+def calculate_channel_ms_ssim(
     original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
     channels: list[str]
 ) -> dict[str, float]:
-    return {
-        channel: calculate_msssim(original[..., i], processed[..., i], max_val)
-        for i, channel in enumerate(channels)
-    }
+    results = {}
+    for i, ch in enumerate(channels):
+        orig_ch = original[..., i] if original.ndim == 3 else original
+        proc_ch = processed[..., i] if processed.ndim == 3 else processed
+        results[ch] = calculate_ms_ssim(orig_ch, proc_ch, max_val)
+    return results
 
 @njit(cache=True)
 def calculate_psnr(
