@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from PIL import Image
+from tqdm import tqdm
 from typing import Tuple, Optional
 from cli import parse_arguments, setup_logging, validate_paths
 from image_loader import load_image
@@ -201,45 +202,49 @@ def generate_dataset(files: list[str], args) -> tuple[str, str]:
     features_csv = 'features.csv'
     targets_csv  = 'targets.csv'
 
-    # Допустим, будем применять только один scale_factor, и проверим 3 метода
-    methods_to_test = [InterpolationMethod.BILINEAR, InterpolationMethod.BICUBIC, InterpolationMethod.MITCHELL]
-    scale_factor = 0.5
+    methods_to_test = [
+        InterpolationMethod.BILINEAR,
+        InterpolationMethod.BICUBIC,
+        InterpolationMethod.MITCHELL
+    ]
 
-    for file_path in files:
-        result = load_image(file_path)
-        if result.error or result.data is None:
-            logging.warning(f"Пропуск {file_path}, т.к. не удалось загрузить.")
-            continue
+    with tqdm(total=len(files), desc=f"Обучение") as progressbar_files:
+        for file_path in files:
+            result = load_image(file_path)
+            if result.error or result.data is None:
+                logging.warning(f"Пропуск {file_path}, т.к. не удалось загрузить.")
+                continue
 
-        img = result.data
-        max_val = result.max_value
-        original_h, original_w = img.shape[:2]
+            img = result.data
+            max_val = result.max_value
+            original_h, original_w = img.shape[:2]
 
-        # Соберём несколько записей в датасет по каждому методу
-        for method in methods_to_test:
-            # downscale + upscale
-            try:
+            resolutions_to_test = compute_resolutions(original_w, original_h)
+            if not resolutions_to_test:
+                continue
+
+            for method in methods_to_test:
                 resize_fn = get_resize_function(method)
-                new_w = int(original_w * scale_factor)
-                new_h = int(original_h * scale_factor)
-                if new_w < args.min_size or new_h < args.min_size:
-                    continue
-                downscaled_img = resize_fn(img, new_w, new_h)
-                upscaled_img   = resize_fn(downscaled_img, original_w, original_h)
 
-                # Реальные PSNR / SSIM
-                psnr = calculate_psnr(img, upscaled_img, max_val)
-                ssim = calculate_ssim_gauss(img, upscaled_img, max_val)
+                with tqdm(total=len(files), desc=f"Анализ {file_path}", leave=False) as progressbar_res:
+                    for (w, h) in resolutions_to_test:
+                        if w == original_w and h == original_h:
+                            continue
+                        downscaled_img = resize_fn(img, w, h)
+                        upscaled_img = resize_fn(downscaled_img, original_w, original_h)
 
-                # Извлекаем фичи (используем метод = str(method))
-                feats_dict = extract_texture_features(img, method.value)
-                all_features.append(feats_dict)
-                all_targets.append({'psnr': psnr, 'ssim': ssim})
+                        psnr_val = calculate_psnr(img, upscaled_img, max_val)
+                        ssim_val = calculate_ssim_gauss(img, upscaled_img, max_val)
 
-            except Exception as e:
-                logging.error(f"Ошибка при обработке {file_path}: {e}")
+                        feats_dict = extract_texture_features(img, method.value)
+                        all_features.append(feats_dict)
+                        all_targets.append({
+                            'psnr': psnr_val,
+                            'ssim': ssim_val
+                        })
+                        progressbar_res.update(1)
+            progressbar_files.update(1)
 
-    # Сохраняем в CSV
     df_feats = pd.DataFrame(all_features)
     df_targs = pd.DataFrame(all_targets)
     df_feats.to_csv(features_csv, index=False)
