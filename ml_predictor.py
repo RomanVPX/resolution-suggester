@@ -2,11 +2,16 @@
 import os
 import logging
 import joblib
+import pywt
 import numpy as np
 import pandas as pd
 
 from typing import Dict, Any
-from sklearn.ensemble import RandomForestRegressor
+
+from skimage.feature import graycomatrix, graycoprops
+from skimage.measure import shannon_entropy
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import make_pipeline
@@ -28,7 +33,11 @@ class QuickPredictor:
     def _build_pipeline(self):
         # Допустим, numeric_features = ['contrast', 'variance']
         # а categorical_features = ['method']
-        numeric_features = ['contrast', 'variance']
+        numeric_features = [
+            'contrast', 'variance', 'entropy',
+            'wavelet_energy', 'glcm_contrast', 'glcm_energy',
+            'scale_factor'
+        ]
         categorical_features = ['method']
 
         preprocessor = ColumnTransformer(
@@ -39,20 +48,14 @@ class QuickPredictor:
             remainder='drop'
         )
 
-        # RandomForest для 2 целевых выходов (PSNR, SSIM)
-        # будем трактовать это как задачу многомерной регрессии,
-        # куда мы подаём y = [[psnr, ssim], ...].
-        rf = RandomForestRegressor(
-            n_estimators=30,
-            max_depth=8,
+        base_model = GradientBoostingRegressor(
+            n_estimators=100,
+            max_depth=5,
             random_state=42
         )
+        model = MultiOutputRegressor(base_model)
 
-        pipeline = make_pipeline(
-            preprocessor,
-            rf
-        )
-        return pipeline
+        return make_pipeline(preprocessor, model)
 
     def train(self, features_csv: str, targets_csv: str) -> None:
         """
@@ -70,8 +73,16 @@ class QuickPredictor:
         df_targets = pd.read_csv(targets_csv)   if targets_csv.endswith('.csv') \
             else pd.read_parquet(targets_csv)
 
+        # Удаляем строки с пропусками
+        df_features = df_features.dropna()
+        df_targets = df_targets.dropna()
+
+        # Проверяем наличие обеих колонок
+        assert {'psnr', 'ssim'}.issubset(df_targets.columns)
+
         # Условимся, что df_targets = [psnr, ssim]
-        y = df_targets[['psnr', 'ssim']].values  # shape: (N, 2)
+        # y = df_targets[['psnr', 'ssim']].values  # shape: (N, 2)
+        y = df_targets[['psnr', 'ssim']].to_numpy()
 
         self.pipeline = self._build_pipeline()
         self.pipeline.fit(df_features, y)
@@ -121,4 +132,45 @@ def extract_texture_features(img: np.ndarray, method: str) -> Dict[str, float]:
         'contrast': contrast,
         'variance': variance,
         'method': method
+    }
+
+
+#############################################################################
+# Извлечение набора признаков из оригинального изображения
+#############################################################################
+def extract_features_original(img: np.ndarray) -> dict:
+    """Извлекает признаки только из оригинального изображения."""
+    if img.ndim == 3:
+        img_gray = np.mean(img, axis=2)  # конвертируем в grayscale
+    else:
+        img_gray = img
+
+    # Базовые статистики
+    contrast = float(np.std(img_gray))
+    variance = float(np.var(img_gray))
+    entropy = shannon_entropy(img_gray)
+
+    # Вейвлет-признаки (Haar, уровень 1)
+    coefficients = pywt.dwt2(img_gray, 'haar')
+    c_a, (c_h, c_v, c_d) = coefficients
+    wavelet_energy = np.sum(c_a**2 + c_h**2 + c_v**2 + c_d**2) / img_gray.size
+
+    # GLCM (Gray-Level Co-occurrence Matrix)
+    glcm = graycomatrix(
+        (img_gray * 255).astype(np.uint8),
+        distances=[1],
+        angles=[0],
+        symmetric=True,
+        normed=True
+    )
+    glcm_contrast = graycoprops(glcm, 'contrast')[0, 0]
+    glcm_energy = graycoprops(glcm, 'energy')[0, 0]
+
+    return {
+        'contrast': contrast,
+        'variance': variance,
+        'entropy': entropy,
+        'wavelet_energy': wavelet_energy,
+        'glcm_contrast': glcm_contrast,
+        'glcm_energy': glcm_energy,
     }

@@ -21,7 +21,7 @@ from metrics import (
 )
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
 from config import SAVE_INTERMEDIATE_DIR, QualityMetric, InterpolationMethod
-from ml_predictor import QuickPredictor, extract_texture_features
+from ml_predictor import QuickPredictor, extract_texture_features, extract_features_original
 
 
 def main():
@@ -125,6 +125,10 @@ def process_single_file(
     resolutions = compute_resolutions(width, height, args.min_size)
     use_psnr = (args.metric == QualityMetric.PSNR.value)
 
+    feats_original = None # just to make mypy happy
+    if ml_predictor:
+        feats_original = extract_features_original(img)
+
     for (w, h) in resolutions:
         if w == width and h == height:
             continue
@@ -132,14 +136,19 @@ def process_single_file(
         downscaled_img = resize_fn(img, w, h)
         if args.save_intermediate:
             _save_intermediate(downscaled_img, file_path, w, h)
-
         upscaled_img = resize_fn(downscaled_img, width, height)
 
         if args.channels:
             if ml_predictor:
-                # Предсказываем одной моделью PSNR/SSIM на весь кадр
-                feats_for_ml = extract_texture_features(img, args.interpolation)
+                scale_factor = (w / width + h / height) / 2
+                feats_for_ml = {
+                    **feats_original,
+                    'scale_factor': scale_factor,
+                    'method': args.interpolation
+                }
+
                 pred = ml_predictor.predict(feats_for_ml)
+
                 # channel_metrics ~ одинаковые на все каналы
                 ch_values_dict = {c: pred[args.metric] for c in channels}
                 min_metric = pred[args.metric]
@@ -166,8 +175,15 @@ def process_single_file(
                 ))
         else:
             if ml_predictor:
-                feats_for_ml = extract_texture_features(img, args.interpolation)
+                scale_factor = (w / width + h / height) / 2
+                feats_for_ml = {
+                    **feats_original,
+                    'scale_factor': scale_factor,
+                    'method': args.interpolation
+                }
+
                 pred = ml_predictor.predict(feats_for_ml)
+
                 metric_value = pred[args.metric]
                 hint = QualityHelper.get_hint(metric_value, args.metric)
                 results.append((
@@ -228,15 +244,26 @@ def generate_dataset(files: list[str], args) -> tuple[str, str]:
 
                 with tqdm(total=len(files), desc=f"Анализ {file_path}", leave=False) as progressbar_res:
                     for (w, h) in resolutions_to_test:
+                        scale_factor_w = w / original_w
+                        scale_factor_h = h / original_h
+                        scale_factor = (scale_factor_w + scale_factor_h) / 2
+                        feats_original = extract_features_original(img)
+
+                        feats_dict = {
+                            **feats_original,
+                            'scale_factor': scale_factor,
+                            'method': method.value,
+                        }
+
                         if w == original_w and h == original_h:
                             continue
+
                         downscaled_img = resize_fn(img, w, h)
                         upscaled_img = resize_fn(downscaled_img, original_w, original_h)
 
                         psnr_val = calculate_psnr(img, upscaled_img, max_val)
                         ssim_val = calculate_ssim_gauss(img, upscaled_img, max_val)
 
-                        feats_dict = extract_texture_features(img, method.value)
                         all_features.append(feats_dict)
                         all_targets.append({
                             'psnr': psnr_val,
@@ -245,10 +272,10 @@ def generate_dataset(files: list[str], args) -> tuple[str, str]:
                         progressbar_res.update(1)
             progressbar_files.update(1)
 
-    df_feats = pd.DataFrame(all_features)
-    df_targs = pd.DataFrame(all_targets)
-    df_feats.to_csv(features_csv, index=False)
-    df_targs.to_csv(targets_csv, index=False)
+    df_features = pd.DataFrame(all_features)
+    df_targets = pd.DataFrame(all_targets)
+    df_features.to_csv(features_csv, index=False)
+    df_targets.to_csv(targets_csv, index=False)
 
     return features_csv, targets_csv
 
