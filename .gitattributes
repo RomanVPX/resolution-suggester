@@ -3,4 +3,7 @@
 *.exr filter=lfs diff=lfs merge=lfs -text
 *.jpg filter=lfs diff=lfs merge=lfs -text
 *.jpeg filter=lfs diff=lfs merge=lfs -text
+
 *.zip filter=lfs diff=lfs merge=lfs -text
+
+*.joblib filter=lfs diff=lfs merge=lfs -text

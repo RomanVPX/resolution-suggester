@@ -118,13 +118,32 @@ def parse_arguments() -> argparse.Namespace:
         help='Отключить параллельную обработку и использовать однопоточную схему'
     )
 
+    parser.add_argument(
+        '--generate-dataset',
+        action='store_true',
+        help='Сгенерировать датасет (features/targets) для обучения модели'
+    )
+
+    parser.add_argument(
+        '--train-ml',
+        action='store_true',
+        help='После генерации датасета обучить модель ML'
+    )
+
+    parser.add_argument(
+        '--ml',
+        action='store_true',
+        help='Использовать ML-модель для предсказания PSNR/SSIM (вместо реального вычисления)'
+    )
+
     args = parser.parse_args()
 
     return args
 
 def format_threads_help() -> str:
     return ("Число параллельных процессов для обработки файлов. Игнорируется при --no-parallel,\n"
-            "по умолчанию равно количеству логических ядер процессора (сейчас обнаружено " + str(multiprocessing.cpu_count()) + ")")
+            "по умолчанию равно количеству логических ядер процессора (сейчас обнаружено " +
+            str(multiprocessing.cpu_count()) + ")")
 
 def format_metric_help() -> str:
     """
