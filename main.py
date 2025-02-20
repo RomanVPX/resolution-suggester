@@ -132,18 +132,14 @@ def process_single_file(
         if w == width and h == height:
             continue
 
-        if not ml_predictor: # только при вычислении реальных метрик нужно реально скейлить изображение
+        if ml_predictor:
+            scale_factor = (w / width + h / height) / 2
+            feats_for_ml = {**feats_original, 'scale_factor': scale_factor, 'method': args.interpolation}
+        else:  # только при вычислении реальных метрик нужно реально скейлить изображение
             downscaled_img = resize_fn(img, w, h)
             if args.save_intermediate:
                 _save_intermediate(downscaled_img, file_path, w, h)
             upscaled_img = resize_fn(downscaled_img, width, height)
-        else:
-            feats_for_ml = {
-                **feats_original,
-                'scale_factor': (w / width + h / height) / 2,
-                'method': args.interpolation
-            }
-            upscaled_img = ml_predictor.predict(feats_for_ml)
 
         if args.channels:
             if ml_predictor:
@@ -193,13 +189,16 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
     features_csv = os.path.join(ML_DATA_DIR, 'features.csv')
     targets_csv  = os.path.join(ML_DATA_DIR, 'targets.csv')
 
+    if not os.path.exists(ML_DATA_DIR):
+        os.makedirs(ML_DATA_DIR, exist_ok=True)
+
     methods_to_test = [
         InterpolationMethod.BILINEAR,
         InterpolationMethod.BICUBIC,
         InterpolationMethod.MITCHELL
     ]
 
-    with tqdm(total=len(files), desc=f"Обучение") as progressbar_files:
+    with tqdm(total=len(files), desc=f"Датасет") as progressbar_files:
         for file_path in files:
             result = load_image(file_path)
             if result.error or result.data is None:
@@ -214,39 +213,41 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
             if not resolutions_to_test:
                 continue
 
-            for method in methods_to_test:
-                resize_fn = get_resize_function(method)
+            with tqdm(total=len(methods_to_test), desc=f"Файл: {file_path}", leave=False) as progressbar_methods:
+                for method in methods_to_test:
+                    resize_fn = get_resize_function(method)
 
-                with tqdm(total=len(resolutions_to_test), desc=f"Анализ {file_path}", leave=False) as progressbar_res:
-                    for (w, h) in resolutions_to_test:
-                        scale_factor_w = w / original_w
-                        scale_factor_h = h / original_h
-                        scale_factor = (scale_factor_w + scale_factor_h) / 2
-                        feats_original = extract_features_original(img)
+                    with tqdm(total=len(resolutions_to_test), desc=f"Интерполяция: {method.value}", leave=False) as progressbar_res:
+                        for (w, h) in resolutions_to_test:
+                            scale_factor_w = w / original_w
+                            scale_factor_h = h / original_h
+                            scale_factor = (scale_factor_w + scale_factor_h) / 2
+                            feats_original = extract_features_original(img)
 
-                        feats_dict = {
-                            **feats_original,
-                            'scale_factor': scale_factor,
-                            'method': method.value,
-                        }
+                            feats_dict = {
+                                **feats_original,
+                                'scale_factor': scale_factor,
+                                'method': method.value,
+                            }
 
-                        if w == original_w and h == original_h:
-                            continue
+                            if w == original_w and h == original_h:
+                                continue
 
-                        downscaled_img = resize_fn(img, w, h)
-                        upscaled_img = resize_fn(downscaled_img, original_w, original_h)
+                            downscaled_img = resize_fn(img, w, h)
+                            upscaled_img = resize_fn(downscaled_img, original_w, original_h)
 
-                        psnr_val = calculate_psnr(img, upscaled_img, max_val)
-                        ssim_val = calculate_ssim_gauss(img, upscaled_img, max_val)
-                        ms_ssim_val = calculate_ms_ssim(img, upscaled_img, max_val)
+                            psnr_val = calculate_psnr(img, upscaled_img, max_val)
+                            ssim_val = calculate_ssim_gauss(img, upscaled_img, max_val)
+                            ms_ssim_val = calculate_ms_ssim(img, upscaled_img, max_val)
 
-                        all_features.append(feats_dict)
-                        all_targets.append({
-                            'psnr': psnr_val,
-                            'ssim': ssim_val,
-                            'ms_ssim': ms_ssim_val
-                        })
-                        progressbar_res.update(1)
+                            all_features.append(feats_dict)
+                            all_targets.append({
+                                'psnr': psnr_val,
+                                'ssim': ssim_val,
+                                'ms_ssim': ms_ssim_val
+                            })
+                            progressbar_res.update(1)
+                    progressbar_methods.update(1)
             progressbar_files.update(1)
 
     df_features = pd.DataFrame(all_features)
