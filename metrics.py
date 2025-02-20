@@ -1,3 +1,4 @@
+# metrics.py
 import math
 import numpy as np
 from numba import njit, prange
@@ -283,8 +284,9 @@ def compute_resolutions(
 ) -> list[tuple[int, int]]:
     resolutions = []
     w, h = original_width, original_height
-    while w >= min_size * 2 and h >= min_size * 2:
+    while w >= min_size and h >= min_size:
+        resolutions.append((w, h))
         w //= 2
         h //= 2
-        resolutions.append((w, h))
     return resolutions
+

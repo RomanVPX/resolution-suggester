@@ -27,10 +27,10 @@ MODE_CHANNEL_MAP: Dict[str, list[str]] = {
 
 @dataclass
 class ImageLoadResult:
-    data: Optional[np.ndarray]
-    max_value: Optional[float]
-    channels: Optional[list[str]]
-    error: Optional[str] = None
+    data: np.ndarray | None
+    max_value: float | None
+    channels: list[str] | None
+    error: str | None = None
 
 
 def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
@@ -46,16 +46,16 @@ def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
         ImageLoadResult: поля (data, max_value, channels, error)
     """
     try:
-        ext = os.path.splitext(file_path)[1].lower()
-
         # Existence check
         if not os.path.exists(file_path):
             return ImageLoadResult(None, None, None, f"Файл не найден: {file_path}")
 
+        ext = os.path.splitext(file_path)[1].lower()
+
         # Size check
         file_size = os.path.getsize(file_path)
-        if file_size == 0:
-            return ImageLoadResult(None, None, None, f"Пустой файл: {file_path}")
+        if file_size < 16:
+            return ImageLoadResult(None, None, None, f"Файл слишком мал или пуст: {file_path}")
 
         match ext:
             case '.exr':
@@ -84,14 +84,9 @@ def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
             img = exr_file.get().astype(np.float32)
 
             if not channels:
-                # Определяем число каналов, если не удалось вычитать явно
                 num_channels = img.shape[2] if img.ndim > 2 else 1
-                if num_channels > 1:
-                    channels = ['R', 'G', 'B', 'A'][:num_channels]
-                else:
-                    channels = ['L']
+                channels = ['R', 'G', 'B', 'A'][:num_channels] if num_channels > 1 else ['L']
 
-            # Если задано normalize_exr=True, приводим к диапазону [0..1]
             if normalize_exr:
                 min_val = np.min(img)
                 max_val = np.max(img)
@@ -121,7 +116,6 @@ def load_raster(file_path: str) -> ImageLoadResult:
     Если изображение grayscale, то расширяем до (H, W, 1) для согласованности.
     """
     try:
-        # Используем контекстный менеджер, чтобы корректно закрыть файл
         with Image.open(file_path) as img:
             if img.mode not in MODE_CHANNEL_MAP:
                 img = img.convert('RGB')

@@ -137,7 +137,9 @@ def extract_features_original(img: np.ndarray) -> dict:
     # Вейвлет-признаки (Haar, уровень 1)
     coefficients = pywt.dwt2(img_gray, 'haar')
     c_a, (c_h, c_v, c_d) = coefficients
+    # wavelet_energy = np.sum(c_a**2 + c_h**2 + c_v**2 + c_d**2) / (img_gray.size * 1e6)
     wavelet_energy = np.sum(c_a**2 + c_h**2 + c_v**2 + c_d**2) / img_gray.size
+    logging.debug("Wavelet energy: %f", wavelet_energy)
 
     # GLCM (Gray-Level Co-occurrence Matrix)
     glcm = graycomatrix(

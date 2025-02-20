@@ -1,3 +1,4 @@
+# config.py
 """
 Configuration constants for the image quality analysis tool.
 
@@ -64,7 +65,7 @@ METRIC_DESCRIPTIONS = {
 
 ML_TARGET_COLUMNS = [m.value for m in QualityMetric]
 
-DEFAULT_METRIC = QualityMetric.PSNR.value
+DEFAULT_METRIC = QualityMetric.PSNR
 
 # === Quality thresholds for metrics ===
 METRIC_QUALITY_THRESHOLDS = {
