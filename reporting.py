@@ -156,7 +156,7 @@ class CSVReporter:
                             f"{ch_vals.get('L', float('inf')):.2f}",
                             "", "", "",
                             f"{min_val:.2f}",
-                            QualityHelper.get_hint(min_val)
+                            QualityHelper.get_hint(min_val, QualityMetric(self.metric))
                         ])
                     else:
                         row.extend([
@@ -165,7 +165,7 @@ class CSVReporter:
                             f"{ch_vals.get('B', float('inf')):.2f}",
                             f"{ch_vals.get('A', float('inf')):.2f}",
                             f"{min_val:.2f}",
-                            QualityHelper.get_hint(min_val)
+                            QualityHelper.get_hint(min_val, QualityMetric(self.metric))
                         ])
             else:
                 metric_val = values
@@ -174,7 +174,7 @@ class CSVReporter:
                 else:
                     row.extend([
                         f"{metric_val:.2f}",
-                        QualityHelper.get_hint(metric_val)
+                        QualityHelper.get_hint(metric_val, QualityMetric(self.metric))
                     ])
                 if len(row) < 4:
                     row.extend([""] * (4 - len(row)))
@@ -183,7 +183,7 @@ class CSVReporter:
 
 class QualityHelper:
     @staticmethod
-    def get_hint(metric_value: float, metric_type: QualityMetric = QualityMetric.PSNR) -> str:
+    def get_hint(metric_value: float, metric_type: QualityMetric) -> str:
         """Возвращает текстовую оценку качества для заданной метрики"""
         thresholds = METRIC_QUALITY_THRESHOLDS.get(metric_type)
         if thresholds is None:
