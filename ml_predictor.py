@@ -72,7 +72,6 @@ class QuickPredictor:
         # Проверяем наличие всех трёх колонок
         assert set(ML_TARGET_COLUMNS).issubset(df_targets.columns)
 
-        # Условимся, что df_targets = [psnr, ssim, ms_ssim]
         # y = df_targets[['psnr', 'ssim', 'ms_ssim']].values  # shape: (N, 2)
         y = df_targets[ML_TARGET_COLUMNS].to_numpy()
 

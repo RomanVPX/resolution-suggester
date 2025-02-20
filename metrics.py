@@ -180,9 +180,9 @@ def filter_2d_separable(img: np.ndarray, size: int, sigma: float) -> np.ndarray:
 def calculate_ssim_gauss_single(
     original: np.ndarray,
     processed: np.ndarray,
-    K1: float = 0.01,
-    K2: float = 0.03,
-    L: float  = 1.0,
+    k_1: float = 0.01,
+    k_2: float = 0.03,
+    l: float  = 1.0,
     window_size: int = 11,
     sigma: float = 1.5
 ) -> float:
@@ -190,19 +190,19 @@ def calculate_ssim_gauss_single(
         raise ValueError("SSIM: размеры изображений должны совпадать")
 
     # Фильтруем средние
-    muX = filter_2d_separable(original, window_size, sigma)
-    muY = filter_2d_separable(processed, window_size, sigma)
+    mu_x = filter_2d_separable(original, window_size, sigma)
+    mu_y = filter_2d_separable(processed, window_size, sigma)
 
     # Фильтруем X^2, Y^2 и X*Y
-    sigmaX = filter_2d_separable(original*original, window_size, sigma) - muX*muX
-    sigmaY = filter_2d_separable(processed*processed, window_size, sigma) - muY*muY
-    sigmaXY = filter_2d_separable(original*processed, window_size, sigma) - muX*muY
+    sigma_x = filter_2d_separable(original*original, window_size, sigma) - mu_x*mu_x
+    sigma_y = filter_2d_separable(processed*processed, window_size, sigma) - mu_y*mu_y
+    sigma_xy = filter_2d_separable(original*processed, window_size, sigma) - mu_x*mu_y
 
-    C1 = (K1 * L)**2
-    C2 = (K2 * L)**2
+    c1 = (k_1 * l) ** 2
+    c2 = (k_2 * l) ** 2
 
-    numerator   = (2.0 * muX * muY + C1) * (2.0 * sigmaXY + C2)
-    denominator = (muX**2 + muY**2 + C1) * (sigmaX + sigmaY + C2)
+    numerator   = (2.0 * mu_x * mu_y + c1) * (2.0 * sigma_xy + c2)
+    denominator = (mu_x**2 + mu_y**2 + c1) * (sigma_x + sigma_y + c2)
 
     ssim_map = numerator / np.maximum(denominator, TINY_EPSILON)
     return float(np.mean(ssim_map))
@@ -212,8 +212,8 @@ def calculate_ssim_gauss(
     original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
-    K1: float = 0.01,
-    K2: float = 0.03,
+    k_1: float = 0.01,
+    k_2: float = 0.03,
     window_size: int = 11,
     sigma: float = 1.5
 ) -> float:
@@ -226,7 +226,7 @@ def calculate_ssim_gauss(
         processed = processed / max_val
 
     if original.ndim == 2:
-        return calculate_ssim_gauss_single(original, processed, K1, K2, 1.0, window_size, sigma)
+        return calculate_ssim_gauss_single(original, processed, k_1, k_2, 1.0, window_size, sigma)
     if original.ndim == 3:
         c = original.shape[2]
         ssim_sum = 0.0
@@ -234,7 +234,7 @@ def calculate_ssim_gauss(
             ssim_sum += calculate_ssim_gauss_single(
                 original[..., i],
                 processed[..., i],
-                K1, K2, 1.0, window_size, sigma
+                k_1, k_2, 1.0, window_size, sigma
             )
         return ssim_sum / c
 

@@ -198,7 +198,7 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
         InterpolationMethod.MITCHELL
     ]
 
-    with tqdm(total=len(files), desc=f"Датасет") as progressbar_files:
+    with tqdm(total=len(files), desc=f"Датасет", leave=False) as progressbar_files:
         for file_path in files:
             result = load_image(file_path)
             if result.error or result.data is None:

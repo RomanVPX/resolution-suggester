@@ -106,7 +106,7 @@ class InterpolationMethod(str, Enum):
 INTERPOLATION_METHODS_CV2 = {
     InterpolationMethod.BILINEAR: 'INTER_LINEAR',
     InterpolationMethod.BICUBIC: 'INTER_CUBIC',
-    InterpolationMethod.MITCHELL: 'mitchell', # placeholder: Mitchell реализован отдельно
+    InterpolationMethod.MITCHELL: None, # placeholder: Mitchell реализован отдельно
 }
 
 INTERPOLATION_DESCRIPTIONS = {
