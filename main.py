@@ -21,7 +21,7 @@ from metrics import (
 )
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
 from config import SAVE_INTERMEDIATE_DIR, QualityMetric, InterpolationMethod
-from ml_predictor import QuickPredictor, extract_texture_features, extract_features_original
+from ml_predictor import QuickPredictor, extract_features_original
 
 
 def main():
@@ -36,7 +36,6 @@ def main():
         features_path, targets_path = generate_dataset(files, args)
         logging.info(f"Датасет сгенерирован: features={features_path}, targets={targets_path}")
         if args.train_ml:
-            # Если флаг --train-ml, то обучим модель
             predictor = QuickPredictor()
             predictor.train(features_path, targets_path)
             logging.info("Модель обучена!")
@@ -99,18 +98,15 @@ def process_single_file(
     img = result.data
     max_val = result.max_value
     channels = result.channels
+
     ml_predictor = None
+    feats_original = None # just to make mypy happy
+    resize_fn  = None # just to make mypy happy
 
     height, width = img.shape[:2]
 
     if height < args.min_size or width < args.min_size:
         logging.info(f"Пропуск {file_path} (размер {width}x{height}) - меньше, чем min_size = {args.min_size}")
-        return None, None
-
-    try:
-        resize_fn = get_resize_function(args.interpolation)
-    except ValueError as e:
-        logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
         return None, None
 
     # Если пользователь хочет ML-предсказания:
@@ -119,24 +115,29 @@ def process_single_file(
         loaded_ok = ml_predictor.load()
         if not loaded_ok:
             logging.warning("ML-модель не найдена, будем вычислять реальные метрики.")
-            ml_predictor = None
 
     results = [create_original_entry(width, height, channels, args.channels)]
     resolutions = compute_resolutions(width, height, args.min_size)
     use_psnr = (args.metric == QualityMetric.PSNR.value)
 
-    feats_original = None # just to make mypy happy
     if ml_predictor:
         feats_original = extract_features_original(img)
+    else: # только при вычислении реальных метрик нужно реально скейлить изображение
+        try:
+            resize_fn = get_resize_function(args.interpolation)
+        except ValueError as e:
+            logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
+            return None, None
 
     for (w, h) in resolutions:
         if w == width and h == height:
             continue
 
-        downscaled_img = resize_fn(img, w, h)
-        if args.save_intermediate:
-            _save_intermediate(downscaled_img, file_path, w, h)
-        upscaled_img = resize_fn(downscaled_img, width, height)
+        if not ml_predictor: # только при вычислении реальных метрик нужно реально скейлить изображение
+            downscaled_img = resize_fn(img, w, h)
+            if args.save_intermediate:
+                _save_intermediate(downscaled_img, file_path, w, h)
+            upscaled_img = resize_fn(downscaled_img, width, height)
 
         if args.channels:
             if ml_predictor:
@@ -242,7 +243,7 @@ def generate_dataset(files: list[str], args) -> tuple[str, str]:
             for method in methods_to_test:
                 resize_fn = get_resize_function(method)
 
-                with tqdm(total=len(files), desc=f"Анализ {file_path}", leave=False) as progressbar_res:
+                with tqdm(total=len(resolutions_to_test), desc=f"Анализ {file_path}", leave=False) as progressbar_res:
                     for (w, h) in resolutions_to_test:
                         scale_factor_w = w / original_w
                         scale_factor_h = h / original_h

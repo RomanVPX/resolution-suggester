@@ -122,10 +122,6 @@ class QuickPredictor:
 #############################################################################
 
 def extract_texture_features(img: np.ndarray, method: str) -> Dict[str, float]:
-    """
-    Извлекаем простейшие признаки из изображения.
-    Вы можете расширять этот список, добавлять wavelet'ы, entopy и т.п.
-    """
     contrast = float(np.std(img))
     variance = float(np.var(img))
     return {

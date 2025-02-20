@@ -31,7 +31,7 @@ class ConsoleReporter:
         results: list,
         analyze_channels: bool,
         channels: Optional[List[str]],
-        metric: str  # <-- добавлен параметр
+        metric: str
     ):
         if analyze_channels and channels:
             ConsoleReporter._print_channel_table(results, channels)
