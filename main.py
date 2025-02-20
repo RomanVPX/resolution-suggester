@@ -20,7 +20,7 @@ from metrics import (
     calculate_channel_ssim_gauss, calculate_ms_ssim, calculate_channel_ms_ssim
 )
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
-from config import SAVE_INTERMEDIATE_DIR, QualityMetric, InterpolationMethod
+from config import SAVE_INTERMEDIATE_DIR, ML_DATA_DIR, QualityMetric, InterpolationMethod
 from ml_predictor import QuickPredictor, extract_features_original
 
 
@@ -190,8 +190,8 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
     all_targets = []
 
     # Для упрощения сохраним в CSV (можно parquet)
-    features_csv = 'features.csv'
-    targets_csv  = 'targets.csv'
+    features_csv = os.path.join(ML_DATA_DIR, 'features.csv')
+    targets_csv  = os.path.join(ML_DATA_DIR, 'targets.csv')
 
     methods_to_test = [
         InterpolationMethod.BILINEAR,

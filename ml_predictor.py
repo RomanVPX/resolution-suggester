@@ -16,11 +16,11 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import make_pipeline
 
-from config import ML_TARGET_COLUMNS
+from config import ML_TARGET_COLUMNS, ML_DATA_DIR
 
 
 class QuickPredictor:
-    def __init__(self, model_path: str = 'quick_model.joblib'):
+    def __init__(self, model_path: str = os.path.join(ML_DATA_DIR, 'model.joblib')):
         self.model_path = model_path
         self.pipeline = None
 

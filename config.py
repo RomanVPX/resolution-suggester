@@ -11,6 +11,7 @@ SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png', '.jpg', '.jpeg']
 CSV_SEPARATOR = ';'
 
 SAVE_INTERMEDIATE_DIR = '_intermediate'
+ML_DATA_DIR = '_ml_data'
 
 MITCHELL_B = 1/3
 MITCHELL_C = 1/3
