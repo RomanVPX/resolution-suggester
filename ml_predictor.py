@@ -16,6 +16,9 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import make_pipeline
 
+from config import ML_TARGET_COLUMNS
+
+
 class QuickPredictor:
     def __init__(self, model_path: str = 'quick_model.joblib'):
         self.model_path = model_path
@@ -67,11 +70,11 @@ class QuickPredictor:
         df_targets = df_targets.dropna()
 
         # Проверяем наличие всех трёх колонок
-        assert {'psnr', 'ssim', 'ms_ssim'}.issubset(df_targets.columns)
+        assert set(ML_TARGET_COLUMNS).issubset(df_targets.columns)
 
         # Условимся, что df_targets = [psnr, ssim, ms_ssim]
         # y = df_targets[['psnr', 'ssim', 'ms_ssim']].values  # shape: (N, 2)
-        y = df_targets[['psnr', 'ssim', 'ms_ssim']].to_numpy()
+        y = df_targets[ML_TARGET_COLUMNS].to_numpy()
 
         self.pipeline = self._build_pipeline()
         self.pipeline.fit(df_features, y)
@@ -100,11 +103,7 @@ class QuickPredictor:
 
         df = pd.DataFrame([features])  # DataFrame из одного примера
         pred = self.pipeline.predict(df)  # shape: (1, 3)
-        return {
-            'psnr': float(pred[0, 0]),
-            'ssim': float(pred[0, 1]),
-            'ms_ssim': float(pred[0, 2])
-        }
+        return {metric: pred[0, i] for i, metric in enumerate(ML_TARGET_COLUMNS)}
 
 #############################################################################
 # Простейшая функция-обёртка для извлечения признаков из np.ndarray

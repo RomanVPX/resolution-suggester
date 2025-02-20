@@ -61,6 +61,8 @@ METRIC_DESCRIPTIONS = {
     QualityMetric.MS_SSIM: 'Многоуровневый индекс структурного сходства',
 }
 
+ML_TARGET_COLUMNS = [m.value for m in QualityMetric]
+
 DEFAULT_METRIC = QualityMetric.PSNR.value
 
 # === Quality thresholds for metrics ===

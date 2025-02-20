@@ -33,7 +33,7 @@ def main():
         return
 
     if args.generate_dataset:
-        features_path, targets_path = generate_dataset(files, args)
+        features_path, targets_path = generate_dataset(files)
         logging.info(f"Датасет сгенерирован: features={features_path}, targets={targets_path}")
         if args.train_ml:
             predictor = QuickPredictor()
@@ -137,28 +137,19 @@ def process_single_file(
             if args.save_intermediate:
                 _save_intermediate(downscaled_img, file_path, w, h)
             upscaled_img = resize_fn(downscaled_img, width, height)
+        else:
+            feats_for_ml = {
+                **feats_original,
+                'scale_factor': (w / width + h / height) / 2,
+                'method': args.interpolation
+            }
+            upscaled_img = ml_predictor.predict(feats_for_ml)
 
         if args.channels:
             if ml_predictor:
-                scale_factor = (w / width + h / height) / 2
-                feats_for_ml = {
-                    **feats_original,
-                    'scale_factor': scale_factor,
-                    'method': args.interpolation
-                }
-
                 pred = ml_predictor.predict(feats_for_ml)
-
                 # channel_metrics ~ одинаковые на все каналы
-                ch_values_dict = {c: pred[args.metric] for c in channels}
-                min_metric = pred[args.metric]
-                hint = QualityHelper.get_hint(min_metric, args.metric)
-                results.append((
-                    f"{w}x{h}",
-                    ch_values_dict,
-                    min_metric,
-                    hint
-                ))
+                channel_metrics = {c: pred[args.metric] for c in channels}
             else:
                 if args.metric == QualityMetric.PSNR.value:
                     channel_metrics = calculate_channel_psnr(img, upscaled_img, max_val, channels)
@@ -167,32 +158,17 @@ def process_single_file(
                 else:
                     channel_metrics = calculate_channel_ms_ssim(img, upscaled_img, max_val, channels)
 
-                min_metric = min(channel_metrics.values())
-                hint = QualityHelper.get_hint(min_metric, args.metric)
-                results.append((
-                    f"{w}x{h}",
-                    channel_metrics,
-                    min_metric,
-                    hint
-                ))
+            min_metric = min(channel_metrics.values())
+            results.append((
+                f"{w}x{h}",
+                channel_metrics,
+                min_metric,
+                QualityHelper.get_hint(min_metric, args.metric)
+            ))
         else:
             if ml_predictor:
-                scale_factor = (w / width + h / height) / 2
-                feats_for_ml = {
-                    **feats_original,
-                    'scale_factor': scale_factor,
-                    'method': args.interpolation
-                }
-
                 pred = ml_predictor.predict(feats_for_ml)
-
                 metric_value = pred[args.metric]
-                hint = QualityHelper.get_hint(metric_value, args.metric)
-                results.append((
-                    f"{w}x{h}",
-                    metric_value,
-                    hint
-                    ))
             else:
                 if args.metric == QualityMetric.PSNR.value:
                     metric_value = calculate_psnr(img, upscaled_img, max_val)
@@ -201,16 +177,15 @@ def process_single_file(
                 else:
                     metric_value = calculate_ms_ssim(img, upscaled_img, max_val)
 
-                hint = QualityHelper.get_hint(metric_value, args.metric)
-                results.append((
-                    f"{w}x{h}",
-                    metric_value,
-                    hint
-                ))
+            results.append((
+                f"{w}x{h}",
+                metric_value,
+                QualityHelper.get_hint(metric_value, args.metric)
+            ))
 
     return results, {'max_val': max_val, 'channels': channels}
 
-def generate_dataset(files: list[str], args) -> tuple[str, str]:
+def generate_dataset(files: list[str]) -> tuple[str, str]:
     all_features = []
     all_targets = []
 
