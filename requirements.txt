@@ -11,3 +11,5 @@ joblib~=1.4.2
 scikit-learn~=1.6.1
 tabulate~=0.9.0
 tqdm~=4.67.1
+sewar~=0.4.6
+PyWavelets~=1.8.0

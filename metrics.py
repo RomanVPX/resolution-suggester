@@ -1,7 +1,36 @@
 import math
 import numpy as np
 from numba import njit, prange
+from sewar.full_ref import msssim
 from config import TINY_EPSILON
+
+
+def calculate_msssim(
+        original: np.ndarray,
+        processed: np.ndarray,
+        max_val: float
+) -> float:
+    # Normalize if necessary
+    if max_val > 1.00001:
+        original = original / max_val
+        processed = processed / max_val
+
+    original_uint8 = (np.clip(original, 0, 1) * 255).astype(np.uint8)
+    processed_uint8 = (np.clip(processed, 0, 1) * 255).astype(np.uint8)
+
+    # msssim возвращает комплексное число, поэтому преобразуем его
+    return float(np.real(msssim(original_uint8, processed_uint8)))
+
+def calculate_channel_msssim(
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float,
+    channels: list[str]
+) -> dict[str, float]:
+    return {
+        channel: calculate_msssim(original[..., i], processed[..., i], max_val)
+        for i, channel in enumerate(channels)
+    }
 
 @njit(cache=True)
 def calculate_psnr(

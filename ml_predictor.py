@@ -16,23 +16,12 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import make_pipeline
 
-#############################################################################
-# Пример минимальной модели, которая:
-# 1) Читает признаки из DataFrame (или dict), где есть:
-#   - 'contrast'
-#   - 'variance'
-#   - 'method'
-# 2) Предсказывает PSNR и SSIM одним RandomForest'ом с 2 выходами
-#############################################################################
-
 class QuickPredictor:
     def __init__(self, model_path: str = 'quick_model.joblib'):
         self.model_path = model_path
         self.pipeline = None
 
     def _build_pipeline(self):
-        # Допустим, numeric_features = ['contrast', 'variance']
-        # а categorical_features = ['method']
         numeric_features = [
             'contrast', 'variance', 'entropy',
             'wavelet_energy', 'glcm_contrast', 'glcm_energy',
@@ -61,7 +50,7 @@ class QuickPredictor:
         """
         Обучает модель на данных.
         :param features_csv: CSV (или parquet) с признаками
-        :param targets_csv: CSV (или parquet) с колонками 'psnr' и 'ssim'
+        :param targets_csv: CSV (или parquet) с колонками 'psnr', 'ssim', 'msssim'
         """
         if not os.path.exists(features_csv) or not os.path.exists(targets_csv):
             logging.error("Не найдены файлы с фичами/таргетами: %s, %s", features_csv, targets_csv)
@@ -77,12 +66,12 @@ class QuickPredictor:
         df_features = df_features.dropna()
         df_targets = df_targets.dropna()
 
-        # Проверяем наличие обеих колонок
-        assert {'psnr', 'ssim'}.issubset(df_targets.columns)
+        # Проверяем наличие всех трёх колонок
+        assert {'psnr', 'ssim', 'msssim'}.issubset(df_targets.columns)
 
-        # Условимся, что df_targets = [psnr, ssim]
-        # y = df_targets[['psnr', 'ssim']].values  # shape: (N, 2)
-        y = df_targets[['psnr', 'ssim']].to_numpy()
+        # Условимся, что df_targets = [psnr, ssim, msssim]
+        # y = df_targets[['psnr', 'ssim', 'msssim']].values  # shape: (N, 2)
+        y = df_targets[['psnr', 'ssim', 'msssim']].to_numpy()
 
         self.pipeline = self._build_pipeline()
         self.pipeline.fit(df_features, y)
@@ -103,17 +92,18 @@ class QuickPredictor:
 
     def predict(self, features: Dict[str, Any]) -> Dict[str, float]:
         """
-        Предсказывает PSNR и SSIM на одном примере (словарь).
-        Возвращает {'psnr': float, 'ssim': float}.
+        Предсказывает PSNR, SSIM и MSSSIM на одном примере (словарь).
+        Возвращает {'psnr': float, 'ssim': float, 'msssim': float }.
         """
         if not self.pipeline:
             raise ValueError("Модель не загружена. Сначала вызовите load().")
 
         df = pd.DataFrame([features])  # DataFrame из одного примера
-        pred = self.pipeline.predict(df)  # shape: (1,2)
+        pred = self.pipeline.predict(df)  # shape: (1, 3)
         return {
             'psnr': float(pred[0, 0]),
-            'ssim': float(pred[0, 1])
+            'ssim': float(pred[0, 1]),
+            'msssim': float(pred[0, 2])
         }
 
 #############################################################################

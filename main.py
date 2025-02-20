@@ -17,7 +17,7 @@ from metrics import (
     calculate_channel_psnr,
     compute_resolutions,
     calculate_ssim_gauss,
-    calculate_channel_ssim_gauss
+    calculate_channel_ssim_gauss, calculate_msssim, calculate_channel_msssim
 )
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
 from config import SAVE_INTERMEDIATE_DIR, QualityMetric, InterpolationMethod
@@ -118,7 +118,6 @@ def process_single_file(
 
     results = [create_original_entry(width, height, channels, args.channels)]
     resolutions = compute_resolutions(width, height, args.min_size)
-    use_psnr = (args.metric == QualityMetric.PSNR.value)
 
     if ml_predictor:
         feats_original = extract_features_original(img)
@@ -161,10 +160,12 @@ def process_single_file(
                     hint
                 ))
             else:
-                if use_psnr:
+                if args.metric == QualityMetric.PSNR.value:
                     channel_metrics = calculate_channel_psnr(img, upscaled_img, max_val, channels)
-                else:
+                elif args.metric == QualityMetric.SSIM:
                     channel_metrics = calculate_channel_ssim_gauss(img, upscaled_img, max_val, channels)
+                else:
+                    channel_metrics = calculate_channel_msssim(img, upscaled_img, max_val, channels)
 
                 min_metric = min(channel_metrics.values())
                 hint = QualityHelper.get_hint(min_metric, args.metric)
@@ -193,10 +194,12 @@ def process_single_file(
                     hint
                     ))
             else:
-                if use_psnr:
+                if args.metric == QualityMetric.PSNR.value:
                     metric_value = calculate_psnr(img, upscaled_img, max_val)
-                else:
+                elif args.metric == QualityMetric.SSIM:
                     metric_value = calculate_ssim_gauss(img, upscaled_img, max_val)
+                else:
+                    metric_value = calculate_msssim(img, upscaled_img, max_val)
 
                 hint = QualityHelper.get_hint(metric_value, args.metric)
                 results.append((
@@ -208,10 +211,6 @@ def process_single_file(
     return results, {'max_val': max_val, 'channels': channels}
 
 def generate_dataset(files: list[str], args) -> tuple[str, str]:
-    """
-    Шаблон функции для генерации датасета.
-    Возвращает (features_csv, targets_csv)
-    """
     all_features = []
     all_targets = []
 
@@ -264,11 +263,13 @@ def generate_dataset(files: list[str], args) -> tuple[str, str]:
 
                         psnr_val = calculate_psnr(img, upscaled_img, max_val)
                         ssim_val = calculate_ssim_gauss(img, upscaled_img, max_val)
+                        msssim_val = calculate_msssim(img, upscaled_img, max_val)
 
                         all_features.append(feats_dict)
                         all_targets.append({
                             'psnr': psnr_val,
-                            'ssim': ssim_val
+                            'ssim': ssim_val,
+                            'msssim': msssim_val
                         })
                         progressbar_res.update(1)
             progressbar_files.update(1)
