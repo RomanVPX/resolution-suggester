@@ -4,6 +4,7 @@ import argparse
 import logging
 import concurrent.futures
 import numpy as np
+import pandas as pd
 
 from PIL import Image
 from typing import Tuple, Optional
@@ -18,7 +19,8 @@ from metrics import (
     calculate_channel_ssim_gauss
 )
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
-from config import SAVE_INTERMEDIATE_DIR, QualityMetric
+from config import SAVE_INTERMEDIATE_DIR, QualityMetric, InterpolationMethod
+from ml_predictor import QuickPredictor, extract_texture_features
 
 
 def main():
@@ -28,6 +30,16 @@ def main():
     if not files:
         logging.error("Не найдено ни одного валидного файла или директории. Завершение работы.")
         return
+
+    if args.generate_dataset:
+        features_path, targets_path = generate_dataset(files, args)
+        logging.info(f"Датасет сгенерирован: features={features_path}, targets={targets_path}")
+        if args.train_ml:
+            # Если флаг --train-ml, то обучим модель
+            predictor = QuickPredictor()
+            predictor.train(features_path, targets_path)
+            logging.info("Модель обучена!")
+        return  # завершаем работу, не делая основной функционал
 
     if args.csv_output:
         csv_path = generate_csv_filename(args.metric, args.interpolation)
@@ -86,6 +98,7 @@ def process_single_file(
     img = result.data
     max_val = result.max_value
     channels = result.channels
+    ml_predictor = None
 
     height, width = img.shape[:2]
 
@@ -98,6 +111,14 @@ def process_single_file(
     except ValueError as e:
         logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
         return None, None
+
+    # Если пользователь хочет ML-предсказания:
+    if args.ml:
+        ml_predictor = QuickPredictor()
+        loaded_ok = ml_predictor.load()
+        if not loaded_ok:
+            logging.warning("ML-модель не найдена, будем вычислять реальные метрики.")
+            ml_predictor = None
 
     results = [create_original_entry(width, height, channels, args.channels)]
     resolutions = compute_resolutions(width, height, args.min_size)
@@ -114,33 +135,117 @@ def process_single_file(
         upscaled_img = resize_fn(downscaled_img, width, height)
 
         if args.channels:
-            if use_psnr:
-                channel_metrics = calculate_channel_psnr(img, upscaled_img, max_val, channels)
+            if ml_predictor:
+                # Предсказываем одной моделью PSNR/SSIM на весь кадр
+                feats_for_ml = extract_texture_features(img, args.interpolation)
+                pred = ml_predictor.predict(feats_for_ml)
+                # channel_metrics ~ одинаковые на все каналы
+                ch_values_dict = {c: pred[args.metric] for c in channels}
+                min_metric = pred[args.metric]
+                hint = QualityHelper.get_hint(min_metric, args.metric)
+                results.append((
+                    f"{w}x{h}",
+                    ch_values_dict,
+                    min_metric,
+                    hint
+                ))
             else:
-                channel_metrics = calculate_channel_ssim_gauss(img, upscaled_img, max_val, channels)
+                if use_psnr:
+                    channel_metrics = calculate_channel_psnr(img, upscaled_img, max_val, channels)
+                else:
+                    channel_metrics = calculate_channel_ssim_gauss(img, upscaled_img, max_val, channels)
 
-            min_metric = min(channel_metrics.values())
-            hint = QualityHelper.get_hint(min_metric, args.metric)
-            results.append((
-                f"{w}x{h}",
-                channel_metrics,
-                min_metric,
-                hint
-            ))
+                min_metric = min(channel_metrics.values())
+                hint = QualityHelper.get_hint(min_metric, args.metric)
+                results.append((
+                    f"{w}x{h}",
+                    channel_metrics,
+                    min_metric,
+                    hint
+                ))
         else:
-            if use_psnr:
-                metric_value = calculate_psnr(img, upscaled_img, max_val)
+            if ml_predictor:
+                feats_for_ml = extract_texture_features(img, args.interpolation)
+                pred = ml_predictor.predict(feats_for_ml)
+                metric_value = pred[args.metric]
+                hint = QualityHelper.get_hint(metric_value, args.metric)
+                results.append((
+                    f"{w}x{h}",
+                    metric_value,
+                    hint
+                    ))
             else:
-                metric_value = calculate_ssim_gauss(img, upscaled_img, max_val)
+                if use_psnr:
+                    metric_value = calculate_psnr(img, upscaled_img, max_val)
+                else:
+                    metric_value = calculate_ssim_gauss(img, upscaled_img, max_val)
 
-            hint = QualityHelper.get_hint(metric_value, args.metric)
-            results.append((
-                f"{w}x{h}",
-                metric_value,
-                hint
-            ))
+                hint = QualityHelper.get_hint(metric_value, args.metric)
+                results.append((
+                    f"{w}x{h}",
+                    metric_value,
+                    hint
+                ))
 
     return results, {'max_val': max_val, 'channels': channels}
+
+def generate_dataset(files: list[str], args) -> tuple[str, str]:
+    """
+    Шаблон функции для генерации датасета.
+    Возвращает (features_csv, targets_csv)
+    """
+    all_features = []
+    all_targets = []
+
+    # Для упрощения сохраним в CSV (можно parquet)
+    features_csv = 'features.csv'
+    targets_csv  = 'targets.csv'
+
+    # Допустим, будем применять только один scale_factor, и проверим 3 метода
+    methods_to_test = [InterpolationMethod.BILINEAR, InterpolationMethod.BICUBIC, InterpolationMethod.MITCHELL]
+    scale_factor = 0.5
+
+    for file_path in files:
+        result = load_image(file_path)
+        if result.error or result.data is None:
+            logging.warning(f"Пропуск {file_path}, т.к. не удалось загрузить.")
+            continue
+
+        img = result.data
+        max_val = result.max_value
+        original_h, original_w = img.shape[:2]
+
+        # Соберём несколько записей в датасет по каждому методу
+        for method in methods_to_test:
+            # downscale + upscale
+            try:
+                resize_fn = get_resize_function(method)
+                new_w = int(original_w * scale_factor)
+                new_h = int(original_h * scale_factor)
+                if new_w < args.min_size or new_h < args.min_size:
+                    continue
+                downscaled_img = resize_fn(img, new_w, new_h)
+                upscaled_img   = resize_fn(downscaled_img, original_w, original_h)
+
+                # Реальные PSNR / SSIM
+                psnr = calculate_psnr(img, upscaled_img, max_val)
+                ssim = calculate_ssim_gauss(img, upscaled_img, max_val)
+
+                # Извлекаем фичи (используем метод = str(method))
+                feats_dict = extract_texture_features(img, method.value)
+                all_features.append(feats_dict)
+                all_targets.append({'psnr': psnr, 'ssim': ssim})
+
+            except Exception as e:
+                logging.error(f"Ошибка при обработке {file_path}: {e}")
+
+    # Сохраняем в CSV
+    df_feats = pd.DataFrame(all_features)
+    df_targs = pd.DataFrame(all_targets)
+    df_feats.to_csv(features_csv, index=False)
+    df_targs.to_csv(targets_csv, index=False)
+
+    return features_csv, targets_csv
 
 
 def print_console_results(
@@ -148,14 +253,13 @@ def print_console_results(
     results: list,
     analyze_channels: bool,
     meta: dict,
-    metric: str  # <-- добавили передачу метрики
+    metric: str
 ):
     ConsoleReporter.print_file_header(file_path)
 
     if meta['max_val'] < 0.001:
         logging.warning(f"Низкое максимальное значение: {meta['max_val']:.3e}")
 
-    # Передаём metric в print_quality_table
     ConsoleReporter.print_quality_table(
         results,
         analyze_channels,
