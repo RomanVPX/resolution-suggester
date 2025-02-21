@@ -164,7 +164,7 @@ def get_resize_function(interpolation: InterpolationMethods) -> ResizeFunction:
         try:
             cv2_flag = getattr(cv2, cv2_interpolation_flag_name)
         except AttributeError as exc:
-            raise ValueError(f"Метод интерполяции не найден в OpenCV: {interpolation}") from exc
+            raise ValueError(f"Флаг интерполяции не найден в OpenCV: {cv2_interpolation_flag_name}") from exc
 
         def opencv_resize(img: np.ndarray, w: int, h: int) -> np.ndarray:
             # Perform resize using OpenCV
