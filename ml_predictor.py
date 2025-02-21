@@ -24,7 +24,18 @@ class QuickPredictor:
         self.model_path = model_path
         self.pipeline = None
 
-    def _build_pipeline(self):
+    def load(self) -> bool:
+        """
+        Загружает модель из self.model_path.
+        Возвращает True, если модель успешно загружена, иначе False.
+        """
+        if not os.path.exists(self.model_path):
+            logging.warning("Файл модели не найден: %s", self.model_path)
+            return False
+        self.pipeline = joblib.load(self.model_path)
+        return True
+
+    def get_pipeline(self):
         numeric_features = [
             'contrast', 'variance', 'entropy',
             'wavelet_energy', 'glcm_contrast', 'glcm_energy',
@@ -75,22 +86,11 @@ class QuickPredictor:
         # y = df_targets[['psnr', 'ssim', 'ms_ssim']].values  # shape: (N, 2)
         y = df_targets[ML_TARGET_COLUMNS].to_numpy()
 
-        self.pipeline = self._build_pipeline()
+        self.pipeline = self.get_pipeline()
         self.pipeline.fit(df_features, y)
 
         joblib.dump(self.pipeline, self.model_path)
         logging.info("Модель сохранена в %s", self.model_path)
-
-    def load(self) -> bool:
-        """
-        Загружает модель из self.model_path.
-        Возвращает True, если модель успешно загружена, иначе False.
-        """
-        if not os.path.exists(self.model_path):
-            logging.warning("Файл модели не найден: %s", self.model_path)
-            return False
-        self.pipeline = joblib.load(self.model_path)
-        return True
 
     def predict(self, features: Dict[str, Any]) -> Dict[str, float]:
         """
@@ -103,6 +103,7 @@ class QuickPredictor:
         df = pd.DataFrame([features])  # DataFrame из одного примера
         pred = self.pipeline.predict(df)  # shape: (1, 3)
         return {metric: pred[0, i] for i, metric in enumerate(ML_TARGET_COLUMNS)}
+
 
 #############################################################################
 # Простейшая функция-обёртка для извлечения признаков из np.ndarray
