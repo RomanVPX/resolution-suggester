@@ -39,8 +39,8 @@ def main():
         return  # завершаем работу после создания датасета
 
     if args.csv_output:
-        csv_path = generate_csv_filename(args.metric, args.interpolation)
-        with CSVReporter(csv_path, args.metric) as reporter:
+        csv_path = generate_csv_filename(args.metric, InterpolationMethods(args.interpolation))
+        with CSVReporter(csv_path, QualityMetrics(args.metric)) as reporter:
             reporter.write_header(args.channels)
             process_files(files, args, reporter)
         print(f"\nМетрики сохранены в: {csv_path}")
@@ -56,8 +56,8 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
                 logging.error(f"Ошибка обработки {file_path}: {e}")
                 continue
             if results:
-                print_console_results(file_path, results, args.channels, meta, args.metric)
-                if reporter:
+                print_console_results(file_path, results, args.channels, meta, QualityMetrics(args.metric))
+                if reporter is not None:
                     reporter.write_results(os.path.basename(file_path), results, args.channels)
     else:
         with concurrent.futures.ProcessPoolExecutor(max_workers=args.threads) as executor:
@@ -74,8 +74,8 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
                     logging.error(f"Ошибка обработки {file_path}: {e}")
                     continue
                 if results:
-                    print_console_results(file_path, results, args.channels, meta, args.metric)
-                    if reporter:
+                    print_console_results(file_path, results, args.channels, meta, QualityMetrics(args.metric))
+                    if reporter is not None:
                         reporter.write_results(os.path.basename(file_path), results, args.channels)
 
 def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optional[list], Optional[dict]]:
@@ -232,14 +232,14 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
 
     return features_csv, targets_csv
 def print_console_results(
-    file_path: str, results: list, analyze_channels: bool, meta: dict, metric: str
+    file_path: str, results: list, analyze_channels: bool, meta: dict, metric_type: QualityMetrics
 ):
     ConsoleReporter.print_file_header(file_path)
 
     if meta['max_val'] < 0.001:
         logging.warning(f"Низкое максимальное значение: {meta['max_val']:.3e}")
     ConsoleReporter.print_quality_table(
-        results, analyze_channels, meta.get('channels'), metric
+        results, analyze_channels, meta.get('channels'), metric_type
     )
 
 def create_original_entry(

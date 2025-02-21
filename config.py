@@ -122,29 +122,28 @@ STYLES = {
     'bad': Fore.RED,
 }
 
-def get_output_csv_header(analyze_channels: bool, metric: str) -> list[str]:
+def get_output_csv_header(analyze_channels: bool, metric_type: QualityMetrics) -> list[str]:
     """
     Forms the CSV header considering the metric.
 
     Args:
         analyze_channels: Whether to include per-channel analysis.
-        metric: The quality metric used.
+        metric_type: The quality metric used.
 
     Returns:
         List of column names for the CSV output.
     """
     header = ["Файл", "Разрешение"]
-    metric_str = metric.upper()
     if analyze_channels:
         # Фиксированные столбцы, не зависящие от реального количества каналов для лучшей читаемости таблицы
         header.extend([
-            f"R(L) {metric_str}", # Red для многоканальных, Luminance для одноканальных изображений
-            f"G {metric_str}",
-            f"B {metric_str}",
-            f"A {metric_str}",
-            f"Min {metric_str}",
+            f"R(L) {metric_type.value.upper()}", # Red для многоканальных, Luminance для одноканальных изображений\
+            f"G {metric_type.value.upper()}",
+            f"B {metric_type.value.upper()}",
+            f"A {metric_type.value.upper()}",
+            f"Min {metric_type.value.upper()}",
             "Качество (min)"
         ])
     else:
-        header.extend([f"{metric_str}", "Качество"])
+        header.extend([f"{metric_type.value.upper()}", "Качество"])
     return header
