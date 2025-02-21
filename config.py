@@ -20,13 +20,9 @@ MITCHELL_C = 1/3
 TINY_EPSILON = 1e-8
 
 # === Quality levels ===
-class QualityLevel(Enum):
+class QualityLevelHints(Enum):
     """
-    Enumeration of quality levels for image analysis.
-
-    This class defines different quality levels for image analysis results,
-    ranging from 'excellent' to 'noticeable loss'. These levels can be used
-    to categorize the perceived quality of images based on specific metrics.
+    Enumeration of quality level hints for image analysis output.
     """
 
     EXCELLENT = "excellent"
@@ -34,22 +30,17 @@ class QualityLevel(Enum):
     GOOD = "good"
     NOTICEABLE_LOSS = "noticeable_loss"
 
-QUALITY_LEVEL_DESCRIPTIONS = {
-    QualityLevel.EXCELLENT: "практически идентичные изображения",
-    QualityLevel.VERY_GOOD: "очень хорошее качество",
-    QualityLevel.GOOD: "приемлемое качество",
-    QualityLevel.NOTICEABLE_LOSS: "заметные потери",
+QUALITY_LEVEL_HINTS_DESCRIPTIONS = {
+    QualityLevelHints.EXCELLENT: "практически идентичные изображения",
+    QualityLevelHints.VERY_GOOD: "очень хорошее качество",
+    QualityLevelHints.GOOD: "приемлемое качество",
+    QualityLevelHints.NOTICEABLE_LOSS: "заметные потери",
 }
 
 # === Quality metrics ===
-class QualityMetric(str, Enum):
+class QualityMetrics(str, Enum):
     """
     Enumeration of quality metrics for image analysis.
-
-    This class defines different quality metrics that can be used to assess
-    the quality of images, such as PSNR (Peak Signal-to-Noise Ratio) and SSIM
-    (Structural Similarity Index). These metrics provide numerical values that
-    can be used to determine the perceived quality of images.
     """
 
     PSNR = 'psnr'
@@ -57,40 +48,40 @@ class QualityMetric(str, Enum):
     MS_SSIM = 'ms_ssim'
 
 # Описания метрик для справки
-METRIC_DESCRIPTIONS = {
-    QualityMetric.PSNR: 'Пиковое отношение сигнала к шуму',
-    QualityMetric.SSIM: 'Индекс структурного сходства',
-    QualityMetric.MS_SSIM: 'Многоуровневый индекс структурного сходства',
+QUALITY_METRICS_INFO = {
+    QualityMetrics.PSNR: 'Пиковое отношение сигнала к шуму',
+    QualityMetrics.SSIM: 'Индекс структурного сходства',
+    QualityMetrics.MS_SSIM: 'Многоуровневый индекс структурного сходства',
 }
 
-ML_TARGET_COLUMNS = [m.value for m in QualityMetric]
+ML_TARGET_COLUMNS = [m.value for m in QualityMetrics]
 
-DEFAULT_METRIC = QualityMetric.PSNR
+DEFAULT_QUALITY_METRIC = QualityMetrics.PSNR
 
-# === Quality thresholds for metrics ===
+# --- Quality thresholds for metrics ---
 METRIC_QUALITY_THRESHOLDS = {
-    QualityMetric.PSNR: {
-        QualityLevel.EXCELLENT: 50,
-        QualityLevel.VERY_GOOD: 40,
-        QualityLevel.GOOD: 30,
-        QualityLevel.NOTICEABLE_LOSS: 0,
+    QualityMetrics.PSNR: {
+        QualityLevelHints.EXCELLENT: 50,
+        QualityLevelHints.VERY_GOOD: 40,
+        QualityLevelHints.GOOD: 30,
+        QualityLevelHints.NOTICEABLE_LOSS: 0,
     },
-    QualityMetric.SSIM: {
-        QualityLevel.EXCELLENT: 0.92,
-        QualityLevel.VERY_GOOD: 0.82,
-        QualityLevel.GOOD: 0.75,
-        QualityLevel.NOTICEABLE_LOSS: 0.0,
+    QualityMetrics.SSIM: {
+        QualityLevelHints.EXCELLENT: 0.92,
+        QualityLevelHints.VERY_GOOD: 0.82,
+        QualityLevelHints.GOOD: 0.75,
+        QualityLevelHints.NOTICEABLE_LOSS: 0.0,
     },
-    QualityMetric.MS_SSIM: {
-        QualityLevel.EXCELLENT: 0.97,
-        QualityLevel.VERY_GOOD: 0.95,
-        QualityLevel.GOOD: 0.90,
-        QualityLevel.NOTICEABLE_LOSS: 0.0,
+    QualityMetrics.MS_SSIM: {
+        QualityLevelHints.EXCELLENT: 0.97,
+        QualityLevelHints.VERY_GOOD: 0.95,
+        QualityLevelHints.GOOD: 0.90,
+        QualityLevelHints.NOTICEABLE_LOSS: 0.0,
     }
 }
 
 # === Interpolation methods ===
-class InterpolationMethod(str, Enum):
+class InterpolationMethods(str, Enum):
     """
     Enumeration of interpolation methods for image resampling.
 
@@ -105,18 +96,18 @@ class InterpolationMethod(str, Enum):
     MITCHELL = 'mitchell'
 
 INTERPOLATION_METHODS_CV2 = {
-    InterpolationMethod.BILINEAR: 'INTER_LINEAR',
-    InterpolationMethod.BICUBIC: 'INTER_CUBIC',
+    InterpolationMethods.BILINEAR: 'INTER_LINEAR',
+    InterpolationMethods.BICUBIC: 'INTER_CUBIC',
     # 'mitchell' is implemented separately
 }
 
-INTERPOLATION_DESCRIPTIONS = {
-    InterpolationMethod.BILINEAR: 'Билинейная интерполяция',
-    InterpolationMethod.BICUBIC: 'Бикубическая интерполяция',
-    InterpolationMethod.MITCHELL: 'Фильтр Митчелла-Нетравали',
+INTERPOLATION_METHODS_INFO = {
+    InterpolationMethods.BILINEAR: 'Билинейная интерполяция',
+    InterpolationMethods.BICUBIC: 'Бикубическая интерполяция',
+    InterpolationMethods.MITCHELL: 'Фильтр Митчелла-Нетравали',
 }
 
-DEFAULT_INTERPOLATION = InterpolationMethod.MITCHELL
+DEFAULT_INTERPOLATION_METHOD = InterpolationMethods.MITCHELL
 
 # === Styling for console output ===
 STYLES = {

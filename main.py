@@ -18,7 +18,7 @@ from metrics import (
     calculate_metrics
 )
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
-from config import SAVE_INTERMEDIATE_DIR, ML_DATA_DIR, InterpolationMethod, QualityMetric
+from config import SAVE_INTERMEDIATE_DIR, ML_DATA_DIR, InterpolationMethods, QualityMetrics
 from ml_predictor import QuickPredictor, extract_features_of_original_img
 
 def main():
@@ -174,9 +174,9 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
         os.makedirs(ML_DATA_DIR, exist_ok=True)
 
     methods_to_test = [
-        InterpolationMethod.BILINEAR,
-        InterpolationMethod.BICUBIC,
-        InterpolationMethod.MITCHELL
+        InterpolationMethods.BILINEAR,
+        InterpolationMethods.BICUBIC,
+        InterpolationMethods.MITCHELL
     ]
 
     with tqdm(total=len(files), desc=f"Создание датасета", leave=False) as progressbar_files:
@@ -217,9 +217,9 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
 
                             features_all.append(features_dict)
                             all_targets.append({
-                                'psnr': calculate_metrics(QualityMetric.PSNR, img_original, img_upscaled, max_val),
-                                'ssim': calculate_metrics(QualityMetric.SSIM, img_original, img_upscaled, max_val),
-                                'ms_ssim': calculate_metrics(QualityMetric.MS_SSIM, img_original, img_upscaled, max_val)
+                                'psnr': calculate_metrics(QualityMetrics.PSNR, img_original, img_upscaled, max_val),
+                                'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val),
+                                'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val)
                             })
                             progressbar_res.update(1)
                     progressbar_methods.update(1)

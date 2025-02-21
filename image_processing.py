@@ -5,7 +5,7 @@ import numpy.typing as npt
 from functools import lru_cache
 from typing import Callable
 from numba import njit, prange
-from config import MITCHELL_B, MITCHELL_C, TINY_EPSILON, INTERPOLATION_METHODS_CV2, InterpolationMethod
+from config import MITCHELL_B, MITCHELL_C, TINY_EPSILON, INTERPOLATION_METHODS_CV2, InterpolationMethods
 
 ResizeFunction = Callable[[npt.NDArray[np.float32], int, int], npt.NDArray[np.float32]]
 
@@ -148,13 +148,13 @@ def resize_mitchell(
     return _resize_mitchell(img, target_width, target_height, cf_b, cf_c)
 
 @lru_cache(maxsize=4)
-def get_resize_function(interpolation: InterpolationMethod) -> ResizeFunction:
+def get_resize_function(interpolation: InterpolationMethods) -> ResizeFunction:
     """
     Factory function for resize operations.
     If 'mitchell' is selected, uses resize_mitchell.
     Otherwise, uses OpenCV's interpolation methods.
     """
-    if interpolation == InterpolationMethod.MITCHELL:
+    if interpolation == InterpolationMethods.MITCHELL:
         return resize_mitchell
     else:
         cv2_interpolation_flag_name = INTERPOLATION_METHODS_CV2.get(interpolation)

@@ -8,11 +8,11 @@ from colorama import Style
 from config import (
     STYLES,
     CSV_SEPARATOR,
-    QUALITY_LEVEL_DESCRIPTIONS,
+    QUALITY_LEVEL_HINTS_DESCRIPTIONS,
     METRIC_QUALITY_THRESHOLDS,
     get_output_csv_header,
-    QualityLevel,
-    QualityMetric
+    QualityLevelHints,
+    QualityMetrics
 )
 
 def generate_csv_filename(metric: str, interpolation: str) -> str:
@@ -124,6 +124,15 @@ class CSVReporter:
         self.writer = None
 
     def __enter__(self):
+        """
+        Opens the output file and returns self.
+
+        The file is opened in text mode with UTF-8 encoding and CSV separator
+        set to `CSV_SEPARATOR`.
+
+        Returns:
+            self: The instance of this class.
+        """
         self.file = open(self.output_path, 'w', newline='', encoding='utf-8')
         self.writer = csv.writer(self.file, delimiter=CSV_SEPARATOR)
         return self
@@ -156,7 +165,7 @@ class CSVReporter:
                             f"{ch_vals.get('L', float('inf')):.2f}",
                             "", "", "",
                             f"{min_val:.2f}",
-                            QualityHelper.get_hint(min_val, QualityMetric(self.metric))
+                            QualityHelper.get_hint(min_val, QualityMetrics(self.metric))
                         ])
                     else:
                         row.extend([
@@ -165,7 +174,7 @@ class CSVReporter:
                             f"{ch_vals.get('B', float('inf')):.2f}",
                             f"{ch_vals.get('A', float('inf')):.2f}",
                             f"{min_val:.2f}",
-                            QualityHelper.get_hint(min_val, QualityMetric(self.metric))
+                            QualityHelper.get_hint(min_val, QualityMetrics(self.metric))
                         ])
             else:
                 metric_val = values
@@ -174,7 +183,7 @@ class CSVReporter:
                 else:
                     row.extend([
                         f"{metric_val:.2f}",
-                        QualityHelper.get_hint(metric_val, QualityMetric(self.metric))
+                        QualityHelper.get_hint(metric_val, QualityMetrics(self.metric))
                     ])
                 if len(row) < 4:
                     row.extend([""] * (4 - len(row)))
@@ -183,7 +192,7 @@ class CSVReporter:
 
 class QualityHelper:
     @staticmethod
-    def get_hint(metric_value: float, metric_type: QualityMetric) -> str:
+    def get_hint(metric_value: float, metric_type: QualityMetrics) -> str:
         """Возвращает текстовую оценку качества для заданной метрики"""
         thresholds = METRIC_QUALITY_THRESHOLDS.get(metric_type)
         if thresholds is None:
@@ -197,17 +206,17 @@ class QualityHelper:
 
         for level in sorted_levels:
             if metric_value >= thresholds[level]:
-                return QUALITY_LEVEL_DESCRIPTIONS[level]
+                return QUALITY_LEVEL_HINTS_DESCRIPTIONS[level]
 
-        return QUALITY_LEVEL_DESCRIPTIONS[QualityLevel.NOTICEABLE_LOSS]
+        return QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.NOTICEABLE_LOSS]
 
     @staticmethod
     def get_style_for_hint(hint: str) -> str:
         """Возвращает ANSI-код стиля на основе текстовой подсказки о качестве"""
-        if hint == QUALITY_LEVEL_DESCRIPTIONS[QualityLevel.EXCELLENT]:
+        if hint == QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.EXCELLENT]:
             return STYLES['good']
-        if hint == QUALITY_LEVEL_DESCRIPTIONS[QualityLevel.VERY_GOOD]:
+        if hint == QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.VERY_GOOD]:
             return STYLES['ok']
-        if hint == QUALITY_LEVEL_DESCRIPTIONS[QualityLevel.GOOD]:
+        if hint == QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.GOOD]:
             return STYLES['medium']
         return STYLES['bad']

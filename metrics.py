@@ -3,7 +3,7 @@ import math
 import numpy as np
 from numba import njit, prange
 from sewar.full_ref import msssim
-from config import TINY_EPSILON, QualityMetric
+from config import TINY_EPSILON, QualityMetrics
 
 
 def calculate_ms_ssim(
@@ -269,7 +269,7 @@ def calculate_ssim_gauss_channels(
     return ssim_dict
 
 def calculate_metrics(
-    quality_metric: QualityMetric,
+    quality_metric: QualityMetrics,
     original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
@@ -283,19 +283,19 @@ def calculate_metrics(
 
     if channels is None:
         match quality_metric:
-            case QualityMetric.PSNR:
+            case QualityMetrics.PSNR:
                 return calculate_psnr(original, processed, max_val)
-            case QualityMetric.SSIM:
+            case QualityMetrics.SSIM:
                 return calculate_ssim_gauss(original, processed, max_val)
-            case QualityMetric.MS_SSIM:
+            case QualityMetrics.MS_SSIM:
                 return calculate_ms_ssim(original, processed, max_val)
     else:
         match quality_metric:
-            case QualityMetric.PSNR:
+            case QualityMetrics.PSNR:
                 return calculate_psnr_channels(original, processed, max_val, channels)
-            case QualityMetric.SSIM:
+            case QualityMetrics.SSIM:
                 return calculate_ssim_gauss_channels(original, processed, max_val, channels)
-            case QualityMetric.MS_SSIM:
+            case QualityMetrics.MS_SSIM:
                 return calculate_ms_ssim_channels(original, processed, max_val, channels)
 
     raise ValueError(f"Неподдерживаемая метрика: {quality_metric}")

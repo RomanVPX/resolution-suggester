@@ -12,13 +12,13 @@ import os
 import multiprocessing
 
 from config import (
-    INTERPOLATION_DESCRIPTIONS,
-    DEFAULT_INTERPOLATION,
+    INTERPOLATION_METHODS_INFO,
+    DEFAULT_INTERPOLATION_METHOD,
     SUPPORTED_EXTENSIONS,
-    InterpolationMethod,
-    METRIC_DESCRIPTIONS,
-    DEFAULT_METRIC,
-    QualityMetric
+    InterpolationMethods,
+    QUALITY_METRICS_INFO,
+    DEFAULT_QUALITY_METRIC,
+    QualityMetrics
 )
 
 def setup_logging():
@@ -76,16 +76,16 @@ def parse_arguments() -> argparse.Namespace:
 
     parser.add_argument(
         '-m', '--metric',
-        default=DEFAULT_METRIC,
-        choices=[m.value for m in QualityMetric],
+        default=DEFAULT_QUALITY_METRIC,
+        choices=[m.value for m in QualityMetrics],
         metavar='METRIC',
         help=format_metric_help()
     )
 
     parser.add_argument(
         '-i', '--interpolation',
-        default=DEFAULT_INTERPOLATION,
-        choices=[m.value for m in InterpolationMethod],
+        default=DEFAULT_INTERPOLATION_METHOD,
+        choices=[m.value for m in InterpolationMethods],
         metavar='METHOD',
         help=format_interpolation_help()
     )
@@ -153,8 +153,8 @@ def format_metric_help() -> str:
     The <(default)> part is only present if the metric is the default one.
     """
     metrics = [
-        f"{m.value:<8}{' (default)' if m.value == DEFAULT_METRIC else '':<10} {desc}"
-        for m, desc in METRIC_DESCRIPTIONS.items()
+        f"{m.value:<8}{' (default)' if m.value == DEFAULT_QUALITY_METRIC else '':<10} {desc}"
+        for m, desc in QUALITY_METRICS_INFO.items()
     ]
     return "Доступные метрики качества:\n" + "\n".join(metrics)
 
@@ -166,8 +166,8 @@ def format_interpolation_help() -> str:
     The <(default)> part is only present if the method is the default one.
     """
     methods = [
-        f"{m.value:<8}{' (default)' if m.value == DEFAULT_INTERPOLATION else '':<10} {desc}"
-        for m, desc in INTERPOLATION_DESCRIPTIONS.items()
+        f"{m.value:<8}{' (default)' if m.value == DEFAULT_INTERPOLATION_METHOD else '':<10} {desc}"
+        for m, desc in INTERPOLATION_METHODS_INFO.items()
     ]
     return "Доступные методы интерполяции:\n" + "\n".join(methods)
 
