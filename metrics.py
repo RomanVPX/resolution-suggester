@@ -239,8 +239,6 @@ def calculate_ssim_gauss_channels(
     window_size: int = 11,
     sigma: float = 1.5
 ) -> dict[str, float]:
-    if original.shape != processed.shape:
-        raise ValueError("SSIM: размеры изображений должны совпадать")
 
     if max_val > 1.0 + TINY_EPSILON:
         original  = original  / max_val
