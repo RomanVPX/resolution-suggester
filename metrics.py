@@ -13,7 +13,7 @@ def calculate_ms_ssim(
 ) -> float:
 
     # Нормализация для EXR
-    if max_val > 1.0 + 1e-5:
+    if max_val > 1.0 + TINY_EPSILON:
         original = original.astype(np.float32) / max_val
         processed = processed.astype(np.float32) / max_val
         data_range = 1.0
@@ -74,7 +74,6 @@ def calculate_psnr_channels(
 def gaussian_kernel_1d(size: int, sigma: float) -> np.ndarray:
     """
     Формирует 1D-ядро Гаусса длиной size с параметром sigma.
-    Все операции совместимы с nopython-режимом Numba.
     """
     kernel_1d = np.empty(size, dtype=np.float32)
     half = (size - 1) / 2.0
@@ -213,7 +212,7 @@ def calculate_ssim_gauss(
 ) -> float:
 
     # Нормализуем, если max_val > 1
-    if max_val > 1.00001:
+    if max_val > 1.0 + TINY_EPSILON:
         original  = original  / max_val
         processed = processed / max_val
 
@@ -243,7 +242,7 @@ def calculate_ssim_gauss_channels(
     if original.shape != processed.shape:
         raise ValueError("SSIM: размеры изображений должны совпадать")
 
-    if max_val > 1.00001:
+    if max_val > 1.0 + TINY_EPSILON:
         original  = original  / max_val
         processed = processed / max_val
 
