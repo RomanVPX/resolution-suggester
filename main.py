@@ -173,7 +173,7 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
     if not os.path.exists(ML_DATA_DIR):
         os.makedirs(ML_DATA_DIR, exist_ok=True)
 
-    methods_to_test = [
+    interpolations_methods_to_test = [
         InterpolationMethods.BILINEAR,
         InterpolationMethods.BICUBIC,
         InterpolationMethods.MITCHELL
@@ -194,8 +194,8 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
             if not resolutions_to_test:
                 continue
 
-            with tqdm(total=len(methods_to_test), desc=f"Файл: {file_path}", leave=False) as progressbar_methods:
-                for method in methods_to_test:
+            with tqdm(total=len(interpolations_methods_to_test), desc=f"Файл: {file_path}", leave=False) as progressbar_methods:
+                for method in interpolations_methods_to_test:
                     resize_fn = get_resize_function(method)
 
                     with tqdm(total=len(resolutions_to_test), desc=f"Интерполяция: {method.value}", leave=False) as progressbar_res:
