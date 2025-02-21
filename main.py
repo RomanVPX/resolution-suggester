@@ -15,10 +15,10 @@ from image_loader import load_image
 from image_processing import get_resize_function
 from metrics import (
     compute_resolutions,
-    compute_metrics
+    calculate_metrics
 )
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
-from config import SAVE_INTERMEDIATE_DIR, ML_DATA_DIR, InterpolationMethod
+from config import SAVE_INTERMEDIATE_DIR, ML_DATA_DIR, InterpolationMethod, QualityMetric
 from ml_predictor import QuickPredictor, extract_features_of_original_img
 
 def main():
@@ -79,14 +79,14 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
                         reporter.write_results(os.path.basename(file_path), results, args.channels)
 
 def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optional[list], Optional[dict]]:
-    result = load_image(file_path)
-    if result.error or result.data is None:
-        logging.error(f"Ошибка загрузки изображения {file_path}: {result.error}")
+    image_load_result = load_image(file_path)
+    if image_load_result.error or image_load_result.data is None:
+        logging.error(f"Ошибка загрузки изображения {file_path}: {image_load_result.error}")
         return None, None
 
-    img_original = result.data
-    max_val = result.max_value
-    channels = result.channels
+    img_original = image_load_result.data
+    max_val = image_load_result.max_value
+    channels = image_load_result.channels
     height, width = img_original.shape[:2]
 
     if height < args.min_size or width < args.min_size:
@@ -115,16 +115,16 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
         if w == width and h == height:
             continue
 
-        # Откуда метрики брать будем?
-        if use_prediction: # Просто предсказываем...
+        # Предсказываем или вычисляем метрики?
+        if use_prediction:
             features_for_ml = {
                 **features_original,
                 'scale_factor': (w / width + h / height) / 2,
                 'method': args.interpolation # TODO: Вынести бы — в цикле это не меняется
             }
-            # Раскладываем карты...
+
             prediction = ml_predictor.predict(features_for_ml)
-        else: # Или честно вычисляем? Ну тогда сначала масштабируем...
+        else:
             img_downscaled = resize_fn(img_original, w, h)
             if args.save_intermediate:
                 _save_intermediate(img_downscaled, file_path, w, h)
@@ -132,12 +132,12 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
 
         if args.channels:
             if use_prediction:
-                # TODO: Поменять на честное вычисление метрик по каналам
+                # TODO: Поменять на предсказание отдельных каналов
                 channels_metrics = {c: prediction[args.metric] for c in channels}
             else:
-                channels_metrics = compute_metrics(args.metric, img_original, img_upscaled, max_val, channels)
-            min_metric = min(channels_metrics.values())
+                channels_metrics = calculate_metrics(args.metric, img_original, img_upscaled, max_val, channels)
 
+            min_metric = min(channels_metrics.values())
             results.append(
                 (
                     f"{w}x{h}",
@@ -150,7 +150,7 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
             if use_prediction:
                 metric_value = prediction[args.metric]
             else:
-                metric_value = compute_metrics(args.metric, img_original, img_upscaled, max_val)
+                metric_value = calculate_metrics(args.metric, img_original, img_upscaled, max_val)
 
             results.append(
                 (
@@ -163,7 +163,7 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
     return results, {'max_val': max_val, 'channels': channels}
 
 def generate_dataset(files: list[str]) -> tuple[str, str]:
-    all_features = []
+    features_all = []
     all_targets = []
 
     # Для упрощения сохраним в CSV (можно parquet)
@@ -179,18 +179,18 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
         InterpolationMethod.MITCHELL
     ]
 
-    with tqdm(total=len(files), desc=f"Датасет", leave=False) as progressbar_files:
+    with tqdm(total=len(files), desc=f"Создание датасета", leave=False) as progressbar_files:
         for file_path in files:
             result = load_image(file_path)
             if result.error or result.data is None:
                 logging.warning(f"Пропуск {file_path}, т.к. не удалось загрузить.")
                 continue
 
-            img = result.data
+            img_original = result.data
             max_val = result.max_value
-            original_h, original_w = img.shape[:2]
+            original_h, original_w = img_original.shape[:2]
 
-            resolutions_to_test = compute_resolutions(original_w, original_h)
+            resolutions_to_test = compute_resolutions(original_w, original_h, divider=4)
             if not resolutions_to_test:
                 continue
 
@@ -200,13 +200,11 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
 
                     with tqdm(total=len(resolutions_to_test), desc=f"Интерполяция: {method.value}", leave=False) as progressbar_res:
                         for (w, h) in resolutions_to_test:
-                            scale_factor_w = w / original_w
-                            scale_factor_h = h / original_h
-                            scale_factor = (scale_factor_w + scale_factor_h) / 2
-                            feats_original = extract_features_of_original_img(img)
+                            scale_factor = (w / original_w + h / original_h) / 2
+                            features_original = extract_features_of_original_img(img_original)
 
-                            feats_dict = {
-                                **feats_original,
+                            features_dict = {
+                                **features_original,
                                 'scale_factor': scale_factor,
                                 'method': method.value,
                             }
@@ -214,24 +212,20 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
                             if w == original_w and h == original_h:
                                 continue
 
-                            downscaled_img = resize_fn(img, w, h)
-                            upscaled_img = resize_fn(downscaled_img, original_w, original_h)
+                            img_downscaled = resize_fn(img_original, w, h)
+                            img_upscaled = resize_fn(img_downscaled, original_w, original_h)
 
-                            psnr_val = calculate_psnr(img, upscaled_img, max_val)
-                            ssim_val = calculate_ssim_gauss(img, upscaled_img, max_val)
-                            ms_ssim_val = calculate_ms_ssim(img, upscaled_img, max_val)
-
-                            all_features.append(feats_dict)
+                            features_all.append(features_dict)
                             all_targets.append({
-                                'psnr': psnr_val,
-                                'ssim': ssim_val,
-                                'ms_ssim': ms_ssim_val
+                                'psnr': calculate_metrics(QualityMetric.PSNR, img_original, img_upscaled, max_val),
+                                'ssim': calculate_metrics(QualityMetric.SSIM, img_original, img_upscaled, max_val),
+                                'ms_ssim': calculate_metrics(QualityMetric.MS_SSIM, img_original, img_upscaled, max_val)
                             })
                             progressbar_res.update(1)
                     progressbar_methods.update(1)
             progressbar_files.update(1)
 
-    df_features = pd.DataFrame(all_features)
+    df_features = pd.DataFrame(features_all)
     df_targets = pd.DataFrame(all_targets)
     df_features.to_csv(features_csv, index=False)
     df_targets.to_csv(targets_csv, index=False)

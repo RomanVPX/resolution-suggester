@@ -276,7 +276,7 @@ def calculate_ssim_gauss_channels(
 
     return ssim_dict
 
-def compute_metrics(
+def calculate_metrics(
     quality_metric: QualityMetric,
     original: np.ndarray,
     processed: np.ndarray,
