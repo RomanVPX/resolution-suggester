@@ -122,7 +122,7 @@ def extract_texture_features(img: np.ndarray, method: str) -> Dict[str, float]:
 #############################################################################
 # Извлечение набора признаков из оригинального изображения
 #############################################################################
-def extract_features_original(img: np.ndarray) -> dict:
+def extract_features_of_original_img(img: np.ndarray) -> dict:
     """Извлекает признаки только из оригинального изображения."""
     if img.ndim == 3:
         img_gray = np.mean(img, axis=2)  # конвертируем в grayscale

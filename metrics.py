@@ -3,7 +3,7 @@ import math
 import numpy as np
 from numba import njit, prange
 from sewar.full_ref import msssim
-from config import TINY_EPSILON
+from config import TINY_EPSILON, QualityMetric
 
 
 def calculate_ms_ssim(
@@ -33,7 +33,7 @@ def calculate_ms_ssim(
 
     return float(np.real(msssim(original, processed, MAX=data_range)))
 
-def calculate_channel_ms_ssim(
+def calculate_ms_ssim_channels(
     original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
@@ -64,7 +64,7 @@ def calculate_psnr(
     log_max = 20 * math.log10(max_val)
     return log_max - 10 * math.log10(mse)
 
-def calculate_channel_psnr(
+def calculate_psnr_channels(
     original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
@@ -177,8 +177,7 @@ def filter_2d_separable(img: np.ndarray, size: int, sigma: float) -> np.ndarray:
     return result
 
 
-
-def calculate_ssim_gauss_single(
+def _calculate_ssim_gauss_single(
     original: np.ndarray,
     processed: np.ndarray,
     k_1: float = 0.01,
@@ -227,12 +226,12 @@ def calculate_ssim_gauss(
         processed = processed / max_val
 
     if original.ndim == 2:
-        return calculate_ssim_gauss_single(original, processed, k_1, k_2, 1.0, window_size, sigma)
+        return _calculate_ssim_gauss_single(original, processed, k_1, k_2, 1.0, window_size, sigma)
     if original.ndim == 3:
         c = original.shape[2]
         ssim_sum = 0.0
         for i in range(c):
-            ssim_sum += calculate_ssim_gauss_single(
+            ssim_sum += _calculate_ssim_gauss_single(
                 original[..., i],
                 processed[..., i],
                 k_1, k_2, 1.0, window_size, sigma
@@ -241,7 +240,7 @@ def calculate_ssim_gauss(
 
     raise ValueError("Неподдерживаемая размерность изображения для SSIM")
 
-def calculate_channel_ssim_gauss(
+def calculate_ssim_gauss_channels(
     original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
@@ -259,7 +258,7 @@ def calculate_channel_ssim_gauss(
     # Если (H,W), то один канал:
     if original.ndim == 2:
         return {
-            'L': calculate_ssim_gauss_single(
+            'L': _calculate_ssim_gauss_single(
                 original, processed,
                 window_size=window_size, sigma=sigma
             )
@@ -268,7 +267,7 @@ def calculate_channel_ssim_gauss(
     # (H,W,C)
     ssim_dict: dict[str, float] = {}
     for i, ch in enumerate(channels):
-        ssim_val = calculate_ssim_gauss_single(
+        ssim_val = _calculate_ssim_gauss_single(
             original[..., i],
             processed[..., i],
             window_size=window_size, sigma=sigma
@@ -277,11 +276,40 @@ def calculate_channel_ssim_gauss(
 
     return ssim_dict
 
-def compute_resolutions(
-    original_width: int,
-    original_height: int,
-    min_size: int = 16
-) -> list[tuple[int, int]]:
+def compute_metrics(
+    quality_metric: QualityMetric,
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float,
+    channels: list[str] = None
+) -> None | dict[str, float] | float:
+
+    if original.shape != processed.shape:
+        raise ValueError("compute_metrics: размеры изображений должны совпадать!")
+    if original.ndim != processed.ndim:
+        raise ValueError("compute_metrics: размерности изображений должны совпадать!")
+
+    if channels is None:
+        match quality_metric:
+            case QualityMetric.PSNR:
+                return calculate_psnr(original, processed, max_val)
+            case QualityMetric.SSIM:
+                return calculate_ssim_gauss(original, processed, max_val)
+            case QualityMetric.MS_SSIM:
+                return calculate_ms_ssim(original, processed, max_val)
+    else:
+        match quality_metric:
+            case QualityMetric.PSNR:
+                return calculate_psnr_channels(original, processed, max_val, channels)
+            case QualityMetric.SSIM:
+                return calculate_ssim_gauss_channels(original, processed, max_val, channels)
+            case QualityMetric.MS_SSIM:
+                return calculate_ms_ssim_channels(original, processed, max_val, channels)
+
+    raise ValueError(f"Неподдерживаемая метрика: {quality_metric}")
+
+
+def compute_resolutions(original_width: int, original_height: int, min_size: int = 16) -> list[tuple[int, int]]:
     resolutions = []
     w, h = original_width, original_height
     while w >= min_size and h >= min_size:
@@ -289,4 +317,3 @@ def compute_resolutions(
         w //= 2
         h //= 2
     return resolutions
-

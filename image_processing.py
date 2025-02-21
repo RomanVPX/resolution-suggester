@@ -2,7 +2,7 @@
 import cv2
 import numpy as np
 import numpy.typing as npt
-from functools import lru_cache, partial
+from functools import lru_cache
 from typing import Callable
 from numba import njit, prange
 from config import MITCHELL_B, MITCHELL_C, TINY_EPSILON, INTERPOLATION_METHODS_CV2, InterpolationMethod
@@ -16,7 +16,7 @@ def mitchell_netravali(
         cf_c: float = MITCHELL_C
 ) -> float:
     """
-    Ядро фильтра Mitchell-Netravali.
+    Mitchell-Netravali filter kernel.
     """
     x = abs(x)
     x2 = x * x
@@ -48,7 +48,7 @@ def _resize_mitchell_single_channel(
     cf_c: float
 ) -> npt.NDArray[np.float32]:
     """
-    Ресайз одноканального изображения с использованием фильтра Mitchell-Netravali..
+    Resizes a single-channel image using the Mitchell-Netravali filter.
     """
     height, width = channel.shape
     resized = np.zeros((target_height, target_width), dtype=channel.dtype)
@@ -90,7 +90,6 @@ def _resize_mitchell_single_channel(
         for j in range(target_width):
             accumulator = 0.0
             weight_sum = 0.0
-
             for ky in range(4):
                 y_idx = y_indices[i, ky]
                 wy = y_weights[i, ky]
@@ -112,7 +111,7 @@ def _resize_mitchell_single_channel(
 
     return resized
 
-@njit(parallel=True, cache=True)
+@njit(parallel=True, cache=True, fastmath=True)
 def _resize_mitchell(
     img: npt.NDArray[np.float32],
     target_width: int,
@@ -121,7 +120,7 @@ def _resize_mitchell(
     cf_c: float = MITCHELL_C
 ) -> npt.NDArray[np.float32]:
     """
-    Полный митчелловский ресайз без чанкинга (канальная параллелизация).
+    Full Mitchell-based resizing without chunking (channel parallelization).
     """
     if img.ndim == 2:
         return _resize_mitchell_single_channel(img, target_width, target_height, cf_b, cf_c)
@@ -130,7 +129,9 @@ def _resize_mitchell(
     resized = np.empty((target_height, target_width, channels), dtype=img.dtype)
 
     for c in prange(channels):
-        resized[:, :, c] = _resize_mitchell_single_channel(img[:, :, c], target_width, target_height, cf_b, cf_c)
+        resized[:, :, c] = _resize_mitchell_single_channel(
+            img[:, :, c], target_width, target_height, cf_b, cf_c
+        )
 
     return resized
 
@@ -142,38 +143,39 @@ def resize_mitchell(
     cf_c: float = MITCHELL_C,
 ) -> np.ndarray:
     """
-    Публичный интерфейс Митчелла.
+    Public interface for Mitchell resizing.
     """
     return _resize_mitchell(img, target_width, target_height, cf_b, cf_c)
 
 @lru_cache(maxsize=4)
 def get_resize_function(interpolation: InterpolationMethod) -> ResizeFunction:
     """
-    Фабрика функций для ресайза:
-    Если выбрали 'mitchell', берём resize_mitchell.
+    Factory function for resize operations.
+    If 'mitchell' is selected, uses resize_mitchell.
+    Otherwise, uses OpenCV's interpolation methods.
     """
     if interpolation == InterpolationMethod.MITCHELL:
-        return partial(resize_mitchell)
+        return resize_mitchell
+    else:
+        cv2_interpolation_flag_name = INTERPOLATION_METHODS_CV2.get(interpolation)
+        if cv2_interpolation_flag_name is None:
+            raise ValueError(f"Метод интерполяции OpenCV не найден в списке INTERPOLATION_METHODS_CV2: {interpolation}")
 
-    cv2_interpolation_flag_name = INTERPOLATION_METHODS_CV2.get(interpolation)
-    if cv2_interpolation_flag_name is None:
-        raise ValueError(f'Метод интерполяции OpenCV не найден в списке cv2_interpolation_flags: {interpolation}')
-    
-    try:
-        cv2_flag = getattr(cv2, cv2_interpolation_flag_name)
-    except AttributeError as exc:
-        raise ValueError(f'Метод интерполяции OpenCV не найден: {interpolation}') from exc
+        try:
+            cv2_flag = getattr(cv2, cv2_interpolation_flag_name)
+        except AttributeError as exc:
+            raise ValueError(f"Метод интерполяции не найден в OpenCV: {interpolation}") from exc
 
-    def opencv_resize(img: np.ndarray, w: int, h: int) -> np.ndarray:
-        # Выполняем ресайз через OpenCV
-        out = cv2.resize(img, (w, h), interpolation=cv2_flag)
+        def opencv_resize(img: np.ndarray, w: int, h: int) -> np.ndarray:
+            # Perform resize using OpenCV
+            out = cv2.resize(img, (w, h), interpolation=cv2_flag)
 
-        # Если out.ndim == 2, то OpenCV вернул двумерное изображение (H, W);
-        # для согласованности с данными вида (H, W, 1) добавляем ось канала.
-        if out.ndim == 2:
-            out = out[..., np.newaxis]
+            # Если out.ndim == 2, то OpenCV вернул двумерное изображение (H, W);
+            # для согласованности с данными вида (H, W, 1) добавляем ось канала.
+            if out.ndim == 2:
+                out = out[..., np.newaxis]
 
-        # Переводим к float32
-        return np.asarray(out, dtype=np.float32)
+            # Переводим к float32
+            return np.asarray(out, dtype=np.float32)
 
-    return opencv_resize
+        return opencv_resize

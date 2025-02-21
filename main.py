@@ -3,6 +3,7 @@ import os
 import argparse
 import logging
 import concurrent.futures
+
 import numpy as np
 import pandas as pd
 
@@ -13,16 +14,12 @@ from cli import parse_arguments, setup_logging, validate_paths
 from image_loader import load_image
 from image_processing import get_resize_function
 from metrics import (
-    calculate_psnr,
-    calculate_channel_psnr,
     compute_resolutions,
-    calculate_ssim_gauss,
-    calculate_channel_ssim_gauss, calculate_ms_ssim, calculate_channel_ms_ssim
+    compute_metrics
 )
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
-from config import SAVE_INTERMEDIATE_DIR, ML_DATA_DIR, QualityMetric, InterpolationMethod
-from ml_predictor import QuickPredictor, extract_features_original
-
+from config import SAVE_INTERMEDIATE_DIR, ML_DATA_DIR, InterpolationMethod
+from ml_predictor import QuickPredictor, extract_features_of_original_img
 
 def main():
     setup_logging()
@@ -39,18 +36,16 @@ def main():
             predictor = QuickPredictor()
             predictor.train(features_path, targets_path)
             logging.info("Модель обучена!")
-        return  # завершаем работу, не делая основной функционал
+        return  # завершаем работу после создания датасета
 
     if args.csv_output:
         csv_path = generate_csv_filename(args.metric, args.interpolation)
-
         with CSVReporter(csv_path, args.metric) as reporter:
             reporter.write_header(args.channels)
             process_files(files, args, reporter)
         print(f"\nМетрики сохранены в: {csv_path}")
     else:
         process_files(files, args)
-
 
 def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
     if args.no_parallel:
@@ -60,7 +55,6 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
             except Exception as e:
                 logging.error(f"Ошибка обработки {file_path}: {e}")
                 continue
-
             if results:
                 print_console_results(file_path, results, args.channels, meta, args.metric)
                 if reporter:
@@ -79,105 +73,92 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
                 except Exception as e:
                     logging.error(f"Ошибка обработки {file_path}: {e}")
                     continue
-
                 if results:
                     print_console_results(file_path, results, args.channels, meta, args.metric)
                     if reporter:
                         reporter.write_results(os.path.basename(file_path), results, args.channels)
 
-
-def process_single_file(
-    file_path: str,
-    args: argparse.Namespace
-) -> Tuple[Optional[list], Optional[dict]]:
+def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optional[list], Optional[dict]]:
     result = load_image(file_path)
     if result.error or result.data is None:
         logging.error(f"Ошибка загрузки изображения {file_path}: {result.error}")
         return None, None
 
-    img = result.data
+    img_original = result.data
     max_val = result.max_value
     channels = result.channels
-
-    ml_predictor = None
-    feats_original = None # just to make mypy happy
-    resize_fn  = None # just to make mypy happy
-
-    height, width = img.shape[:2]
+    height, width = img_original.shape[:2]
 
     if height < args.min_size or width < args.min_size:
         logging.info(f"Пропуск {file_path} (размер {width}x{height}) - меньше, чем min_size = {args.min_size}")
         return None, None
 
-    # Если пользователь хочет ML-предсказания:
-    if args.ml:
-        ml_predictor = QuickPredictor()
-        loaded_ok = ml_predictor.load()
-        if not loaded_ok:
-            logging.warning("ML-модель не найдена, будем вычислять реальные метрики.")
-
     results = [create_original_entry(width, height, channels, args.channels)]
     resolutions = compute_resolutions(width, height, args.min_size)
 
-    if ml_predictor:
-        feats_original = extract_features_original(img)
-    else: # только при вычислении реальных метрик нужно реально скейлить изображение
-        try:
-            resize_fn = get_resize_function(args.interpolation)
-        except ValueError as e:
-            logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
-            return None, None
+    use_prediction = args.ml
+    if use_prediction:
+        ml_predictor = QuickPredictor()
+        if ml_predictor.load():
+            features_original = extract_features_of_original_img(img_original)
+        else:
+            logging.warning("ML-модель не найдена, будем вычислять реальные метрики.")
+            use_prediction = False
+
+    try:
+        resize_fn = get_resize_function(args.interpolation)
+    except ValueError as e:
+        logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
+        return None, None
 
     for (w, h) in resolutions:
         if w == width and h == height:
             continue
 
-        if ml_predictor:
-            scale_factor = (w / width + h / height) / 2
-            feats_for_ml = {**feats_original, 'scale_factor': scale_factor, 'method': args.interpolation}
-        else:  # только при вычислении реальных метрик нужно реально скейлить изображение
-            downscaled_img = resize_fn(img, w, h)
+        # Откуда метрики брать будем?
+        if use_prediction: # Просто предсказываем...
+            features_for_ml = {
+                **features_original,
+                'scale_factor': (w / width + h / height) / 2,
+                'method': args.interpolation # TODO: Вынести бы — в цикле это не меняется
+            }
+            # Раскладываем карты...
+            prediction = ml_predictor.predict(features_for_ml)
+        else: # Или честно вычисляем? Ну тогда сначала масштабируем...
+            img_downscaled = resize_fn(img_original, w, h)
             if args.save_intermediate:
-                _save_intermediate(downscaled_img, file_path, w, h)
-            upscaled_img = resize_fn(downscaled_img, width, height)
+                _save_intermediate(img_downscaled, file_path, w, h)
+            img_upscaled = resize_fn(img_downscaled, width, height)
 
         if args.channels:
-            if ml_predictor:
-                pred = ml_predictor.predict(feats_for_ml)
-                # channel_metrics ~ одинаковые на все каналы
-                channel_metrics = {c: pred[args.metric] for c in channels}
+            if use_prediction:
+                # TODO: Поменять на честное вычисление метрик по каналам
+                channels_metrics = {c: prediction[args.metric] for c in channels}
             else:
-                if args.metric == QualityMetric.PSNR.value:
-                    channel_metrics = calculate_channel_psnr(img, upscaled_img, max_val, channels)
-                elif args.metric == QualityMetric.SSIM:
-                    channel_metrics = calculate_channel_ssim_gauss(img, upscaled_img, max_val, channels)
-                else:
-                    channel_metrics = calculate_channel_ms_ssim(img, upscaled_img, max_val, channels)
+                channels_metrics = compute_metrics(args.metric, img_original, img_upscaled, max_val, channels)
+            min_metric = min(channels_metrics.values())
 
-            min_metric = min(channel_metrics.values())
-            results.append((
-                f"{w}x{h}",
-                channel_metrics,
-                min_metric,
-                QualityHelper.get_hint(min_metric, args.metric)
-            ))
+            results.append(
+                (
+                    f"{w}x{h}",
+                    channels_metrics,
+                    min_metric,
+                    QualityHelper.get_hint(min_metric, args.metric),
+                )
+            )
         else:
-            if ml_predictor:
-                pred = ml_predictor.predict(feats_for_ml)
-                metric_value = pred[args.metric]
+            if use_prediction:
+                metric_value = prediction[args.metric]
             else:
-                if args.metric == QualityMetric.PSNR.value:
-                    metric_value = calculate_psnr(img, upscaled_img, max_val)
-                elif args.metric == QualityMetric.SSIM:
-                    metric_value = calculate_ssim_gauss(img, upscaled_img, max_val)
-                else:
-                    metric_value = calculate_ms_ssim(img, upscaled_img, max_val)
+                metric_value = compute_metrics(args.metric, img_original, img_upscaled, max_val)
 
-            results.append((
-                f"{w}x{h}",
-                metric_value,
-                QualityHelper.get_hint(metric_value, args.metric)
-            ))
+            results.append(
+                (
+                    f"{w}x{h}",
+                    metric_value,
+                    QualityHelper.get_hint(metric_value, args.metric),
+                )
+            )
 
     return results, {'max_val': max_val, 'channels': channels}
 
@@ -222,7 +203,7 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
                             scale_factor_w = w / original_w
                             scale_factor_h = h / original_h
                             scale_factor = (scale_factor_w + scale_factor_h) / 2
-                            feats_original = extract_features_original(img)
+                            feats_original = extract_features_of_original_img(img)
 
                             feats_dict = {
                                 **feats_original,
@@ -256,44 +237,36 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
     df_targets.to_csv(targets_csv, index=False)
 
     return features_csv, targets_csv
-
-
 def print_console_results(
-    file_path: str,
-    results: list,
-    analyze_channels: bool,
-    meta: dict,
-    metric: str
+    file_path: str, results: list, analyze_channels: bool, meta: dict, metric: str
 ):
     ConsoleReporter.print_file_header(file_path)
 
     if meta['max_val'] < 0.001:
         logging.warning(f"Низкое максимальное значение: {meta['max_val']:.3e}")
-
     ConsoleReporter.print_quality_table(
-        results,
-        analyze_channels,
-        meta.get('channels'),
-        metric
+        results, analyze_channels, meta.get('channels'), metric
     )
 
-
-def create_original_entry(width: int, height: int, channels: Optional[list[str]] = None, analyze_channels: bool = False) -> tuple:
+def create_original_entry(
+    width: int, height: int, channels: Optional[list[str]] = None, analyze_channels: bool = False
+) -> tuple:
     base_entry = (f"{width}x{height}",)
     if analyze_channels and channels:
         return *base_entry, {c: float('inf') for c in channels}, float('inf'), "Оригинал"
     return *base_entry, float('inf'), "Оригинал"
 
-
 def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height: int):
     """
-    Сохраняет промежуточный результат в PNG.
+    Saves intermediate result as PNG.
     """
     file_path_dir = os.path.join(os.path.dirname(file_path), SAVE_INTERMEDIATE_DIR)
     if not os.path.exists(file_path_dir):
         os.makedirs(file_path_dir, exist_ok=True)
 
-    output_filename = os.path.splitext(os.path.basename(file_path))[0] + f"_{width}x{height}.png"
+    output_filename = (
+        os.path.splitext(os.path.basename(file_path))[0] + f"_{width}x{height}.png"
+    )
     output_path = os.path.join(file_path_dir, output_filename)
 
     arr_for_save = img_array
@@ -304,7 +277,6 @@ def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height
 
     pil_img = Image.fromarray(arr_uint8)
     pil_img.save(output_path, format="PNG")
-
 
 if __name__ == "__main__":
     main()

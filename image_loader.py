@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import pyexr
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict
 from PIL import Image, ImageFile, UnidentifiedImageError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -32,18 +32,17 @@ class ImageLoadResult:
     channels: list[str] | None
     error: str | None = None
 
-
 def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
     """
-    Загружает изображение из файла и возвращает массив numpy, максимальное значение и каналы.
-    Поддерживаемые форматы: EXR, PNG, TGA.
+    Loads an image from a file and returns a numpy array, max value, and channels.
+    Supported formats: EXR, PNG, TGA, JPG, JPEG.
 
     Args:
-        file_path: Путь к файлу изображения
-        normalize_exr: Приводить ли EXR к диапазону [0..1] (опционально)
+        file_path: Path to the image file.
+        normalize_exr: Whether to normalize EXR images to [0, 1].
 
     Returns:
-        ImageLoadResult: поля (data, max_value, channels, error)
+        ImageLoadResult: fields (data, max_value, channels, error)
     """
     try:
         # Existence check
@@ -57,15 +56,14 @@ def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
         if file_size < 16:
             return ImageLoadResult(None, None, None, f"Файл слишком мал или пуст: {file_path}")
 
-        match ext:
-            case '.exr':
-                return load_exr(file_path, normalize_exr)
-            case '.png' | '.tga' | '.jpg' | '.jpeg':
-                return load_raster(file_path)
-            case _:
-                msg = f"Неподдерживаемый формат файла: {file_path}"
-                logging.warning(msg)
-                return ImageLoadResult(None, None, None, msg)
+        if ext == '.exr':
+            return load_exr(file_path, normalize_exr)
+        elif ext in {'.png', '.tga', '.jpg', '.jpeg'}:
+            return load_raster(file_path)
+        else:
+            msg = f"Неподдерживаемый формат файла: {file_path}"
+            logging.warning(msg)
+            return ImageLoadResult(None, None, None, msg)
 
     except MemoryError:
         logging.error("Недостаточно памяти для загрузки изображения %s", file_path)
@@ -74,9 +72,8 @@ def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
         logging.error("Ошибка при чтении %s: %s", file_path, str(e))
         return ImageLoadResult(None, None, None, str(e))
 
-
 def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
-    """Загружает EXR файл с обработкой каналов (опционально нормализуя к [0, 1])."""
+    """Loads an EXR file with channel processing (optionally normalizing to [0, 1])."""
     try:
         exr_file = pyexr.open(file_path)
         try:
@@ -109,11 +106,10 @@ def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
         logging.error("Ошибка обработки EXR %s: %s", file_path, str(e))
         return ImageLoadResult(None, None, None, str(e))
 
-
 def load_raster(file_path: str) -> ImageLoadResult:
     """
-    Загружает PNG/TGA и нормализует данные в диапазон [0..1].
-    Если изображение grayscale, то расширяем до (H, W, 1) для согласованности.
+    Loads PNG/TGA/JPG images and normalizes data to range [0, 1].
+    If the image is grayscale, expands to (H, W, 1) for consistency.
     """
     try:
         with Image.open(file_path) as img:
@@ -123,11 +119,14 @@ def load_raster(file_path: str) -> ImageLoadResult:
             divisor = BIT_DEPTH_16 if mode.startswith('I;16') else BIT_DEPTH_8
             img_array = np.array(img).astype(np.float32) / divisor
 
-            if img_array.ndim == 2:
-                img_array = np.expand_dims(img_array, axis=-1)
 
-            channels = MODE_CHANNEL_MAP[mode]
-            # Максимальное значение после нормализации всегда 1.0 для PNG/TGA
+            # Проверяем, что изображение имеет как минимум 3 измерения
+            if img_array.ndim == 2:
+                img_array = img_array[:, :, np.newaxis]
+
+            channels = MODE_CHANNEL_MAP.get(mode, ['R', 'G', 'B'])
+
+            # Max value after normalization is always 1.0 for these formats
             return ImageLoadResult(img_array, 1.0, channels)
     except FileNotFoundError:
         logging.error("Файл не найден: %s", file_path)

@@ -107,7 +107,7 @@ class InterpolationMethod(str, Enum):
 INTERPOLATION_METHODS_CV2 = {
     InterpolationMethod.BILINEAR: 'INTER_LINEAR',
     InterpolationMethod.BICUBIC: 'INTER_CUBIC',
-    InterpolationMethod.MITCHELL: None, # placeholder: Mitchell реализован отдельно
+    # 'mitchell' is implemented separately
 }
 
 INTERPOLATION_DESCRIPTIONS = {
@@ -116,10 +116,9 @@ INTERPOLATION_DESCRIPTIONS = {
     InterpolationMethod.MITCHELL: 'Фильтр Митчелла-Нетравали',
 }
 
-DEFAULT_INTERPOLATION = 'mitchell'
+DEFAULT_INTERPOLATION = InterpolationMethod.MITCHELL
 
 # === Styling for console output ===
-
 STYLES = {
     'header': f"{Style.BRIGHT}{Fore.LIGHTCYAN_EX}{Back.LIGHTBLACK_EX}",
     'warning': f"{Style.DIM}{Back.LIGHTYELLOW_EX}",
@@ -132,13 +131,26 @@ STYLES = {
 
 def get_output_csv_header(analyze_channels: bool, metric: str) -> list[str]:
     """
-    Формирует заголовок CSV с учётом метрики
+    Forms the CSV header considering the metric.
+
+    Args:
+        analyze_channels: Whether to include per-channel analysis.
+        metric: The quality metric used.
+
+    Returns:
+        List of column names for the CSV output.
     """
     header = ["Файл", "Разрешение"]
-    metric_str = str(metric.upper())
+    metric_str = metric.upper()
     if analyze_channels:
-        header.extend([f"R(L) {metric_str}", f"G {metric_str}", f"B {metric_str}",
-                        f"A {metric_str}", f"Min {metric_str}", "Качество (min)"])
+        header.extend([
+            f"R(L) {metric_str}",
+            f"G {metric_str}",
+            f"B {metric_str}",
+            f"A {metric_str}",
+            f"Min {metric_str}",
+            "Качество (min)"
+        ])
     else:
         header.extend([f"{metric_str}", "Качество"])
     return header
