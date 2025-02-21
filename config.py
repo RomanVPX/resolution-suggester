@@ -56,10 +56,10 @@ QUALITY_METRICS_INFO = {
 
 ML_TARGET_COLUMNS = [m.value for m in QualityMetrics]
 
-DEFAULT_QUALITY_METRIC = QualityMetrics.PSNR
+QUALITY_METRIC_DEFAULT = QualityMetrics.PSNR
 
 # --- Quality thresholds for metrics ---
-METRIC_QUALITY_THRESHOLDS = {
+QUALITY_METRIC_THRESHOLDS = {
     QualityMetrics.PSNR: {
         QualityLevelHints.EXCELLENT: 50,
         QualityLevelHints.VERY_GOOD: 40,
@@ -107,7 +107,7 @@ INTERPOLATION_METHODS_INFO = {
     InterpolationMethods.MITCHELL: 'Фильтр Митчелла-Нетравали',
 }
 
-DEFAULT_INTERPOLATION_METHOD = InterpolationMethods.MITCHELL
+INTERPOLATION_METHOD_DEFAULT = InterpolationMethods.MITCHELL
 
 # === Styling for console output ===
 STYLES = {

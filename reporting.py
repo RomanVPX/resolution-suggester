@@ -9,7 +9,7 @@ from config import (
     STYLES,
     CSV_SEPARATOR,
     QUALITY_LEVEL_HINTS_DESCRIPTIONS,
-    METRIC_QUALITY_THRESHOLDS,
+    QUALITY_METRIC_THRESHOLDS,
     get_output_csv_header,
     QualityLevelHints,
     QualityMetrics
@@ -194,7 +194,7 @@ class QualityHelper:
     @staticmethod
     def get_hint(metric_value: float, metric_type: QualityMetrics) -> str:
         """Возвращает текстовую оценку качества для заданной метрики"""
-        thresholds = METRIC_QUALITY_THRESHOLDS.get(metric_type)
+        thresholds = QUALITY_METRIC_THRESHOLDS.get(metric_type)
         if thresholds is None:
             raise ValueError(f"Нет порогов качества для метрики: {metric_type}")
 
