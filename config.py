@@ -5,14 +5,16 @@ Configuration constants for the image quality analysis tool.
 This module provides constants for configuration and output formatting.
 """
 
-from enum import Enum
+from enum import Enum, auto
+from pathlib import Path
 from colorama import Fore, Back, Style
+from typing import Final
 
-SUPPORTED_EXTENSIONS = ['.exr', '.tga', '.png', '.jpg', '.jpeg']
-CSV_SEPARATOR = ';'
+SUPPORTED_EXTENSIONS: Final = frozenset({'.exr', '.tga', '.png', '.jpg', '.jpeg'})
+CSV_SEPARATOR: Final = ';'
 
-SAVE_INTERMEDIATE_DIR = '_intermediate'
-ML_DATA_DIR = '_ml-data'
+SAVE_INTERMEDIATE_DIR: Final = Path('_intermediate')
+ML_DATA_DIR: Final = Path('_ml_data')
 
 MITCHELL_B = 1/3
 MITCHELL_C = 1/3
@@ -134,8 +136,9 @@ def get_output_csv_header(analyze_channels: bool, metric: str) -> list[str]:
     header = ["Файл", "Разрешение"]
     metric_str = metric.upper()
     if analyze_channels:
+        # Фиксированные столбцы, не зависящие от реального количества каналов для лучшей читаемости таблицы
         header.extend([
-            f"R(L) {metric_str}",
+            f"R(L) {metric_str}", # Red для многоканальных, Luminance для одноканальных изображений
             f"G {metric_str}",
             f"B {metric_str}",
             f"A {metric_str}",

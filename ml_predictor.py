@@ -21,6 +21,7 @@ from config import ML_TARGET_COLUMNS, ML_DATA_DIR
 
 class QuickPredictor:
     def __init__(self, model_path: str = os.path.join(ML_DATA_DIR, 'model.joblib')):
+        """Инициализация предиктора с путём к модели"""
         self.model_path = model_path
         self.pipeline = None
 

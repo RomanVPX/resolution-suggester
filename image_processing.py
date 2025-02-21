@@ -57,8 +57,9 @@ def _resize_mitchell_single_channel(
     if target_width == width and target_height == height:
         return channel.copy()
 
-    x_ratio = width / target_width
-    y_ratio = height / target_height
+    # Центрируем координаты для устранения смещения при масштабировании
+    x_ratio = (width - 1) / (target_width - 1) if target_width > 1 else 0
+    y_ratio = (height - 1) / (target_height - 1) if target_height > 1 else 0
 
     # Предварительный расчет весов для X и Y
     x_weights = np.zeros((target_width, 4), dtype=np.float32)
