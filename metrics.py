@@ -309,11 +309,11 @@ def compute_metrics(
     raise ValueError(f"Неподдерживаемая метрика: {quality_metric}")
 
 
-def compute_resolutions(original_width: int, original_height: int, min_size: int = 16) -> list[tuple[int, int]]:
+def compute_resolutions(original_width: int, original_height: int, min_size: int = 16, divider: int = 2) -> list[tuple[int, int]]:
     resolutions = []
     w, h = original_width, original_height
     while w >= min_size and h >= min_size:
         resolutions.append((w, h))
-        w //= 2
-        h //= 2
+        w //= divider
+        h //= divider
     return resolutions
