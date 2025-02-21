@@ -11,8 +11,6 @@ def calculate_ms_ssim(
     processed: np.ndarray,
     max_val: float
 ) -> float:
-    if original.shape != processed.shape:
-        raise ValueError("MS-SSIM: размеры изображений должны совпадать")
 
     # Нормализация для EXR
     if max_val > 1.0 + 1e-5:
@@ -52,8 +50,6 @@ def calculate_psnr(
     processed: np.ndarray,
     max_val: float
 ) -> float:
-    if original.shape != processed.shape:
-        raise ValueError("Размеры изображений должны совпадать для расчета PSNR")
 
     diff = original - processed
     mse = np.mean(diff * diff)
@@ -186,8 +182,6 @@ def _calculate_ssim_gauss_single(
     window_size: int = 11,
     sigma: float = 1.5
 ) -> float:
-    if original.shape != processed.shape:
-        raise ValueError("SSIM: размеры изображений должны совпадать")
 
     # Фильтруем средние
     mu_x = filter_2d_separable(original, window_size, sigma)
@@ -217,8 +211,6 @@ def calculate_ssim_gauss(
     window_size: int = 11,
     sigma: float = 1.5
 ) -> float:
-    if original.shape != processed.shape:
-        raise ValueError("SSIM: размеры изображений должны совпадать")
 
     # Нормализуем, если max_val > 1
     if max_val > 1.00001:
