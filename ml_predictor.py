@@ -133,7 +133,14 @@ def extract_features_of_original_img(img: np.ndarray) -> dict:
     # Базовые статистики
     contrast = float(np.std(img_gray))
     variance = float(np.var(img_gray))
+
     entropy = shannon_entropy(img_gray)
+
+    # TODO: проверить корректность этого метода вычисления энтропии:
+    # img_uint8 = (np.clip(img_gray, 0, 1) * 255).astype(np.uint8)
+    # hist = np.histogram(img_uint8, bins=256, range=(0, 255))[0]
+    # hist_norm = hist / hist.sum()
+    # entropy = -np.sum(hist_norm * np.log2(hist_norm + 1e-10))
 
     # Вейвлет-признаки (Haar, уровень 1)
     coefficients = pywt.dwt2(img_gray, 'haar')
