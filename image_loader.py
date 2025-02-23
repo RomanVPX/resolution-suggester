@@ -116,7 +116,7 @@ def load_raster(file_path: str) -> ImageLoadResult:
             if img.mode not in MODE_CHANNEL_MAP:
                 img = img.convert('RGB')
             mode = img.mode  # фиксируем режим после возможного преобразования
-            divisor = BIT_DEPTH_16 if mode.startswith('I;16') else BIT_DEPTH_8
+            divisor = BIT_DEPTH_16 if img.mode.startswith('I;16') else BIT_DEPTH_8
             img_array = np.array(img).astype(np.float32) / divisor
 
 

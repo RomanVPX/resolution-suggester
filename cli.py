@@ -75,7 +75,7 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        '-m', '--metric',
+        '-m', '--metric', type=QualityMetrics,
         default=QUALITY_METRIC_DEFAULT,
         choices=[m.value for m in QualityMetrics],
         metavar='METRIC',
@@ -83,7 +83,7 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        '-i', '--interpolation',
+        '-i', '--interpolation', type=InterpolationMethods,
         default=INTERPOLATION_METHOD_DEFAULT,
         choices=[m.value for m in InterpolationMethods],
         metavar='METHOD',
