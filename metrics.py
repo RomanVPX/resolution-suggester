@@ -11,7 +11,6 @@ def calculate_ms_ssim(
     processed: np.ndarray,
     max_val: float
 ) -> float:
-
     # Нормализация для EXR
     if max_val > 1.0 + TINY_EPSILON:
         original = original.astype(np.float32) / max_val
@@ -149,7 +148,7 @@ def convolve_1d_vert(src: np.ndarray, kernel_1d: np.ndarray) -> np.ndarray:
 def filter_2d_separable(img: np.ndarray, size: int, sigma: float) -> np.ndarray:
     """
     Разделяемая свёртка Гаусса для (H,W) или (H,W,C).
-    1) Генерируем 1D ядро gauss_1d.
+    1) Генерируем 1D ядро kernel_1d.
     2) Горизонтальная свёртка.
     3) Вертикальная свёртка.
     """

@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from typing import Dict
 from PIL import Image, ImageFile, UnidentifiedImageError
 
+from config import TINY_EPSILON
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 BIT_DEPTH_16 = 65535.0
@@ -88,7 +90,7 @@ def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
                 min_val = np.min(img)
                 max_val = np.max(img)
                 range_val = max_val - min_val
-                if range_val > 1e-7:
+                if range_val > TINY_EPSILON:
                     img = (img - min_val) / range_val
                     max_val = 1.0
                     logging.debug(f"EXR normalized to [0, 1], min={min_val:.3f}, max={max_val:.3f} from {file_path}")
@@ -118,16 +120,13 @@ def load_raster(file_path: str) -> ImageLoadResult:
             mode = img.mode  # фиксируем режим после возможного преобразования
             divisor = BIT_DEPTH_16 if img.mode.startswith('I;16') else BIT_DEPTH_8
             img_array = np.array(img).astype(np.float32) / divisor
-
-
             # Проверяем, что изображение имеет как минимум 3 измерения
             if img_array.ndim == 2:
                 img_array = img_array[:, :, np.newaxis]
-
             channels = MODE_CHANNEL_MAP.get(mode, ['R', 'G', 'B'])
-
-            # Max value after normalization is always 1.0 for these formats
+            # Максимальное значение после нормализации всегда равно 1,0
             return ImageLoadResult(img_array, 1.0, channels)
+
     except FileNotFoundError:
         logging.error("Файл не найден: %s", file_path)
         return ImageLoadResult(None, None, None, f"Файл не найден: {file_path}")

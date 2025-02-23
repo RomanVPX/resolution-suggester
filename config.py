@@ -5,7 +5,7 @@ Configuration constants for the image quality analysis tool.
 This module provides constants for configuration and output formatting.
 """
 
-from enum import Enum, auto
+from enum import Enum
 from pathlib import Path
 from colorama import Fore, Back, Style
 from typing import Final
@@ -86,11 +86,6 @@ QUALITY_METRIC_THRESHOLDS = {
 class InterpolationMethods(str, Enum):
     """
     Enumeration of interpolation methods for image resampling.
-
-    This class defines different interpolation methods that can be used to
-    resample images, such as bilinear and bicubic interpolation. These
-    methods are used to calculate the pixel values at fractional coordinates
-    when resizing an image.
     """
 
     BILINEAR = 'bilinear'
@@ -137,7 +132,7 @@ def get_output_csv_header(analyze_channels: bool, metric_type: QualityMetrics) -
     if analyze_channels:
         # Фиксированные столбцы, не зависящие от реального количества каналов для лучшей читаемости таблицы
         header.extend([
-            f"R(L) {metric_type.value.upper()}", # Red для многоканальных, Luminance для одноканальных изображений\
+            f"R(L) {metric_type.value.upper()}", # Red для многоканальных, Luminance для одноканальных изображений
             f"G {metric_type.value.upper()}",
             f"B {metric_type.value.upper()}",
             f"A {metric_type.value.upper()}",

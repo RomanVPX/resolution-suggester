@@ -30,13 +30,13 @@ def main():
         return
 
     if args.generate_dataset:
-        features_path, targets_path = generate_dataset(files)
+        features_path, targets_path = generate_dataset(files, min_size=args.min_size)
         logging.info(f"Датасет сгенерирован: features={features_path}, targets={targets_path}")
         if args.train_ml:
             predictor = QuickPredictor()
             predictor.train(features_path, targets_path)
             logging.info("Модель обучена!")
-        return  # завершаем работу после создания датасета
+        return   # завершаем работу после создания датасета
 
     if args.csv_output:
         csv_path = generate_csv_filename(args.metric, InterpolationMethods(args.interpolation))
@@ -162,11 +162,66 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
 
     return results, {'max_val': max_val, 'channels': channels}
 
-def generate_dataset(files: list[str]) -> tuple[str, str]:
+
+def process_file_for_dataset(file_path: str, interpolations_methods: list[InterpolationMethods],
+                             args: argparse.Namespace) -> tuple[list[dict], list[dict]]:
     features_all = []
     all_targets = []
 
-    # Для упрощения сохраним в CSV (можно parquet)
+    image_load_result = load_image(file_path)
+    if image_load_result.error or image_load_result.data is None:
+        logging.warning(f"Пропуск {file_path}, т.к. не удалось загрузить.")
+        return features_all, all_targets
+
+    img_original = image_load_result.data
+    max_val = image_load_result.max_value
+    original_h, original_w = img_original.shape[:2]
+
+    resolutions_to_test = compute_resolutions(original_w, original_h, args.min_size)
+    if not resolutions_to_test:
+        return features_all, all_targets
+
+    for method in interpolations_methods:
+        try:
+            resize_fn = get_resize_function(method)
+        except ValueError as e:
+            logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
+            continue
+
+        for (w, h) in resolutions_to_test:
+            if w == original_w and h == original_h:
+                continue
+
+            scale_factor = (w / original_w + h / original_h) / 2
+            features_original = extract_features_of_original_img(img_original)
+
+            features_dict = {
+                **features_original,
+                'scale_factor': scale_factor,
+                'method': method.value,
+            }
+
+            img_downscaled = resize_fn(img_original, w, h)
+            img_upscaled = resize_fn(img_downscaled, original_w, original_h)
+
+            # Явное создание словаря метрик
+            metrics = {
+                'psnr': calculate_metrics(QualityMetrics.PSNR, img_original, img_upscaled, max_val),
+                'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val),
+                'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val)
+            }
+
+            all_targets.append(metrics)
+            features_all.append(features_dict)
+
+    return features_all, all_targets
+
+
+def generate_dataset(files: list[str], min_size: int) -> tuple[str, str]:
+    features_all = []
+    all_targets = []
+
+    # Пути для сохранения датасета
     features_csv = os.path.join(ML_DATA_DIR, 'features.csv')
     targets_csv  = os.path.join(ML_DATA_DIR, 'targets.csv')
 
@@ -179,58 +234,36 @@ def generate_dataset(files: list[str]) -> tuple[str, str]:
         InterpolationMethods.MITCHELL
     ]
 
-    with tqdm(total=len(files), desc=f"Создание датасета", leave=False) as progressbar_files:
-        for file_path in files:
-            result = load_image(file_path)
-            if result.error or result.data is None:
-                logging.warning(f"Пропуск {file_path}, т.к. не удалось загрузить.")
-                continue
+    with concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+        # Подготовка аргументов для параллельной обработки
+        futures = [
+            executor.submit(process_file_for_dataset, file_path, interpolations_methods_to_test, argparse.Namespace(min_size=min_size))
+            for file_path in files
+        ]
 
-            img_original = result.data
-            max_val = result.max_value
-            original_h, original_w = img_original.shape[:2]
+        for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="Создание датасета"):
+            try:
+                features, targets = future.result()
+                features_all.extend(features)
+                all_targets.extend(targets)
+            except Exception as e:
+                logging.error(f"Ошибка при обработке файла: {e}")
 
-            resolutions_to_test = compute_resolutions(original_w, original_h, divider=4)
-            if not resolutions_to_test:
-                continue
+    # Сохранение в CSV
+    if features_all:
+        df_features = pd.DataFrame(features_all)
+        df_features.to_csv(features_csv, index=False)
+    else:
+        logging.warning("Нет данных для сохранения в features.csv")
 
-            with tqdm(total=len(interpolations_methods_to_test), desc=f"Файл: {file_path}", leave=False) as progressbar_methods:
-                for method in interpolations_methods_to_test:
-                    resize_fn = get_resize_function(method)
-
-                    with tqdm(total=len(resolutions_to_test), desc=f"Интерполяция: {method.value}", leave=False) as progressbar_res:
-                        for (w, h) in resolutions_to_test:
-                            scale_factor = (w / original_w + h / original_h) / 2
-                            features_original = extract_features_of_original_img(img_original)
-
-                            features_dict = {
-                                **features_original,
-                                'scale_factor': scale_factor,
-                                'method': method.value,
-                            }
-
-                            if w == original_w and h == original_h:
-                                continue
-
-                            img_downscaled = resize_fn(img_original, w, h)
-                            img_upscaled = resize_fn(img_downscaled, original_w, original_h)
-
-                            features_all.append(features_dict)
-                            all_targets.append({
-                                'psnr': calculate_metrics(QualityMetrics.PSNR, img_original, img_upscaled, max_val),
-                                'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val),
-                                'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val)
-                            })
-                            progressbar_res.update(1)
-                    progressbar_methods.update(1)
-            progressbar_files.update(1)
-
-    df_features = pd.DataFrame(features_all)
-    df_targets = pd.DataFrame(all_targets)
-    df_features.to_csv(features_csv, index=False)
-    df_targets.to_csv(targets_csv, index=False)
+    if all_targets:
+        df_targets = pd.DataFrame(all_targets)
+        df_targets.to_csv(targets_csv, index=False)
+    else:
+        logging.warning("Нет данных для сохранения в targets.csv")
 
     return features_csv, targets_csv
+
 def print_console_results(
     file_path: str, results: list, analyze_channels: bool, meta: dict, metric_type: QualityMetrics
 ):
