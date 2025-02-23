@@ -33,6 +33,9 @@ def setup_logging():
         format='%(asctime)s - %(levelname)s - %(message)s'
     )
 
+cpu_count = multiprocessing.cpu_count()
+default_threads_count = (cpu_count - 2, cpu_count)[cpu_count < 8]
+
 def parse_arguments() -> argparse.Namespace:
     """
     Parse command line arguments.
@@ -101,7 +104,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '-t', '--threads',
         type=int,
-        default=multiprocessing.cpu_count(),
+        default=default_threads_count,
         metavar='N',
         help=format_threads_help()
     )
@@ -133,7 +136,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--ml',
         action='store_true',
-        help='Использовать ML-модель для предсказания PSNR/SSIM (вместо реального вычисления)'
+        help='Использовать ML-модель для предсказания метрик (вместо реального вычисления)'
     )
 
     args = parser.parse_args()
@@ -142,7 +145,7 @@ def parse_arguments() -> argparse.Namespace:
 
 def format_threads_help() -> str:
     return ("Число параллельных процессов для обработки файлов. Игнорируется при --no-parallel,\n"
-            "по умолчанию равно количеству логических ядер процессора (сейчас обнаружено " +
+            "по умолчанию равно " + str(default_threads_count) + " (логических ядер процессора обнаружено " +
             str(multiprocessing.cpu_count()) + ")")
 
 def format_metric_help() -> str:

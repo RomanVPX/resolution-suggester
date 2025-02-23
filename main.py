@@ -30,7 +30,7 @@ def main():
         return
 
     if args.generate_dataset:
-        features_path, targets_path = generate_dataset(files, min_size=args.min_size)
+        features_path, targets_path = generate_dataset(files, args)
         logging.info(f"Датасет сгенерирован: features={features_path}, targets={targets_path}")
         if args.train_ml:
             predictor = QuickPredictor()
@@ -217,7 +217,7 @@ def process_file_for_dataset(file_path: str, interpolations_methods: list[Interp
     return features_all, all_targets
 
 
-def generate_dataset(files: list[str], min_size: int) -> tuple[str, str]:
+def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, str]:
     features_all = []
     all_targets = []
 
@@ -234,10 +234,11 @@ def generate_dataset(files: list[str], min_size: int) -> tuple[str, str]:
         InterpolationMethods.MITCHELL
     ]
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=args.threads) as executor:
         # Подготовка аргументов для параллельной обработки
         futures = [
-            executor.submit(process_file_for_dataset, file_path, interpolations_methods_to_test, argparse.Namespace(min_size=min_size))
+            executor.submit(process_file_for_dataset, file_path,
+                            interpolations_methods_to_test, argparse.Namespace(min_size=args.min_size))
             for file_path in files
         ]
 

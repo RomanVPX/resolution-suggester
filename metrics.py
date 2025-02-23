@@ -1,10 +1,73 @@
 # metrics.py
+import os
 import math
 import numpy as np
 from numba import njit, prange
 from sewar.full_ref import msssim
 from config import TINY_EPSILON, QualityMetrics
+import torch
+from torchmetrics.image import MultiScaleStructuralSimilarityIndexMeasure
 
+if torch.backends.mps.is_available():
+    device = torch.device("mps")
+    msssim_calc = MultiScaleStructuralSimilarityIndexMeasure(data_range=1.0).to(device)
+elif torch.cuda.is_available():
+    device = torch.device("cuda")
+    msssim_calc = MultiScaleStructuralSimilarityIndexMeasure(data_range=1.0).to(device)
+else:
+    device = torch.device("cpu")
+    msssim_calc = MultiScaleStructuralSimilarityIndexMeasure(data_range=1.0).to(device)
+
+def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_val: float) -> float:
+    """
+    Вычисляет MS-SSIM между двумя изображениями с использованием PyTorch.
+    """
+    # Нормализация изображения
+    if max_val > 1.0 + 1e-8:
+        original = original.astype(np.float32) / max_val
+        processed = processed.astype(np.float32) / max_val
+    else:
+        original = original.astype(np.float32)
+        processed = processed.astype(np.float32)
+
+    # Добавляем размерность батча и каналов
+    if original.ndim == 2:
+        original = original[np.newaxis, np.newaxis, :, :]  # (1, 1, H, W)
+        processed = processed[np.newaxis, np.newaxis, :, :]
+    elif original.ndim == 3:
+        original = original.transpose(2, 0, 1)  # (C, H, W)
+        processed = processed.transpose(2, 0, 1)
+        original = original[np.newaxis, :, :, :]  # (1, C, H, W)
+        processed = processed[np.newaxis, :, :, :]
+    else:
+        raise ValueError("Неподдерживаемая размерность изображений")
+
+    # Переводим в тензоры и переносим на устройство
+    original_tensor = torch.from_numpy(original).to(device)
+    processed_tensor = torch.from_numpy(processed).to(device)
+
+    # Вычисление MS-SSIM
+    with torch.no_grad():
+        ms_ssim_val = msssim_calc(original_tensor, processed_tensor).item()
+
+    return ms_ssim_val
+
+
+def calculate_ms_ssim_pytorch_channels(
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float,
+    channels: list[str]
+) -> dict[str, float]:
+    """
+    Вычисляет MS-SSIM для каждого канала отдельно (не рекомендуется из-за медленной работы).
+    """
+    results = {}
+    for i, ch in enumerate(channels):
+        orig_ch = original[..., i] if original.ndim == 3 else original
+        proc_ch = processed[..., i] if processed.ndim == 3 else processed
+        results[ch] = calculate_ms_ssim_pytorch(orig_ch, proc_ch, max_val)
+    return results
 
 def calculate_ms_ssim(
     original: np.ndarray,
@@ -284,7 +347,7 @@ def calculate_metrics(
             case QualityMetrics.SSIM:
                 return calculate_ssim_gauss(original, processed, max_val)
             case QualityMetrics.MS_SSIM:
-                return calculate_ms_ssim(original, processed, max_val)
+                return calculate_ms_ssim_pytorch(original, processed, max_val)
     else:
         match quality_metric:
             case QualityMetrics.PSNR:
@@ -292,7 +355,7 @@ def calculate_metrics(
             case QualityMetrics.SSIM:
                 return calculate_ssim_gauss_channels(original, processed, max_val, channels)
             case QualityMetrics.MS_SSIM:
-                return calculate_ms_ssim_channels(original, processed, max_val, channels)
+                return calculate_ms_ssim_pytorch_channels(original, processed, max_val, channels)
 
     raise ValueError(f"Неподдерживаемая метрика: {quality_metric}")
 
