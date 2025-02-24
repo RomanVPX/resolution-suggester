@@ -12,100 +12,138 @@ from typing import Dict, Any
 
 from skimage.feature import graycomatrix, graycoprops
 from skimage.measure import shannon_entropy
-from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import GradientBoostingRegressor, HistGradientBoostingRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import make_pipeline
 
-from config import ML_TARGET_COLUMNS, ML_DATA_DIR
+from config import ML_TARGET_COLUMNS, ML_DATA_DIR, QualityMetrics, CHANNEL_COLUMNS
 
 
 class QuickPredictor:
-    def __init__(self, model_path: Path = ML_DATA_DIR / 'model.joblib'):
-        """Инициализация предиктора с путём к модели"""
-        self.model_path = model_path
+    def __init__(self, model_dir: Path = ML_DATA_DIR / "models"):
+        """Инициализация предиктора с путём к моделям."""
+        self.model_dir = model_dir
         self.pipeline = None
+        self.mode = False  # False: без каналов, True: с каналами
+
+    def set_mode(self, analyze_channels: bool):
+        """Устанавливает режим анализа."""
+        self.mode = analyze_channels
+        if self.mode:
+            self.model_path = self.model_dir / "channels" / "model.joblib"
+        else:
+            self.model_path = self.model_dir / "combined" / "model.joblib"
 
     def load(self) -> bool:
-        """
-        Загружает модель из self.model_path.
-        Возвращает True, если модель успешно загружена, иначе False.
-        """
-        if not self.model_path.exists():
-            logging.warning("Файл модели не найден: %s", self.model_path)
+        """Загружает модель в зависимости от режима."""
+        if self.mode:
+            model_path = self.model_dir / "channels" / "model.joblib"
+        else:
+            model_path = self.model_dir / "combined" / "model.joblib"
+
+        if not model_path.exists():
+            logging.warning(f"Файл модели не найден: {model_path}")
             return False
-        self.pipeline = joblib.load(self.model_path)
+        self.pipeline = joblib.load(model_path)
         return True
 
-    def get_pipeline(self):
+    def train(self, features_csv: str, targets_csv: str) -> None:
+        """
+        Обучает модели на данных.
+        Создаёт две модели: одну для общего анализа, другую для анализа по каналам.
+        """
+        if not os.path.exists(features_csv) or not os.path.exists(targets_csv):
+            logging.error("Не найдены файлы с фичами/таргетами.")
+            return
+
+        # Загрузка данных
+        df_features = pd.read_csv(features_csv)
+        df_targets = pd.read_csv(targets_csv)
+
+        # Предобработка фичей
+        preprocessor = self._get_preprocessor()
+        X_processed = preprocessor.fit_transform(df_features)
+
+        # Разделение данных на два режима
+        mask = df_features['analyze_channels'] == 0
+        X_combined = X_processed[mask]
+        X_channels = X_processed[~mask]
+
+        # Подготовка таргетов
+        y_combined = df_targets[['psnr', 'ssim', 'ms_ssim']][mask]
+        y_channels = df_targets[
+            [col for col in df_targets.columns if any(col.startswith(f"{m.value}_") for m in QualityMetrics)]
+        ][~mask]
+
+        # Обучение моделей
+        combined_model = MultiOutputRegressor(
+            GradientBoostingRegressor(n_estimators=200, max_depth=7, random_state=42)
+        ).fit(X_combined, y_combined)
+
+        channels_model = MultiOutputRegressor(
+            HistGradientBoostingRegressor(max_iter=200, max_depth=5, random_state=42)
+        ).fit(X_channels, y_channels)
+
+        # Сохранение моделей
+        (self.model_dir / "combined").mkdir(parents=True, exist_ok=True)
+        (self.model_dir / "channels").mkdir(parents=True, exist_ok=True)
+
+        joblib.dump(preprocessor, self.model_dir / "preprocessor.joblib")
+        joblib.dump(combined_model, self.model_dir / "combined" / "model.joblib")
+        joblib.dump(channels_model, self.model_dir / "channels" / "model.joblib")
+        logging.info("Модели обучены и сохранены.")
+
+    def _get_preprocessor(self) -> ColumnTransformer:
+        """Создаёт препроцессор фичей."""
         numeric_features = [
             'contrast', 'variance', 'entropy',
-            'wavelet_energy', 'glcm_contrast', 'glcm_energy',
-            'scale_factor'
+            'wavelet_energy', 'glcm_contrast',
+            'glcm_energy', 'scale_factor',
+            'original_width', 'original_height',
+            'num_channels'
         ]
         categorical_features = ['method']
 
         preprocessor = ColumnTransformer(
             transformers=[
                 ('num', StandardScaler(), numeric_features),
-                ('cat', OneHotEncoder(), categorical_features)
+                ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
             ],
             remainder='drop'
         )
-
-        base_model = GradientBoostingRegressor(
-            n_estimators=100,
-            max_depth=5,
-            random_state=42
-        )
-        model = MultiOutputRegressor(base_model)
-
-        return make_pipeline(preprocessor, model)
-
-    def train(self, features_csv: str, targets_csv: str) -> None:
-        """
-        Обучает модель на данных.
-        :param features_csv: CSV (или parquet) с признаками
-        :param targets_csv: CSV (или parquet) с метриками в колонками ('psnr', 'ssim', 'ms_ssim'...)
-        """
-        if not os.path.exists(features_csv) or not os.path.exists(targets_csv):
-            logging.error("Не найдены файлы с фичами/таргетами: %s, %s", features_csv, targets_csv)
-            return
-
-        # Загружаем датафреймы
-        df_features = pd.read_csv(features_csv) if features_csv.endswith('.csv') \
-            else pd.read_parquet(features_csv)
-        df_targets = pd.read_csv(targets_csv)   if targets_csv.endswith('.csv') \
-            else pd.read_parquet(targets_csv)
-
-        # Удаляем строки с пропусками
-        df_features = df_features.dropna()
-        df_targets = df_targets.dropna()
-
-        # Проверяем наличие всех трёх колонок
-        assert set(ML_TARGET_COLUMNS).issubset(df_targets.columns)
-
-        # y = df_targets[['psnr', 'ssim', 'ms_ssim']].values  # shape: (N, 2)
-        y = df_targets[ML_TARGET_COLUMNS].to_numpy()
-
-        self.pipeline = self.get_pipeline()
-        self.pipeline.fit(df_features, y)
-
-        joblib.dump(self.pipeline, str(self.model_path))
-        logging.info("Модель сохранена в %s", self.model_path)
+        return preprocessor
 
     def predict(self, features: Dict[str, Any]) -> Dict[str, float]:
         """
-        Предсказывает PSNR, SSIM и MS_SSIM на одном примере (словарь).
-        Возвращает {'psnr': float, 'ssim': float, 'ms_ssim': float }.
+        Предсказывает метрики на одном примере (словарь).
+        Возвращает соответствующие метрики в зависимости от режима.
         """
         if not self.pipeline:
             raise ValueError("Модель не загружена. Сначала вызовите load().")
 
         df = pd.DataFrame([features])  # DataFrame из одного примера
-        pred = self.pipeline.predict(df)  # shape: (1, 3)
-        return {metric: pred[0, i] for i, metric in enumerate(ML_TARGET_COLUMNS)}
+        processed = df  # Предполагается, что фичи уже соответствуют препроцессору
+
+        pred = self.pipeline.predict(processed)[0]
+
+        if self.mode:
+            # Возвращаем метрики по каналам
+            predictions = {}
+            metric_channel_pairs = [
+                (metric.value, ch) for metric in QualityMetrics for ch in CHANNEL_COLUMNS
+            ]
+            for i, (metric, ch) in enumerate(metric_channel_pairs):
+                predictions[f"{metric}_{ch}"] = pred[i]
+            return predictions
+        else:
+            # Возвращаем общие метрики
+            return {
+                'psnr': pred[0],
+                'ssim': pred[1],
+                'ms_ssim': pred[2]
+            }
 
 
 #############################################################################

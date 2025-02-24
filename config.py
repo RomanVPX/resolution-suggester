@@ -15,6 +15,10 @@ CSV_SEPARATOR: Final = ';'
 
 SAVE_INTERMEDIATE_DIR: Final = Path('_intermediate')
 ML_DATA_DIR: Final = Path('_ml_data')
+ML_MODEL_DIR = ML_DATA_DIR / "models"
+
+CHANNEL_COLUMNS: Final = ['R', 'G', 'B', 'A', 'L']
+
 
 MITCHELL_B = 1/3
 MITCHELL_C = 1/3
@@ -58,7 +62,11 @@ QUALITY_METRICS_INFO = {
     QualityMetrics.MS_SSIM: 'Многоуровневый индекс структурного сходства',
 }
 
-ML_TARGET_COLUMNS = [m.value for m in QualityMetrics]
+ML_TARGET_COLUMNS: Final = (
+    [m.value for m in QualityMetrics] +
+    [f"{m.value}_{ch}" for m in QualityMetrics for ch in CHANNEL_COLUMNS] +
+    [f"min_{m.value}" for m in QualityMetrics]
+)
 
 QUALITY_METRIC_DEFAULT = QualityMetrics.PSNR
 
