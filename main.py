@@ -116,17 +116,7 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
         if w == width and h == height:
             continue
 
-        # Предсказываем или вычисляем метрики для нового разрешения
-        if use_prediction:
-            features_for_ml = extract_features_of_original_img(img_original)
-            features_for_ml.update({
-                'scale_factor': (w / width + h / height) / 2,
-                'original_width': width,
-                'original_height': height,
-                'num_channels': len(channels),
-            })
-            prediction = predictor.predict(features_for_ml)
-        else:
+        if not use_prediction:
             img_downscaled = resize_fn(img_original, w, h)
             if args.save_intermediate:
                 _save_intermediate(img_downscaled, file_path, w, h)
@@ -134,9 +124,22 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
 
         if args.channels:
             if use_prediction:
-                val = prediction.get(f"{args.metric.value}_{c}", 0.0)
-                channels_metrics[c] = float('inf') if val >= 139.9 else val
-                # channels_metrics = {c: prediction.get(f"{args.metric.value}_{c}", 0.0) for c in channels}
+                channels_metrics = {}
+                for c in channels:
+                    # Извлекаем признаки для каждого канала отдельно
+                    features_for_ml_channel = extract_features_of_original_img(img_original[..., channels.index(c)])
+                    features_for_ml_channel.update({
+                        'scale_factor': (w / width + h / height) / 2,
+                        'original_width': width,
+                        'original_height': height,
+                        'channel': c,
+                        'method': args.interpolation,
+                    })
+
+                    # Предсказываем метрику для каждого канала
+                    prediction_channel = predictor.predict(features_for_ml_channel)
+                    val = prediction_channel.get(args.metric.value, 0.0)
+                    channels_metrics[c] = float('inf') if val >= 139.9 else val
             else:
                 channels_metrics = calculate_metrics(QualityMetrics(args.metric), img_original, img_upscaled, max_val, channels)
                 channels_metrics = {c: float('inf') if val >= 139.9 else val for c, val in channels_metrics.items()}
@@ -152,22 +155,33 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
             )
         else:
             if use_prediction:
+                features_for_ml = extract_features_of_original_img(img_original)
+                features_for_ml.update({
+                    'scale_factor': (w / width + h / height) / 2,
+                    'original_width': width,
+                    'original_height': height,
+                    'method': args.interpolation,
+                    'channel': 'combined'
+                })
+                prediction = predictor.predict(features_for_ml)
+
                 metric_value = prediction.get(args.metric.value, 0.0)
                 metric_value = float('inf') if metric_value >= 139.9 else metric_value
-                # metric_value = prediction.get(args.metric.value, 0.0)
             else:
                 metric_value = calculate_metrics(QualityMetrics(args.metric), img_original, img_upscaled, max_val)
                 if QualityMetrics(args.metric) == QualityMetrics.PSNR and metric_value >= 139.9:
                     metric_value = float('inf')
-                results.append(
-                    (
-                        f"{w}x{h}",
-                        metric_value,
-                        QualityHelper.get_hint(metric_value, QualityMetrics(args.metric))
-                    )
+
+            results.append(
+                (
+                    f"{w}x{h}",
+                    metric_value,
+                    QualityHelper.get_hint(metric_value, QualityMetrics(args.metric))
                 )
+            )
 
     return results, {'max_val': max_val, 'channels': channels}
+
 
 def process_file_for_dataset(
         file_path: str,
@@ -203,55 +217,61 @@ def process_file_for_dataset(
                 continue
 
             scale_factor = (w / original_w + h / original_h) / 2
-            features_original = extract_features_of_original_img(img_original)
 
-            # Базовые фичи
-            features_dict = {
-                **features_original,
+            # Базовые фичи (для общего режима)
+            features_dict_base = {  # выносим базовые фичи в отдельный словарь
                 'scale_factor': scale_factor,
                 'method': method.value,
                 'original_width': original_w,
                 'original_height': original_h,
-                'num_channels': len(channels)
             }
 
-            # Обработка изображения
             img_downscaled = resize_fn(img_original, w, h)
             img_upscaled = resize_fn(img_downscaled, original_w, original_h)
 
-            # Вычисление метрик для обоих режимов
-            metrics_combined = {
-                'psnr': calculate_metrics(QualityMetrics.PSNR, img_original, img_upscaled, max_val),
-                'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val),
-                'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val)
-            }
-
-            metrics_channels = {}
-            for metric in QualityMetrics:
-                channel_metrics = calculate_metrics(metric, img_original, img_upscaled, max_val, channels)
-                for ch, val in channel_metrics.items():
-                    metrics_channels[f"{metric.value}_{ch}"] = val
-
             # Создаём две версии данных: без каналов и с каналами
             for analyze_channels in [0, 1]:
-                features_entry = features_dict.copy()
-                features_entry['analyze_channels'] = analyze_channels
-
-                targets_entry = {}
                 if analyze_channels:
-                    targets_entry.update(metrics_channels)
-                    for metric in QualityMetrics:
-                        m_val = min(metrics_channels[f"{metric.value}_{ch}"] for ch in channels)
-                        targets_entry[f"min_{metric.value}"] = m_val
-                else:
-                    targets_entry.update(metrics_combined)
+                    # Теперь итерируемся по каждому каналу
+                    for c in channels:
+                        features_entry = features_dict_base.copy()  # используем базовый словарь
+                        features_entry['analyze_channels'] = analyze_channels
+                        features_entry['channel'] = c
 
-                features_all.append(features_entry)
-                all_targets.append(targets_entry)
+                        img_channel = img_original[..., channels.index(c)] if img_original.ndim == 3 else img_original
+                        img_upscaled_channel = img_upscaled[..., channels.index(c)] if img_upscaled.ndim == 3 else img_original
+
+                        channel_features = extract_features_of_original_img(img_channel, c)
+                        features_entry.update(channel_features)  # Добавляем канальные фичи
+
+                        targets_entry = {}
+                        for metric in QualityMetrics:
+                            channel_metric_value = calculate_metrics(metric, img_channel, img_upscaled_channel, max_val)
+                            targets_entry[metric.value] = channel_metric_value
+
+                        features_all.append(features_entry)
+                        all_targets.append(targets_entry)
+                else:
+                    features_entry = features_dict_base.copy()  # используем базовый словарь
+                    features_entry['analyze_channels'] = analyze_channels
+
+                    features_original = extract_features_of_original_img(img_original)
+                    features_entry.update(features_original)  # Добавляем общие фичи
+
+                    metrics_combined = {  # Вычисление metrics_combined здесь, в блоке else
+                        'psnr': calculate_metrics(QualityMetrics.PSNR, img_original, img_upscaled, max_val),
+                        'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val),
+                        'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val)
+                    }
+                    targets_entry = metrics_combined.copy()
+
+                    features_all.append(features_entry)
+                    all_targets.append(targets_entry)
 
             del img_downscaled, img_upscaled
 
     return features_all, all_targets
+
 
 def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, str]:
     features_all = []

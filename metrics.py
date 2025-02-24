@@ -364,9 +364,9 @@ def calculate_metrics(
 ) -> None | dict[str, float] | float:
 
     if original.shape != processed.shape:
-        raise ValueError("compute_metrics: размеры изображений должны совпадать!")
+        raise ValueError("calculate_metrics: размеры изображений должны совпадать!")
     if original.ndim != processed.ndim:
-        raise ValueError("compute_metrics: размерности изображений должны совпадать!")
+        raise ValueError("calculate_metrics: размерности изображений должны совпадать!")
 
     if channels is None:
         match quality_metric:
