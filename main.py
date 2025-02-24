@@ -124,63 +124,81 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
 
         if args.channels:
             if use_prediction:
-                channels_metrics = {}
-                for c in channels:
-                    # Извлекаем признаки для каждого канала отдельно
-                    features_for_ml_channel = extract_features_of_original_img(img_original[..., channels.index(c)])
-                    features_for_ml_channel.update({
-                        'scale_factor': (w / width + h / height) / 2,
-                        'original_width': width,
-                        'original_height': height,
-                        'channel': c,
-                        'method': args.interpolation,
-                    })
-
-                    # Предсказываем метрику для каждого канала
-                    prediction_channel = predictor.predict(features_for_ml_channel)
-                    val = prediction_channel.get(args.metric.value, 0.0)
-                    channels_metrics[c] = float('inf') if val >= 139.9 else val
+                channels_metrics = _predict_channel_metrics(img_original, w, width, h, height,
+                                                            args, predictor, channels)
+                min_metric = min(channels_metrics.values())
+                results_entry = (f"{w}x{h}", channels_metrics, min_metric)
             else:
-                channels_metrics = calculate_metrics(QualityMetrics(args.metric), img_original, img_upscaled, max_val, channels)
-                channels_metrics = {c: float('inf') if val >= 139.9 else val for c, val in channels_metrics.items()}
-
-            min_metric = min(channels_metrics.values())
-            results.append(
-                (
-                    f"{w}x{h}",
-                    channels_metrics,
-                    min_metric,
-                    QualityHelper.get_hint(min_metric, QualityMetrics(args.metric))
-                )
-            )
+                channels_metrics = calculate_metrics(QualityMetrics(args.metric), img_original,
+                                                     img_upscaled, max_val, channels)
+                channels_metrics = postprocess_channel_metrics(channels_metrics, args.metric)
+                min_metric = min(channels_metrics.values())
+                results_entry = (f"{w}x{h}", channels_metrics, min_metric)
         else:
             if use_prediction:
-                features_for_ml = extract_features_of_original_img(img_original)
-                features_for_ml.update({
-                    'scale_factor': (w / width + h / height) / 2,
-                    'original_width': width,
-                    'original_height': height,
-                    'method': args.interpolation,
-                    'channel': 'combined'
-                })
-                prediction = predictor.predict(features_for_ml)
-
-                metric_value = prediction.get(args.metric.value, 0.0)
-                metric_value = float('inf') if metric_value >= 139.9 else metric_value
+                metric_value = _predict_combined_metric(img_original, w, width, h, height, args, predictor
+                )
+                results_entry = (f"{w}x{h}", metric_value)
             else:
                 metric_value = calculate_metrics(QualityMetrics(args.metric), img_original, img_upscaled, max_val)
-                if QualityMetrics(args.metric) == QualityMetrics.PSNR and metric_value >= 139.9:
-                    metric_value = float('inf')
+                metric_value = postprocess_psnr_value(metric_value, args.metric)
+                results_entry = (f"{w}x{h}", metric_value)
 
-            results.append(
-                (
-                    f"{w}x{h}",
-                    metric_value,
-                    QualityHelper.get_hint(metric_value, QualityMetrics(args.metric))
-                )
-            )
+        if args.channels:
+            results.append((*results_entry, QualityHelper.get_hint(results_entry[2], QualityMetrics(args.metric))))
+        else:
+            results.append((*results_entry, QualityHelper.get_hint(results_entry[1], QualityMetrics(args.metric))))
 
     return results, {'max_val': max_val, 'channels': channels}
+
+
+def _predict_channel_metrics(img_original, w, width, h, height, args, predictor, channels):
+    """Вспомогательная функция для предсказания поканальных метрик."""
+    channels_metrics = {}
+    for c in channels:
+        features_for_ml_channel = extract_features_of_original_img(img_original[..., channels.index(c)])
+        features_for_ml_channel.update({
+            'scale_factor': (w / width + h / height) / 2,
+            'original_width': width,
+            'original_height': height,
+            'channel': c,
+            'method': args.interpolation,
+        })
+        prediction_channel = predictor.predict(features_for_ml_channel)
+        val = prediction_channel.get(args.metric.value, 0.0)
+        channels_metrics[c] = float('inf') if val >= 139.9 else val
+    return channels_metrics
+
+def _predict_combined_metric(img_original, w, width, h, height, args, predictor):
+    """Вспомогательная функция для предсказания общей метрики (без каналов)."""
+    features_for_ml = extract_features_of_original_img(img_original)
+    features_for_ml.update({
+        'scale_factor': (w / width + h / height) / 2,
+        'original_width': width,
+        'original_height': height,
+        'method': args.interpolation,
+        'channel': 'combined'
+    })
+    prediction = predictor.predict(features_for_ml)
+    metric_value = prediction.get(args.metric.value, 0.0)
+    metric_value = float('inf') if metric_value >= 139.9 else metric_value
+    return metric_value
+
+def postprocess_psnr_value(psnr_value, metric_type):
+    """Заменяет значения PSNR >= 139.9 на float('inf')."""
+    if QualityMetrics(metric_type) == QualityMetrics.PSNR:
+        return float('inf') if psnr_value >= 139.9 else psnr_value
+    return psnr_value
+
+def postprocess_channel_metrics(channels_metrics, metric_type):
+    """Заменяет значения PSNR >= 139.9 на float('inf') в словаре поканальных метрик."""
+    processed_metrics = {}
+    for c, metric_value in channels_metrics.items():
+        if QualityMetrics(metric_type) == QualityMetrics.PSNR:
+            processed_metrics[c] = float('inf') if metric_value >= 139.9 else metric_value
+        else:
+            processed_metrics[c] = metric_value
+    return processed_metrics
 
 
 def process_file_for_dataset(
