@@ -8,17 +8,17 @@ from colorama import Style
 from config import (
     STYLES,
     CSV_SEPARATOR,
-    QUALITY_LEVEL_DESCRIPTIONS,
-    METRIC_QUALITY_THRESHOLDS,
+    QUALITY_LEVEL_HINTS_DESCRIPTIONS,
+    QUALITY_METRIC_THRESHOLDS,
     get_output_csv_header,
-    QualityLevel,
-    QualityMetric
+    QualityLevelHints,
+    QualityMetrics, InterpolationMethods
 )
 
-def generate_csv_filename(metric: str, interpolation: str) -> str:
+def generate_csv_filename(metric: str, interpolation: InterpolationMethods) -> str:
     """Генерация имени CSV файла с временной меткой"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return f"tx_analysis_{timestamp}_{interpolation}_{metric}.csv"
+    return f"tx_analysis_{timestamp}_{interpolation.value.capitalize()}_{metric.upper()}.csv"
 
 class ConsoleReporter:
     @staticmethod
@@ -31,12 +31,12 @@ class ConsoleReporter:
         results: list,
         analyze_channels: bool,
         channels: Optional[List[str]],
-        metric: str  # <-- добавлен параметр
+        metric_type: QualityMetrics
     ):
         if analyze_channels and channels:
             ConsoleReporter._print_channel_table(results, channels)
         else:
-            ConsoleReporter._print_simple_table(results, metric)
+            ConsoleReporter._print_simple_table(results, metric_type)
 
     @staticmethod
     def _print_channel_table(results: list, channels: List[str]):
@@ -91,9 +91,9 @@ class ConsoleReporter:
                 )
 
     @staticmethod
-    def _print_simple_table(results: list, metric: str):
+    def _print_simple_table(results: list, metric_type: QualityMetrics):
 
-        metric_header = str(metric.upper())
+        metric_header = str(metric_type.value.upper())
 
         header = f"{Style.BRIGHT}{'Разрешение':<12} | {metric_header:^10} | {'Качество':<36}{Style.RESET_ALL}"
         print(header)
@@ -117,13 +117,22 @@ class ConsoleReporter:
                 )
 
 class CSVReporter:
-    def __init__(self, output_path: str, metric: str):
+    def __init__(self, output_path: str, metric_type: QualityMetrics):
         self.output_path = output_path
-        self.metric = metric  # <-- сохраняем тип метрики
+        self.metric_type = metric_type  # QualityMetrics enum
         self.file = None
         self.writer = None
 
     def __enter__(self):
+        """
+        Opens the output file and returns self.
+
+        The file is opened in text mode with UTF-8 encoding and CSV separator
+        set to `CSV_SEPARATOR`.
+
+        Returns:
+            self: The instance of this class.
+        """
         self.file = open(self.output_path, 'w', newline='', encoding='utf-8')
         self.writer = csv.writer(self.file, delimiter=CSV_SEPARATOR)
         return self
@@ -134,7 +143,7 @@ class CSVReporter:
 
     def write_header(self, analyze_channels: bool):
         # Передаём metric в get_output_csv_header
-        self.writer.writerow(get_output_csv_header(analyze_channels, self.metric))
+        self.writer.writerow(get_output_csv_header(analyze_channels, self.metric_type))
 
     def write_results(self, filename: str, results: list, analyze_channels: bool):
         for i, result_item in enumerate(results):
@@ -156,7 +165,7 @@ class CSVReporter:
                             f"{ch_vals.get('L', float('inf')):.2f}",
                             "", "", "",
                             f"{min_val:.2f}",
-                            QualityHelper.get_hint(min_val)
+                            QualityHelper.get_hint(min_val, self.metric_type)
                         ])
                     else:
                         row.extend([
@@ -165,7 +174,7 @@ class CSVReporter:
                             f"{ch_vals.get('B', float('inf')):.2f}",
                             f"{ch_vals.get('A', float('inf')):.2f}",
                             f"{min_val:.2f}",
-                            QualityHelper.get_hint(min_val)
+                            QualityHelper.get_hint(min_val, self.metric_type)
                         ])
             else:
                 metric_val = values
@@ -174,7 +183,7 @@ class CSVReporter:
                 else:
                     row.extend([
                         f"{metric_val:.2f}",
-                        QualityHelper.get_hint(metric_val)
+                        QualityHelper.get_hint(metric_val, self.metric_type)
                     ])
                 if len(row) < 4:
                     row.extend([""] * (4 - len(row)))
@@ -183,9 +192,9 @@ class CSVReporter:
 
 class QualityHelper:
     @staticmethod
-    def get_hint(metric_value: float, metric_type: QualityMetric = QualityMetric.PSNR) -> str:
+    def get_hint(metric_value: float, metric_type: QualityMetrics) -> str:
         """Возвращает текстовую оценку качества для заданной метрики"""
-        thresholds = METRIC_QUALITY_THRESHOLDS.get(metric_type)
+        thresholds = QUALITY_METRIC_THRESHOLDS.get(metric_type)
         if thresholds is None:
             raise ValueError(f"Нет порогов качества для метрики: {metric_type}")
 
@@ -197,17 +206,17 @@ class QualityHelper:
 
         for level in sorted_levels:
             if metric_value >= thresholds[level]:
-                return QUALITY_LEVEL_DESCRIPTIONS[level]
+                return QUALITY_LEVEL_HINTS_DESCRIPTIONS[level]
 
-        return QUALITY_LEVEL_DESCRIPTIONS[QualityLevel.NOTICEABLE_LOSS]
+        return QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.NOTICEABLE_LOSS]
 
     @staticmethod
     def get_style_for_hint(hint: str) -> str:
         """Возвращает ANSI-код стиля на основе текстовой подсказки о качестве"""
-        if hint == QUALITY_LEVEL_DESCRIPTIONS[QualityLevel.EXCELLENT]:
+        if hint == QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.EXCELLENT]:
             return STYLES['good']
-        if hint == QUALITY_LEVEL_DESCRIPTIONS[QualityLevel.VERY_GOOD]:
+        if hint == QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.VERY_GOOD]:
             return STYLES['ok']
-        if hint == QUALITY_LEVEL_DESCRIPTIONS[QualityLevel.GOOD]:
+        if hint == QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.GOOD]:
             return STYLES['medium']
         return STYLES['bad']

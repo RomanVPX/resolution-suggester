@@ -2,9 +2,7 @@
 Command line interface for image quality analysis.
 
 This module provides the command line interface for image quality analysis.
-It uses argparse to define the command line interface and parse the
-arguments.
-
+It uses argparse to define the command line interface and parse the arguments.
 """
 import argparse
 import logging
@@ -12,13 +10,13 @@ import os
 import multiprocessing
 
 from config import (
-    INTERPOLATION_DESCRIPTIONS,
-    DEFAULT_INTERPOLATION,
+    INTERPOLATION_METHODS_INFO,
+    INTERPOLATION_METHOD_DEFAULT,
     SUPPORTED_EXTENSIONS,
-    InterpolationMethod,
-    METRIC_DESCRIPTIONS,
-    DEFAULT_METRIC,
-    QualityMetric
+    InterpolationMethods,
+    QUALITY_METRICS_INFO,
+    QUALITY_METRIC_DEFAULT,
+    QualityMetrics, MIN_DOWNSCALE_SIZE
 )
 
 def setup_logging():
@@ -33,20 +31,12 @@ def setup_logging():
         format='%(asctime)s - %(levelname)s - %(message)s'
     )
 
+cpu_count = multiprocessing.cpu_count()
+default_threads_count = (cpu_count - 2, cpu_count)[cpu_count < 8]
+
 def parse_arguments() -> argparse.Namespace:
     """
     Parse command line arguments.
-
-    Returns a Namespace object with the following attributes:
-      - paths: list of paths to files or directories to analyze
-      - channels: boolean flag to analyze by color channels
-      - csv_output: boolean flag to export results to CSV
-      - metric: string, one of the values from QualityMetric enum
-      - interpolation: string, one of the values from InterpolationMethod enum
-      - min_size: int, minimum size (width and height) for analysis (default 16)
-      - threads: int, number of parallel processes for file processing (default 8)
-      - save_intermediate: boolean flag to save downscaled results
-      - no_parallel: boolean flag to disable parallel processing and use single-threaded scheme
 
     Raises:
       - argparse.ArgumentError if arguments are invalid
@@ -75,17 +65,17 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        '-m', '--metric',
-        default=DEFAULT_METRIC,
-        choices=[m.value for m in QualityMetric],
+        '-m', '--metric', type=QualityMetrics,
+        default=QUALITY_METRIC_DEFAULT,
+        choices=[m.value for m in QualityMetrics],
         metavar='METRIC',
         help=format_metric_help()
     )
 
     parser.add_argument(
-        '-i', '--interpolation',
-        default=DEFAULT_INTERPOLATION,
-        choices=[m.value for m in InterpolationMethod],
+        '-i', '--interpolation', type=InterpolationMethods,
+        default=INTERPOLATION_METHOD_DEFAULT,
+        choices=[m.value for m in InterpolationMethods],
         metavar='METHOD',
         help=format_interpolation_help()
     )
@@ -93,15 +83,16 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--min-size',
         type=int,
-        default=16,
+        default=MIN_DOWNSCALE_SIZE,
         metavar='SIZE',
-        help='Минимальный размер (по ширине и высоте) для анализа (по умолчанию 16)'
+        help="Минимальный размер (по ширине и высоте) для анализа (по умолчанию и минимально: " +
+             str(MIN_DOWNSCALE_SIZE) + ")"
     )
 
     parser.add_argument(
         '-t', '--threads',
         type=int,
-        default=multiprocessing.cpu_count(),
+        default=default_threads_count,
         metavar='N',
         help=format_threads_help()
     )
@@ -133,16 +124,30 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--ml',
         action='store_true',
-        help='Использовать ML-модель для предсказания PSNR/SSIM (вместо реального вычисления)'
+        help='Использовать ML-модель для предсказания метрик вместо реального вычисления (быстро)'
     )
 
     args = parser.parse_args()
+
+    if args.min_size < MIN_DOWNSCALE_SIZE:
+        logging.warning(
+            "Минимальный размер (по ширине и высоте) для анализа должен быть >= %s. "
+            "Установлено значение по умолчанию: %s",
+            MIN_DOWNSCALE_SIZE, MIN_DOWNSCALE_SIZE
+        )
+        args.min_size = MIN_DOWNSCALE_SIZE
+    if args.threads < 1:
+        logging.warning(
+            "Число параллельных процессов должно быть >= 1. "
+            "Установлено минимальное значение: 1"
+        )
+        args.threads = 1
 
     return args
 
 def format_threads_help() -> str:
     return ("Число параллельных процессов для обработки файлов. Игнорируется при --no-parallel,\n"
-            "по умолчанию равно количеству логических ядер процессора (сейчас обнаружено " +
+            "по умолчанию равно " + str(default_threads_count) + " (логических ядер процессора обнаружено " +
             str(multiprocessing.cpu_count()) + ")")
 
 def format_metric_help() -> str:
@@ -153,8 +158,8 @@ def format_metric_help() -> str:
     The <(default)> part is only present if the metric is the default one.
     """
     metrics = [
-        f"{m.value:<8}{' (default)' if m.value == DEFAULT_METRIC else '':<10} {desc}"
-        for m, desc in METRIC_DESCRIPTIONS.items()
+        f"{m.value:<8}{' (default)' if m.value == QUALITY_METRIC_DEFAULT else '':<10} {desc}"
+        for m, desc in QUALITY_METRICS_INFO.items()
     ]
     return "Доступные метрики качества:\n" + "\n".join(metrics)
 
@@ -166,25 +171,21 @@ def format_interpolation_help() -> str:
     The <(default)> part is only present if the method is the default one.
     """
     methods = [
-        f"{m.value:<8}{' (default)' if m.value == DEFAULT_INTERPOLATION else '':<10} {desc}"
-        for m, desc in INTERPOLATION_DESCRIPTIONS.items()
+        f"{m.value:<8}{' (default)' if m.value == INTERPOLATION_METHOD_DEFAULT else '':<10} {desc}"
+        for m, desc in INTERPOLATION_METHODS_INFO.items()
     ]
     return "Доступные методы интерполяции:\n" + "\n".join(methods)
 
 def validate_paths(paths: list[str]) -> list[str]:
     """
     Validate paths and return a list of valid paths.
-
-    For each path in the input list, the function checks if it is a valid file or directory.
-    If the path is a file, it is added to the output list.
-    If the path is a directory, the function calls collect_files_from_dir to get a list of
-    all files in the directory and adds them to the output list.
-
-    If no valid paths are found, the function logs an error message and returns an empty list.
+    For each path, if it's a file, add it.
+    If it's a directory, collect files from that directory.
+    Raises:
+        ValueError: if no valid paths are found.
     """
     valid_paths = []
     invalid_paths_str = []
-
     for path in paths:
         if os.path.isfile(path):
             valid_paths.append(path)
@@ -193,24 +194,17 @@ def validate_paths(paths: list[str]) -> list[str]:
         else:
             logging.warning("Неверный путь: %s", path)
             invalid_paths_str.append(path)
-
     if not valid_paths:
         error_message = "Не найдено ни одного валидного файла или директории."
         if invalid_paths_str:
             error_message += " Проверьте следующие пути: " + ", ".join(invalid_paths_str)
         logging.error(error_message)
-        return []  # Ноу эксепшенс!
+        raise ValueError(error_message)
     return valid_paths
 
 def collect_files_from_dir(directory: str) -> list[str]:
     """
     Recursively collects and returns a list of file paths from the specified directory.
-    Args:
-        directory: The path to the directory to search for files.
-    Returns:
-        A list of file paths with extensions matching the SUPPORTED_EXTENSIONS.
-    Logs:
-        Logs an error if access to a directory is denied or if an unexpected error occurs.
     """
     collected = []
     try:

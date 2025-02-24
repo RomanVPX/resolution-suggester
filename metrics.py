@@ -1,7 +1,132 @@
+# metrics.py
 import math
 import numpy as np
 from numba import njit, prange
-from config import TINY_EPSILON
+from sewar.full_ref import msssim
+from config import TINY_EPSILON, QualityMetrics, MIN_DOWNSCALE_SIZE
+import torch
+from torchmetrics.image import MultiScaleStructuralSimilarityIndexMeasure
+
+if torch.backends.mps.is_available():
+    device = torch.device("mps")
+else:
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+
+def _get_adaptive_ms_ssim_params(h: int, w: int) -> tuple[tuple[float, ...], int]:
+    """Динамически подбирает параметры MS-SSIM под размер изображения"""
+    min_dim = min(h, w)
+
+    if min_dim >= 160:
+        return (0.0448, 0.2856, 0.3001, 0.2363, 0.1333), 11  # оригинальные параметры (5 scales, kernel 11)
+    elif min_dim >= 80:
+        return (0.25, 0.25, 0.25, 0.25), 7   # 4 scales, kernel 7
+    elif min_dim >= 40:
+        return (0.333, 0.333, 0.334), 5   # 3 scales, kernel 5
+    else:
+        return (0.5, 0.5), 3   # минимальные параметры для мелочи
+
+
+def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_val: float) -> float:
+    """
+    Вычисляет MS-SSIM между двумя изображениями с использованием PyTorch.
+    """
+    # Инициализируем вычислитель для каждого вызова для очистки памяти
+    # Нормализация изображения
+    if max_val > 1.0 + TINY_EPSILON:
+        max_val = max(max_val, TINY_EPSILON)  # Защита от нуля
+        original = original.astype(np.float32) / max_val
+        processed = processed.astype(np.float32) / max_val
+    else:
+        original = original.astype(np.float32)
+        processed = processed.astype(np.float32)
+
+    # Добавляем размерность батча и каналов
+    if original.ndim == 2:
+        original = original[np.newaxis, np.newaxis, :, :]  # (1, 1, H, W)
+        processed = processed[np.newaxis, np.newaxis, :, :]
+    elif original.ndim == 3:
+        original = original.transpose(2, 0, 1)  # (C, H, W)
+        processed = processed.transpose(2, 0, 1)
+        original = original[np.newaxis, :, :, :]  # (1, C, H, W)
+        processed = processed[np.newaxis, :, :, :]
+    else:
+        raise ValueError("Неподдерживаемая размерность изображений")
+
+    weights, kernel_size = _get_adaptive_ms_ssim_params(original.shape[-2], original.shape[-1])
+    msssim_calc = MultiScaleStructuralSimilarityIndexMeasure(data_range=1.0, betas=weights,
+                                                             kernel_size=kernel_size).to(device)
+    # Переводим в тензоры и переносим на устройство
+    original_tensor = torch.from_numpy(original).to(device)
+    processed_tensor = torch.from_numpy(processed).to(device)
+
+    # Вычисление MS-SSIM
+    with torch.no_grad():
+        with torch.autocast(device_type=device.type, dtype=torch.float16):
+            ms_ssim_val = msssim_calc(original_tensor, processed_tensor).item()
+
+    # Явное освобождение ресурсов
+    del original_tensor, processed_tensor
+    torch.mps.empty_cache() if device.type == 'mps' else torch.cuda.empty_cache()
+
+    return float(ms_ssim_val)
+
+
+def calculate_ms_ssim_pytorch_channels(
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float,
+    channels: list[str]
+) -> dict[str, float]:
+    """
+    Вычисляет MS-SSIM для каждого канала отдельно (не рекомендуется из-за медленной работы).
+    """
+    results = {}
+    for i, ch in enumerate(channels):
+        orig_ch = original[..., i] if original.ndim == 3 else original
+        proc_ch = processed[..., i] if processed.ndim == 3 else processed
+        results[ch] = calculate_ms_ssim_pytorch(orig_ch, proc_ch, max_val)
+    return results
+
+
+def calculate_ms_ssim(
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float
+) -> float:
+    # Нормализация для EXR
+    if max_val > 1.0 + TINY_EPSILON:
+        original = original.astype(np.float32) / max_val
+        processed = processed.astype(np.float32) / max_val
+        data_range = 1.0
+    else:
+        data_range = max_val
+
+    # Для многоканальных изображений sewar ожидает (H,W,C)
+    if original.ndim == 2:
+        original = original[..., np.newaxis]
+        processed = processed[..., np.newaxis]
+
+    # Защита от артефактов округления
+    original = np.clip(original, 0.0, 1.0)
+    processed = np.clip(processed, 0.0, 1.0)
+
+    return float(np.real(msssim(original, processed, MAX=data_range)))
+
+
+def calculate_ms_ssim_channels(
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float,
+    channels: list[str]
+) -> dict[str, float]:
+    results = {}
+    for i, ch in enumerate(channels):
+        orig_ch = original[..., i] if original.ndim == 3 else original
+        proc_ch = processed[..., i] if processed.ndim == 3 else processed
+        results[ch] = calculate_ms_ssim(orig_ch, proc_ch, max_val)
+    return results
+
 
 @njit(cache=True)
 def calculate_psnr(
@@ -9,19 +134,18 @@ def calculate_psnr(
     processed: np.ndarray,
     max_val: float
 ) -> float:
-    if original.shape != processed.shape:
-        raise ValueError("Размеры изображений должны совпадать для расчета PSNR")
 
     diff = original - processed
     mse = np.mean(diff * diff)
 
     if mse < TINY_EPSILON:
-        return float('inf')
+        return 140.0 # Вместо бесконечности возвращаем 140 дБ для обучения
 
-    log_max = 20 * math.log10(max_val)
-    return log_max - 10 * math.log10(mse)
+    log_max = 20 * np.log10(max_val)
+    return log_max - 10 * np.log10(mse)
 
-def calculate_channel_psnr(
+
+def calculate_psnr_channels(
     original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
@@ -32,10 +156,10 @@ def calculate_channel_psnr(
         for i, channel in enumerate(channels)
     }
 
+
 def gaussian_kernel_1d(size: int, sigma: float) -> np.ndarray:
     """
     Формирует 1D-ядро Гаусса длиной size с параметром sigma.
-    Все операции совместимы с nopython-режимом Numba.
     """
     kernel_1d = np.empty(size, dtype=np.float32)
     half = (size - 1) / 2.0
@@ -53,6 +177,7 @@ def gaussian_kernel_1d(size: int, sigma: float) -> np.ndarray:
 
     return kernel_1d
 
+
 @njit(cache=True)
 def reflect_coordinate(x: int, size: int) -> int:
     """
@@ -64,6 +189,7 @@ def reflect_coordinate(x: int, size: int) -> int:
     if x >= size:
         return 2*size - x - 1
     return x
+
 
 @njit(parallel=True, cache=True)
 def convolve_1d_horiz(src: np.ndarray, kernel_1d: np.ndarray) -> np.ndarray:
@@ -85,6 +211,7 @@ def convolve_1d_horiz(src: np.ndarray, kernel_1d: np.ndarray) -> np.ndarray:
                 accum += src[i, jj] * kernel_1d[k]
             out[i, j] = accum
     return out
+
 
 @njit(parallel=True, cache=True)
 def convolve_1d_vert(src: np.ndarray, kernel_1d: np.ndarray) -> np.ndarray:
@@ -111,7 +238,7 @@ def convolve_1d_vert(src: np.ndarray, kernel_1d: np.ndarray) -> np.ndarray:
 def filter_2d_separable(img: np.ndarray, size: int, sigma: float) -> np.ndarray:
     """
     Разделяемая свёртка Гаусса для (H,W) или (H,W,C).
-    1) Генерируем 1D ядро gauss_1d.
+    1) Генерируем 1D ядро kernel_1d.
     2) Горизонтальная свёртка.
     3) Вертикальная свёртка.
     """
@@ -134,33 +261,30 @@ def filter_2d_separable(img: np.ndarray, size: int, sigma: float) -> np.ndarray:
     return result
 
 
-
-def calculate_ssim_gauss_single(
+def _calculate_ssim_gauss_single(
     original: np.ndarray,
     processed: np.ndarray,
-    K1: float = 0.01,
-    K2: float = 0.03,
-    L: float  = 1.0,
+    k_1: float = 0.01,
+    k_2: float = 0.03,
+    l: float  = 1.0,
     window_size: int = 11,
     sigma: float = 1.5
 ) -> float:
-    if original.shape != processed.shape:
-        raise ValueError("SSIM: размеры изображений должны совпадать")
 
     # Фильтруем средние
-    muX = filter_2d_separable(original, window_size, sigma)
-    muY = filter_2d_separable(processed, window_size, sigma)
+    mu_x = filter_2d_separable(original, window_size, sigma)
+    mu_y = filter_2d_separable(processed, window_size, sigma)
 
     # Фильтруем X^2, Y^2 и X*Y
-    sigmaX = filter_2d_separable(original*original, window_size, sigma) - muX*muX
-    sigmaY = filter_2d_separable(processed*processed, window_size, sigma) - muY*muY
-    sigmaXY = filter_2d_separable(original*processed, window_size, sigma) - muX*muY
+    sigma_x = filter_2d_separable(original*original, window_size, sigma) - mu_x*mu_x
+    sigma_y = filter_2d_separable(processed*processed, window_size, sigma) - mu_y*mu_y
+    sigma_xy = filter_2d_separable(original*processed, window_size, sigma) - mu_x*mu_y
 
-    C1 = (K1 * L)**2
-    C2 = (K2 * L)**2
+    c1 = (k_1 * l) ** 2
+    c2 = (k_2 * l) ** 2
 
-    numerator   = (2.0 * muX * muY + C1) * (2.0 * sigmaXY + C2)
-    denominator = (muX**2 + muY**2 + C1) * (sigmaX + sigmaY + C2)
+    numerator   = (2.0 * mu_x * mu_y + c1) * (2.0 * sigma_xy + c2)
+    denominator = (mu_x**2 + mu_y**2 + c1) * (sigma_x + sigma_y + c2)
 
     ssim_map = numerator / np.maximum(denominator, TINY_EPSILON)
     return float(np.mean(ssim_map))
@@ -170,35 +294,33 @@ def calculate_ssim_gauss(
     original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
-    K1: float = 0.01,
-    K2: float = 0.03,
+    k_1: float = 0.01,
+    k_2: float = 0.03,
     window_size: int = 11,
     sigma: float = 1.5
 ) -> float:
-    if original.shape != processed.shape:
-        raise ValueError("SSIM: размеры изображений должны совпадать")
-
     # Нормализуем, если max_val > 1
-    if max_val > 1.00001:
+    if max_val > 1.0 + TINY_EPSILON:
         original  = original  / max_val
         processed = processed / max_val
 
     if original.ndim == 2:
-        return calculate_ssim_gauss_single(original, processed, K1, K2, 1.0, window_size, sigma)
+        return _calculate_ssim_gauss_single(original, processed, k_1, k_2, 1.0, window_size, sigma)
     if original.ndim == 3:
         c = original.shape[2]
         ssim_sum = 0.0
         for i in range(c):
-            ssim_sum += calculate_ssim_gauss_single(
+            ssim_sum += _calculate_ssim_gauss_single(
                 original[..., i],
                 processed[..., i],
-                K1, K2, 1.0, window_size, sigma
+                k_1, k_2, 1.0, window_size, sigma
             )
         return ssim_sum / c
 
     raise ValueError("Неподдерживаемая размерность изображения для SSIM")
 
-def calculate_channel_ssim_gauss(
+
+def calculate_ssim_gauss_channels(
     original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
@@ -206,17 +328,15 @@ def calculate_channel_ssim_gauss(
     window_size: int = 11,
     sigma: float = 1.5
 ) -> dict[str, float]:
-    if original.shape != processed.shape:
-        raise ValueError("SSIM: размеры изображений должны совпадать")
-
-    if max_val > 1.00001:
+    # Нормализуем, если max_val > 1
+    if max_val > 1.0 + TINY_EPSILON:
         original  = original  / max_val
         processed = processed / max_val
 
     # Если (H,W), то один канал:
     if original.ndim == 2:
         return {
-            'L': calculate_ssim_gauss_single(
+            'L': _calculate_ssim_gauss_single(
                 original, processed,
                 window_size=window_size, sigma=sigma
             )
@@ -225,7 +345,7 @@ def calculate_channel_ssim_gauss(
     # (H,W,C)
     ssim_dict: dict[str, float] = {}
     for i, ch in enumerate(channels):
-        ssim_val = calculate_ssim_gauss_single(
+        ssim_val = _calculate_ssim_gauss_single(
             original[..., i],
             processed[..., i],
             window_size=window_size, sigma=sigma
@@ -234,15 +354,47 @@ def calculate_channel_ssim_gauss(
 
     return ssim_dict
 
-def compute_resolutions(
-    original_width: int,
-    original_height: int,
-    min_size: int = 16
-) -> list[tuple[int, int]]:
+
+def calculate_metrics(
+    quality_metric: QualityMetrics,
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float,
+    channels: list[str] = None
+) -> None | dict[str, float] | float:
+
+    if original.shape != processed.shape:
+        raise ValueError("calculate_metrics: размеры изображений должны совпадать!")
+    if original.ndim != processed.ndim:
+        raise ValueError("calculate_metrics: размерности изображений должны совпадать!")
+
+    if channels is None:
+        match quality_metric:
+            case QualityMetrics.PSNR:
+                return calculate_psnr(original, processed, max_val)
+            case QualityMetrics.SSIM:
+                return calculate_ssim_gauss(original, processed, max_val)
+            case QualityMetrics.MS_SSIM:
+                return calculate_ms_ssim_pytorch(original, processed, max_val)
+    else:
+        match quality_metric:
+            case QualityMetrics.PSNR:
+                return calculate_psnr_channels(original, processed, max_val, channels)
+            case QualityMetrics.SSIM:
+                return calculate_ssim_gauss_channels(original, processed, max_val, channels)
+            case QualityMetrics.MS_SSIM:
+                return calculate_ms_ssim_pytorch_channels(original, processed, max_val, channels)
+
+    raise ValueError(f"Неподдерживаемая метрика: {quality_metric}")
+
+
+def compute_resolutions(original_width: int, original_height: int, min_size: int = 16, divider: int = 2) -> list[tuple[int, int]]:
     resolutions = []
     w, h = original_width, original_height
-    while w >= min_size * 2 and h >= min_size * 2:
-        w //= 2
-        h //= 2
+    while w >= min_size and h >= min_size:
+        if w < MIN_DOWNSCALE_SIZE or h < MIN_DOWNSCALE_SIZE:
+            break
         resolutions.append((w, h))
+        w //= divider
+        h //= divider
     return resolutions
