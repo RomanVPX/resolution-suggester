@@ -18,7 +18,7 @@ from image_loader import load_image
 from image_processing import get_resize_function
 from metrics import compute_resolutions, calculate_metrics
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
-from config import SAVE_INTERMEDIATE_DIR, ML_DATA_DIR, InterpolationMethods, QualityMetrics
+from config import SAVE_INTERMEDIATE_DIR, ML_DATA_DIR, InterpolationMethods, QualityMetrics, PSNR_IS_LARGE_AS_INF
 from ml_predictor import QuickPredictor, extract_features_of_original_img
 
 def main():
@@ -40,7 +40,7 @@ def main():
         return   # завершаем работу после создания датасета
 
     if args.csv_output:
-        csv_path = generate_csv_filename(args.metric, InterpolationMethods(args.interpolation))
+        csv_path = generate_csv_filename(args)
         with CSVReporter(csv_path, QualityMetrics(args.metric)) as reporter:
             reporter.write_header(args.channels)
             process_files(files, args, reporter)
@@ -105,12 +105,12 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
         if not predictor.load():
             logging.info("ML-модель не найдена, будем вычислять реальные метрики.")
             use_prediction = False
-
-    try:
-        resize_fn = get_resize_function(args.interpolation)
-    except ValueError as e:
-        logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
-        return None, None
+    else:
+        try:
+            resize_fn = get_resize_function(args.interpolation)
+        except ValueError as e:
+            logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
+            return None, None
 
     for (w, h) in resolutions:
         if w == width and h == height:
@@ -166,7 +166,7 @@ def _predict_channel_metrics(img_original, w, width, h, height, args, predictor,
         })
         prediction_channel = predictor.predict(features_for_ml_channel)
         val = prediction_channel.get(args.metric.value, 0.0)
-        channels_metrics[c] = float('inf') if val >= 139.9 else val
+        channels_metrics[c] = float('inf') if val >= PSNR_IS_LARGE_AS_INF else val
     return channels_metrics
 
 def _predict_combined_metric(img_original, w, width, h, height, args, predictor):
@@ -181,21 +181,21 @@ def _predict_combined_metric(img_original, w, width, h, height, args, predictor)
     })
     prediction = predictor.predict(features_for_ml)
     metric_value = prediction.get(args.metric.value, 0.0)
-    metric_value = float('inf') if metric_value >= 139.9 else metric_value
+    metric_value = float('inf') if metric_value >= PSNR_IS_LARGE_AS_INF else metric_value
     return metric_value
 
 def postprocess_psnr_value(psnr_value, metric_type):
-    """Заменяет значения PSNR >= 139.9 на float('inf')."""
+    """Заменяет значения PSNR >= PSNR_IS_LARGE_AS_INF на float('inf')."""
     if QualityMetrics(metric_type) == QualityMetrics.PSNR:
-        return float('inf') if psnr_value >= 139.9 else psnr_value
+        return float('inf') if psnr_value >= PSNR_IS_LARGE_AS_INF else psnr_value
     return psnr_value
 
 def postprocess_channel_metrics(channels_metrics, metric_type):
-    """Заменяет значения PSNR >= 139.9 на float('inf') в словаре поканальных метрик."""
+    """Заменяет значения PSNR >= PSNR_IS_LARGE_AS_INF на float('inf') в словаре поканальных метрик."""
     processed_metrics = {}
     for c, metric_value in channels_metrics.items():
         if QualityMetrics(metric_type) == QualityMetrics.PSNR:
-            processed_metrics[c] = float('inf') if metric_value >= 139.9 else metric_value
+            processed_metrics[c] = float('inf') if metric_value >= PSNR_IS_LARGE_AS_INF else metric_value
         else:
             processed_metrics[c] = metric_value
     return processed_metrics
@@ -259,7 +259,7 @@ def process_file_for_dataset(
                         img_channel = img_original[..., channels.index(c)] if img_original.ndim == 3 else img_original
                         img_upscaled_channel = img_upscaled[..., channels.index(c)] if img_upscaled.ndim == 3 else img_original
 
-                        channel_features = extract_features_of_original_img(img_channel, c)
+                        channel_features = extract_features_of_original_img(img_channel)
                         features_entry.update(channel_features)  # Добавляем канальные фичи
 
                         targets_entry = {}

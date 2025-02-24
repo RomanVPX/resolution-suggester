@@ -17,12 +17,11 @@ SAVE_INTERMEDIATE_DIR: Final = Path('_intermediate')
 ML_DATA_DIR: Final = Path('_ml_data')
 ML_MODEL_DIR = ML_DATA_DIR / "models"
 
-CHANNEL_COLUMNS: Final = ['R', 'G', 'B', 'A', 'L']
-
 MITCHELL_B = 1/3
 MITCHELL_C = 1/3
 
 TINY_EPSILON = 1e-8
+PSNR_IS_LARGE_AS_INF = 139.0
 
 MIN_DOWNSCALE_SIZE = 16
 

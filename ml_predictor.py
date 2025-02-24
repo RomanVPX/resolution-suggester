@@ -68,24 +68,19 @@ class QuickPredictor:
         df_targets = pd.read_csv(targets_csv)
 
         preprocessor = self._get_preprocessor()
-        X_processed = preprocessor.fit_transform(df_features)
+        x_processed = preprocessor.fit_transform(df_features)
 
-        # Фильтруем только те строки, в которых все таргет-значения конечны.
-        # Это можно сделать так:
+        # Удаление строк с бесконечными значениями
+        # Удалить? Бесконечности всё равно риводятся к (PSNR_IS_LARGE_AS_INF + 1.0) в calculate_psnr()
         y = df_targets.to_numpy()
         mask = np.isfinite(y).all(axis=1)
         if not mask.all():
             logging.info("Будут удалены строки с бесконечными значениями в таргетах.")
-        # Для общего случая
         mask_combined = (df_features['analyze_channels'] == 0) & mask
-        X_combined = X_processed[mask_combined]
+        x_combined = x_processed[mask_combined]
         y_combined = df_targets[['psnr', 'ssim', 'ms_ssim']].to_numpy()[mask_combined]
-
-        # Для канального случая
         mask_channels = (df_features['analyze_channels'] != 0) & mask
-        X_channels = X_processed[mask_channels]
-        # Выбираем все колонки, начинающиеся с метрики (например, "psnr_", "ssim_", "ms_ssim"...),
-        # предполагаем, что они идут в нужном порядке
+        x_channels = x_processed[mask_channels]
         y_channels = df_targets[
             [col for col in df_targets.columns if any(col.startswith(f"{m.value}") for m in QualityMetrics)]
         ].to_numpy()[mask_channels]
@@ -93,10 +88,10 @@ class QuickPredictor:
         # Обучение моделей
         combined_model = MultiOutputRegressor(
             GradientBoostingRegressor(n_estimators=200, max_depth=7, random_state=42)
-        ).fit(X_combined, y_combined)
+        ).fit(x_combined, y_combined)
 
         channels_model = MultiOutputRegressor(
-            HistGradientBoostingRegressor(max_iter=200, max_depth=5, random_state=42)).fit(X_channels, y_channels)
+            HistGradientBoostingRegressor(max_iter=200, max_depth=5, random_state=42)).fit(x_channels, y_channels)
 
         (self.model_dir / "combined").mkdir(parents=True, exist_ok=True)
         (self.model_dir / "channels").mkdir(parents=True, exist_ok=True)
@@ -106,7 +101,8 @@ class QuickPredictor:
         joblib.dump(channels_model, self.model_dir / "channels" / "model.joblib")
         logging.info("Модели обучены и сохранены.")
 
-    def _get_preprocessor(self) -> ColumnTransformer:
+    @staticmethod
+    def _get_preprocessor() -> ColumnTransformer:
         """Создаёт препроцессор фичей."""
         numeric_features = [
             'contrast', 'variance', 'entropy',
@@ -143,7 +139,7 @@ class QuickPredictor:
                 raise ValueError("Модель для анализа по каналам не загружена.")
             pred = self.channels_model.predict(processed)[0]
             # Возвращаем словарь, где ключи - названия метрик, значения - предсказанные значения.
-            return {metric.value: val for metric, val in zip(QualityMetrics, pred)}
+            return {metric: val for metric, val in zip(QualityMetrics, pred)}
         else:
             if self.combined_model is None:
                 raise ValueError("Модель для общего анализа не загружена.")
@@ -167,7 +163,7 @@ def extract_texture_features(img: np.ndarray, method: str) -> Dict[str, float]:
 
 #############################################################################
 # Извлечение набора признаков из оригинального изображения
-def extract_features_of_original_img(img: np.ndarray, channel_name: str = None) -> dict:
+def extract_features_of_original_img(img: np.ndarray) -> dict:
     """Извлекает признаки из 2D-изображения (канала)."""
     if img.ndim == 3:
         img = np.mean(img, axis=2)
@@ -182,7 +178,6 @@ def extract_features_of_original_img(img: np.ndarray, channel_name: str = None) 
     coefficients = pywt.dwt2(img, 'haar')
     c_a, (c_h, c_v, c_d) = coefficients
     features['wavelet_energy'] = np.sum(c_a**2 + c_h**2 + c_v**2 + c_d**2) / img.size
-    logging.debug(f"Wavelet energy ({channel_name}): {features['wavelet_energy']:.4f}")
 
     # GLCM-признаки
     glcm = graycomatrix((img * 255).astype(np.uint8),
