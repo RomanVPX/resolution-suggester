@@ -26,6 +26,7 @@ def _get_adaptive_ms_ssim_params(h: int, w: int) -> tuple[tuple[float, ...], int
     else:
         return (0.5, 0.5), 3   # минимальные параметры для мелочи
 
+
 def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_val: float) -> float:
     """
     Вычисляет MS-SSIM между двумя изображениями с использованием PyTorch.
@@ -87,6 +88,7 @@ def calculate_ms_ssim_pytorch_channels(
         results[ch] = calculate_ms_ssim_pytorch(orig_ch, proc_ch, max_val)
     return results
 
+
 def calculate_ms_ssim(
     original: np.ndarray,
     processed: np.ndarray,
@@ -111,6 +113,7 @@ def calculate_ms_ssim(
 
     return float(np.real(msssim(original, processed, MAX=data_range)))
 
+
 def calculate_ms_ssim_channels(
     original: np.ndarray,
     processed: np.ndarray,
@@ -123,6 +126,7 @@ def calculate_ms_ssim_channels(
         proc_ch = processed[..., i] if processed.ndim == 3 else processed
         results[ch] = calculate_ms_ssim(orig_ch, proc_ch, max_val)
     return results
+
 
 @njit(cache=True)
 def calculate_psnr(
@@ -140,6 +144,7 @@ def calculate_psnr(
     log_max = 20 * np.log10(max_val)
     return log_max - 10 * np.log10(mse)
 
+
 def calculate_psnr_channels(
     original: np.ndarray,
     processed: np.ndarray,
@@ -150,6 +155,7 @@ def calculate_psnr_channels(
         channel: calculate_psnr(original[..., i], processed[..., i], max_val)
         for i, channel in enumerate(channels)
     }
+
 
 def gaussian_kernel_1d(size: int, sigma: float) -> np.ndarray:
     """
@@ -171,6 +177,7 @@ def gaussian_kernel_1d(size: int, sigma: float) -> np.ndarray:
 
     return kernel_1d
 
+
 @njit(cache=True)
 def reflect_coordinate(x: int, size: int) -> int:
     """
@@ -182,6 +189,7 @@ def reflect_coordinate(x: int, size: int) -> int:
     if x >= size:
         return 2*size - x - 1
     return x
+
 
 @njit(parallel=True, cache=True)
 def convolve_1d_horiz(src: np.ndarray, kernel_1d: np.ndarray) -> np.ndarray:
@@ -203,6 +211,7 @@ def convolve_1d_horiz(src: np.ndarray, kernel_1d: np.ndarray) -> np.ndarray:
                 accum += src[i, jj] * kernel_1d[k]
             out[i, j] = accum
     return out
+
 
 @njit(parallel=True, cache=True)
 def convolve_1d_vert(src: np.ndarray, kernel_1d: np.ndarray) -> np.ndarray:
@@ -310,6 +319,7 @@ def calculate_ssim_gauss(
 
     raise ValueError("Неподдерживаемая размерность изображения для SSIM")
 
+
 def calculate_ssim_gauss_channels(
     original: np.ndarray,
     processed: np.ndarray,
@@ -343,6 +353,7 @@ def calculate_ssim_gauss_channels(
         ssim_dict[ch] = ssim_val
 
     return ssim_dict
+
 
 def calculate_metrics(
     quality_metric: QualityMetrics,

@@ -119,6 +119,7 @@ STYLES = {
     'bad': Fore.RED,
 }
 
+
 def get_output_csv_header(analyze_channels: bool, metric_type: QualityMetrics) -> list[str]:
     """
     Forms the CSV header considering the metric.

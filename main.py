@@ -23,6 +23,7 @@ from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_
 from config import SAVE_INTERMEDIATE_DIR, ML_DATA_DIR, InterpolationMethods, QualityMetrics
 from ml_predictor import QuickPredictor, extract_features_of_original_img
 
+
 def main():
     setup_logging()
     args = parse_arguments()
@@ -49,6 +50,7 @@ def main():
         print(f"\nМетрики сохранены в: {csv_path}")
     else:
         process_files(files, args)
+
 
 def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
     if args.no_parallel:
@@ -80,6 +82,7 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
                     print_console_results(file_path, results, args.channels, meta, QualityMetrics(args.metric))
                     if reporter is not None:
                         reporter.write_results(os.path.basename(file_path), results, args.channels)
+
 
 def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optional[list], Optional[dict]]:
     image_load_result = load_image(file_path)
@@ -273,6 +276,7 @@ def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, s
 
     return features_csv, targets_csv
 
+
 def print_console_results(
     file_path: str, results: list, analyze_channels: bool, meta: dict, metric_type: QualityMetrics
 ):
@@ -284,6 +288,7 @@ def print_console_results(
         results, analyze_channels, meta.get('channels'), metric_type
     )
 
+
 def create_original_entry(
     width: int, height: int, channels: Optional[list[str]] = None, analyze_channels: bool = False
 ) -> tuple:
@@ -291,6 +296,7 @@ def create_original_entry(
     if analyze_channels and channels:
         return *base_entry, {c: float('inf') for c in channels}, float('inf'), "Оригинал"
     return *base_entry, float('inf'), "Оригинал"
+
 
 def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height: int):
     """
@@ -313,6 +319,7 @@ def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height
 
     pil_img = Image.fromarray(arr_uint8)
     pil_img.save(output_path, format="PNG")
+
 
 if __name__ == "__main__":
     main()
