@@ -18,7 +18,8 @@ from image_loader import load_image
 from image_processing import get_resize_function
 from metrics import compute_resolutions, calculate_metrics
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
-from config import SAVE_INTERMEDIATE_DIR, ML_DATA_DIR, InterpolationMethods, QualityMetrics, PSNR_IS_LARGE_AS_INF
+from config import (InterpolationMethods, QualityMetrics,
+                    PSNR_IS_LARGE_AS_INF, INTERPOLATION_METHOD_UPSCALE, SAVE_INTERMEDIATE_DIR, ML_DATA_DIR)
 from ml_predictor import QuickPredictor, extract_features_of_original_img
 
 def main():
@@ -108,6 +109,7 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
     else:
         try:
             resize_fn = get_resize_function(args.interpolation)
+            resize_fn_upscale = get_resize_function(INTERPOLATION_METHOD_UPSCALE)
         except ValueError as e:
             logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
             return None, None
@@ -120,7 +122,7 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
             img_downscaled = resize_fn(img_original, w, h)
             if args.save_intermediate:
                 _save_intermediate(img_downscaled, file_path, w, h)
-            img_upscaled = resize_fn(img_downscaled, width, height)
+            img_upscaled = resize_fn_upscale(img_downscaled, width, height)
 
         if args.channels:
             if use_prediction:
@@ -226,6 +228,7 @@ def process_file_for_dataset(
     for method in interpolations_methods:
         try:
             resize_fn = get_resize_function(method)
+            resize_fn_upscale = get_resize_function(INTERPOLATION_METHOD_UPSCALE)
         except ValueError as e:
             logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
             continue
@@ -245,7 +248,7 @@ def process_file_for_dataset(
             }
 
             img_downscaled = resize_fn(img_original, w, h)
-            img_upscaled = resize_fn(img_downscaled, original_w, original_h)
+            img_upscaled = resize_fn_upscale(img_downscaled, original_w, original_h)
 
             # Создаём две версии данных: без каналов и с каналами
             for analyze_channels in [0, 1]:

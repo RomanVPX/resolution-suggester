@@ -106,6 +106,7 @@ INTERPOLATION_METHODS_INFO = {
 }
 
 INTERPOLATION_METHOD_DEFAULT = InterpolationMethods.MITCHELL
+INTERPOLATION_METHOD_UPSCALE = InterpolationMethods.BICUBIC
 
 # === Styling for console output ===
 STYLES = {
