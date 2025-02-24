@@ -26,9 +26,10 @@ from ml_predictor import QuickPredictor, extract_features_of_original_img
 def main():
     setup_logging()
     args = parse_arguments()
-    files = validate_paths(args.paths)
-    if not files:
-        logging.error("Не найдено ни одного валидного файла или директории. Завершение работы.")
+    try:
+        files = validate_paths(args.paths)
+    except ValueError as e:
+        logging.error(str(e) + " Завершение работы.")
         return
 
     if args.generate_dataset:
@@ -104,7 +105,7 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
         if ml_predictor.load():
             features_original = extract_features_of_original_img(img_original)
         else:
-            logging.warning("ML-модель не найдена, будем вычислять реальные метрики.")
+            logging.info("ML-модель не найдена, будем вычислять реальные метрики.")
             use_prediction = False
 
     try:
@@ -112,6 +113,8 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
     except ValueError as e:
         logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
         return None, None
+
+    common_features_for_ml = {'method': args.interpolation}
 
     for (w, h) in resolutions:
         if w == width and h == height:
@@ -122,9 +125,8 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
             features_for_ml = {
                 **features_original,
                 'scale_factor': (w / width + h / height) / 2,
-                'method': args.interpolation # TODO: Вынести бы — в цикле это не меняется
+                **common_features_for_ml
             }
-
             prediction = ml_predictor.predict(features_for_ml)
         else:
             img_downscaled = resize_fn(img_original, w, h)
@@ -226,11 +228,13 @@ def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, s
     all_targets = []
 
     # Пути для сохранения датасета
-    features_csv = os.path.join(ML_DATA_DIR, 'features.csv')
-    targets_csv  = os.path.join(ML_DATA_DIR, 'targets.csv')
+    features_csv_path = ML_DATA_DIR / 'features.csv'
+    targets_csv_path  = ML_DATA_DIR / 'targets.csv'
+    features_csv = str(features_csv_path)
+    targets_csv = str(targets_csv_path)
 
-    if not os.path.exists(ML_DATA_DIR):
-        os.makedirs(ML_DATA_DIR, exist_ok=True)
+    if not ML_DATA_DIR.exists():
+        ML_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     interpolations_methods_to_test = [
         InterpolationMethods.BILINEAR,

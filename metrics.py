@@ -67,7 +67,6 @@ def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_v
     # Явное освобождение ресурсов
     del original_tensor, processed_tensor
     torch.mps.empty_cache() if device.type == 'mps' else torch.cuda.empty_cache()
-    # gc.collect()
 
     return float(ms_ssim_val)
 
@@ -138,8 +137,8 @@ def calculate_psnr(
     if mse < TINY_EPSILON:
         return float('inf')
 
-    log_max = 20 * math.log10(max_val)
-    return log_max - 10 * math.log10(mse)
+    log_max = 20 * np.log10(max_val)
+    return log_max - 10 * np.log10(mse)
 
 def calculate_psnr_channels(
     original: np.ndarray,
@@ -291,7 +290,6 @@ def calculate_ssim_gauss(
     window_size: int = 11,
     sigma: float = 1.5
 ) -> float:
-
     # Нормализуем, если max_val > 1
     if max_val > 1.0 + TINY_EPSILON:
         original  = original  / max_val
@@ -320,7 +318,7 @@ def calculate_ssim_gauss_channels(
     window_size: int = 11,
     sigma: float = 1.5
 ) -> dict[str, float]:
-
+    # Нормализуем, если max_val > 1
     if max_val > 1.0 + TINY_EPSILON:
         original  = original  / max_val
         processed = processed / max_val

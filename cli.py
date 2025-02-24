@@ -131,14 +131,18 @@ def parse_arguments() -> argparse.Namespace:
 
     args = parser.parse_args()
 
-    if args.min_size < 16:
-        logging.warning("Минимальный размер (по ширине и высоте) для анализа должен быть >= " +
-                        str(MIN_DOWNSCALE_SIZE))
-        logging.warning("Установлено значение по умолчанию: " + str(MIN_DOWNSCALE_SIZE))
+    if args.min_size < MIN_DOWNSCALE_SIZE:
+        logging.warning(
+            "Минимальный размер (по ширине и высоте) для анализа должен быть >= %s. "
+            "Установлено значение по умолчанию: %s",
+            MIN_DOWNSCALE_SIZE, MIN_DOWNSCALE_SIZE
+        )
         args.min_size = MIN_DOWNSCALE_SIZE
     if args.threads < 1:
-        logging.warning("Число параллельных процессов должно быть >= 1")
-        logging.warning("Установлено минимальное значение: 1")
+        logging.warning(
+            "Число параллельных процессов должно быть >= 1. "
+            "Установлено минимальное значение: 1"
+        )
         args.threads = 1
 
     return args
@@ -183,7 +187,8 @@ def validate_paths(paths: list[str]) -> list[str]:
     If the path is a directory, the function calls collect_files_from_dir to get a list of
     all files in the directory and adds them to the output list.
 
-    If no valid paths are found, the function logs an error message and returns an empty list.
+    Raises:
+        ValueError: if no valid paths are found.
     """
     valid_paths = []
     invalid_paths_str = []
@@ -202,9 +207,8 @@ def validate_paths(paths: list[str]) -> list[str]:
         if invalid_paths_str:
             error_message += " Проверьте следующие пути: " + ", ".join(invalid_paths_str)
         logging.error(error_message)
-        return []  # Ноу эксепшенс!
+        raise ValueError(error_message) # Raise ValueError instead of returning empty list
     return valid_paths
-
 def collect_files_from_dir(directory: str) -> list[str]:
     """
     Recursively collects and returns a list of file paths from the specified directory.

@@ -1,11 +1,13 @@
 # ml_predictor.py
 import os
 import logging
+
 import joblib
 import pywt
 import numpy as np
 import pandas as pd
 
+from pathlib import Path
 from typing import Dict, Any
 
 from skimage.feature import graycomatrix, graycoprops
@@ -20,7 +22,7 @@ from config import ML_TARGET_COLUMNS, ML_DATA_DIR
 
 
 class QuickPredictor:
-    def __init__(self, model_path: str = os.path.join(ML_DATA_DIR, 'model.joblib')):
+    def __init__(self, model_path: Path = ML_DATA_DIR / 'model.joblib'):
         """Инициализация предиктора с путём к модели"""
         self.model_path = model_path
         self.pipeline = None
@@ -30,7 +32,7 @@ class QuickPredictor:
         Загружает модель из self.model_path.
         Возвращает True, если модель успешно загружена, иначе False.
         """
-        if not os.path.exists(self.model_path):
+        if not self.model_path.exists():
             logging.warning("Файл модели не найден: %s", self.model_path)
             return False
         self.pipeline = joblib.load(self.model_path)
@@ -90,7 +92,7 @@ class QuickPredictor:
         self.pipeline = self.get_pipeline()
         self.pipeline.fit(df_features, y)
 
-        joblib.dump(self.pipeline, self.model_path)
+        joblib.dump(self.pipeline, str(self.model_path))
         logging.info("Модель сохранена в %s", self.model_path)
 
     def predict(self, features: Dict[str, Any]) -> Dict[str, float]:

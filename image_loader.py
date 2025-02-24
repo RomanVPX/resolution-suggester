@@ -56,7 +56,8 @@ def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
         # Size check
         file_size = os.path.getsize(file_path)
         if file_size < 16:
-            return ImageLoadResult(None, None, None, f"Файл слишком мал или пуст: {file_path}")
+            return ImageLoadResult(None, None, None,
+               f"Файл может быть поврежден или не является изображением: {file_path} (размер файла: {file_size} байт)")
 
         if ext == '.exr':
             return load_exr(file_path, normalize_exr)
@@ -108,15 +109,15 @@ def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
         logging.error("Ошибка обработки EXR %s: %s", file_path, str(e))
         return ImageLoadResult(None, None, None, str(e))
 
-def load_raster(file_path: str) -> ImageLoadResult:
+def load_raster(image_path: str) -> ImageLoadResult:
     """
     Loads PNG/TGA/JPG images and normalizes data to range [0, 1].
     If the image is grayscale, expands to (H, W, 1) for consistency.
     """
     try:
-        with Image.open(file_path) as img:
+        with Image.open(image_path) as img:
             if img.mode not in MODE_CHANNEL_MAP:
-                img = img.convert('RGB')
+                img = img.convert('RGB') # Конвертация в RGB для неподдерживаемых режимов
             mode = img.mode  # фиксируем режим после возможного преобразования
             divisor = BIT_DEPTH_16 if img.mode.startswith('I;16') else BIT_DEPTH_8
             img_array = np.array(img).astype(np.float32) / divisor
@@ -128,11 +129,11 @@ def load_raster(file_path: str) -> ImageLoadResult:
             return ImageLoadResult(img_array, 1.0, channels)
 
     except FileNotFoundError:
-        logging.error("Файл не найден: %s", file_path)
-        return ImageLoadResult(None, None, None, f"Файл не найден: {file_path}")
+        logging.error("Файл не найден: %s", image_path)
+        return ImageLoadResult(None, None, None, f"Файл не найден: {image_path}")
     except UnidentifiedImageError:
-        logging.error("Невозможно декодировать изображение: %s", file_path)
-        return ImageLoadResult(None, None, None, f"Невозможно декодировать изображение: {file_path}")
+        logging.error("Невозможно декодировать изображение: %s", image_path)
+        return ImageLoadResult(None, None, None, f"Невозможно декодировать изображение: {image_path}")
     except Exception as e:
-        logging.error("Ошибка обработки растрового изображения %s: %s", file_path, e)
+        logging.error("Ошибка обработки растрового изображения %s: %s", image_path, e)
         return ImageLoadResult(None, None, None, str(e))

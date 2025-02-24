@@ -58,6 +58,7 @@ def _resize_mitchell_single_channel(
         return channel.copy()
 
     # Центрируем координаты для устранения смещения при масштабировании
+    # для более точного соответствия пикселей исходного и результирующего изображений
     x_ratio = (width - 1) / (target_width - 1) if target_width > 1 else 0.0
     y_ratio = (height - 1) / (target_height - 1) if target_height > 1 else 0.0
 
