@@ -1,9 +1,11 @@
 # main.py
 import os
+# отключаем предупреждение omp_set_nested routine deprecated от PyTorch
+os.environ["KMP_WARNINGS"] = "off"
+
 import argparse
 import logging
 import concurrent.futures
-
 import numpy as np
 import pandas as pd
 
@@ -210,6 +212,8 @@ def process_file_for_dataset(file_path: str, interpolations_methods: list[Interp
                 'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val),
                 'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val)
             }
+
+            del img_downscaled, img_upscaled
 
             all_targets.append(metrics)
             features_all.append(features_dict)

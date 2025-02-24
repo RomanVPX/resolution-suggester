@@ -1,29 +1,39 @@
 # metrics.py
-import os
 import math
 import numpy as np
 from numba import njit, prange
 from sewar.full_ref import msssim
-from config import TINY_EPSILON, QualityMetrics
+from config import TINY_EPSILON, QualityMetrics, MIN_DOWNSCALE_SIZE
 import torch
 from torchmetrics.image import MultiScaleStructuralSimilarityIndexMeasure
 
 if torch.backends.mps.is_available():
     device = torch.device("mps")
-    msssim_calc = MultiScaleStructuralSimilarityIndexMeasure(data_range=1.0).to(device)
-elif torch.cuda.is_available():
-    device = torch.device("cuda")
-    msssim_calc = MultiScaleStructuralSimilarityIndexMeasure(data_range=1.0).to(device)
 else:
-    device = torch.device("cpu")
-    msssim_calc = MultiScaleStructuralSimilarityIndexMeasure(data_range=1.0).to(device)
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+
+def _get_adaptive_ms_ssim_params(h: int, w: int) -> tuple[tuple[float, ...], int]:
+    """Динамически подбирает параметры MS-SSIM под размер изображения"""
+    min_dim = min(h, w)
+
+    if min_dim >= 160:
+        return (0.0448, 0.2856, 0.3001, 0.2363, 0.1333), 11  # оригинальные параметры (5 scales, kernel 11)
+    elif min_dim >= 80:
+        return (0.25, 0.25, 0.25, 0.25), 7   # 4 scales, kernel 7
+    elif min_dim >= 40:
+        return (0.333, 0.333, 0.334), 5   # 3 scales, kernel 5
+    else:
+        return (0.5, 0.5), 3   # минимальные параметры для мелочи
 
 def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_val: float) -> float:
     """
     Вычисляет MS-SSIM между двумя изображениями с использованием PyTorch.
     """
+    # Инициализируем вычислитель для каждого вызова для очистки памяти
     # Нормализация изображения
-    if max_val > 1.0 + 1e-8:
+    if max_val > 1.0 + TINY_EPSILON:
+        max_val = max(max_val, TINY_EPSILON)  # Защита от нуля
         original = original.astype(np.float32) / max_val
         processed = processed.astype(np.float32) / max_val
     else:
@@ -42,15 +52,24 @@ def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_v
     else:
         raise ValueError("Неподдерживаемая размерность изображений")
 
+    weights, kernel_size = _get_adaptive_ms_ssim_params(original.shape[-2], original.shape[-1])
+    msssim_calc = MultiScaleStructuralSimilarityIndexMeasure(data_range=1.0, betas=weights,
+                                                             kernel_size=kernel_size).to(device)
     # Переводим в тензоры и переносим на устройство
     original_tensor = torch.from_numpy(original).to(device)
     processed_tensor = torch.from_numpy(processed).to(device)
 
     # Вычисление MS-SSIM
     with torch.no_grad():
-        ms_ssim_val = msssim_calc(original_tensor, processed_tensor).item()
+        with torch.autocast(device_type=device.type, dtype=torch.float16):
+            ms_ssim_val = msssim_calc(original_tensor, processed_tensor).item()
 
-    return ms_ssim_val
+    # Явное освобождение ресурсов
+    del original_tensor, processed_tensor
+    torch.mps.empty_cache() if device.type == 'mps' else torch.cuda.empty_cache()
+    # gc.collect()
+
+    return float(ms_ssim_val)
 
 
 def calculate_ms_ssim_pytorch_channels(
@@ -364,6 +383,8 @@ def compute_resolutions(original_width: int, original_height: int, min_size: int
     resolutions = []
     w, h = original_width, original_height
     while w >= min_size and h >= min_size:
+        if w < MIN_DOWNSCALE_SIZE or h < MIN_DOWNSCALE_SIZE:
+            break
         resolutions.append((w, h))
         w //= divider
         h //= divider

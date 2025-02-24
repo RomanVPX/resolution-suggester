@@ -18,7 +18,7 @@ from config import (
     InterpolationMethods,
     QUALITY_METRICS_INFO,
     QUALITY_METRIC_DEFAULT,
-    QualityMetrics
+    QualityMetrics, MIN_DOWNSCALE_SIZE
 )
 
 def setup_logging():
@@ -39,17 +39,6 @@ default_threads_count = (cpu_count - 2, cpu_count)[cpu_count < 8]
 def parse_arguments() -> argparse.Namespace:
     """
     Parse command line arguments.
-
-    Returns a Namespace object with the following attributes:
-      - paths: list of paths to files or directories to analyze
-      - channels: boolean flag to analyze by color channels
-      - csv_output: boolean flag to export results to CSV
-      - metric: string, one of the values from QualityMetric enum
-      - interpolation: string, one of the values from InterpolationMethod enum
-      - min_size: int, minimum size (width and height) for analysis (default 16)
-      - threads: int, number of parallel processes for file processing (default 8)
-      - save_intermediate: boolean flag to save downscaled results
-      - no_parallel: boolean flag to disable parallel processing and use single-threaded scheme
 
     Raises:
       - argparse.ArgumentError if arguments are invalid
@@ -96,9 +85,10 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--min-size',
         type=int,
-        default=16,
+        default=MIN_DOWNSCALE_SIZE,
         metavar='SIZE',
-        help='Минимальный размер (по ширине и высоте) для анализа (по умолчанию 16)'
+        help="Минимальный размер (по ширине и высоте) для анализа (по умолчанию и минимально: " +
+             str(MIN_DOWNSCALE_SIZE) + ")"
     )
 
     parser.add_argument(
@@ -136,10 +126,20 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--ml',
         action='store_true',
-        help='Использовать ML-модель для предсказания метрик (вместо реального вычисления)'
+        help='Использовать ML-модель для предсказания метрик вместо реального вычисления (быстро)'
     )
 
     args = parser.parse_args()
+
+    if args.min_size < 16:
+        logging.warning("Минимальный размер (по ширине и высоте) для анализа должен быть >= " +
+                        str(MIN_DOWNSCALE_SIZE))
+        logging.warning("Установлено значение по умолчанию: " + str(MIN_DOWNSCALE_SIZE))
+        args.min_size = MIN_DOWNSCALE_SIZE
+    if args.threads < 1:
+        logging.warning("Число параллельных процессов должно быть >= 1")
+        logging.warning("Установлено минимальное значение: 1")
+        args.threads = 1
 
     return args
 

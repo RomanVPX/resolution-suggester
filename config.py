@@ -21,6 +21,8 @@ MITCHELL_C = 1/3
 
 TINY_EPSILON = 1e-8
 
+MIN_DOWNSCALE_SIZE = 16
+
 # === Quality levels ===
 class QualityLevelHints(Enum):
     """
