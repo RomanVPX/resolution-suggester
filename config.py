@@ -19,7 +19,6 @@ ML_MODEL_DIR = ML_DATA_DIR / "models"
 
 CHANNEL_COLUMNS: Final = ['R', 'G', 'B', 'A', 'L']
 
-
 MITCHELL_B = 1/3
 MITCHELL_C = 1/3
 
@@ -32,7 +31,6 @@ class QualityLevelHints(Enum):
     """
     Enumeration of quality level hints for image analysis output.
     """
-
     EXCELLENT = "excellent"
     VERY_GOOD = "very_good"
     GOOD = "good"
@@ -50,7 +48,6 @@ class QualityMetrics(str, Enum):
     """
     Enumeration of quality metrics for image analysis.
     """
-
     PSNR = 'psnr'
     SSIM = 'ssim'
     MS_SSIM = 'ms_ssim'
@@ -97,7 +94,6 @@ class InterpolationMethods(str, Enum):
     """
     Enumeration of interpolation methods for image resampling.
     """
-
     BILINEAR = 'bilinear'
     BICUBIC = 'bicubic'
     MITCHELL = 'mitchell'
@@ -127,7 +123,6 @@ STYLES = {
     'bad': Fore.RED,
 }
 
-
 def get_output_csv_header(analyze_channels: bool, metric_type: QualityMetrics) -> list[str]:
     """
     Forms the CSV header considering the metric.
@@ -143,7 +138,7 @@ def get_output_csv_header(analyze_channels: bool, metric_type: QualityMetrics) -
     if analyze_channels:
         # Фиксированные столбцы, не зависящие от реального количества каналов для лучшей читаемости таблицы
         header.extend([
-            f"R(L) {metric_type.value.upper()}", # Red для многоканальных, Luminance для одноканальных изображений
+            f"R(L) {metric_type.value.upper()}",  # Red для многоканальных, Luminance для одноканальных изображений
             f"G {metric_type.value.upper()}",
             f"B {metric_type.value.upper()}",
             f"A {metric_type.value.upper()}",

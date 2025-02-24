@@ -139,7 +139,7 @@ def calculate_psnr(
     mse = np.mean(diff * diff)
 
     if mse < TINY_EPSILON:
-        return float('inf')
+        return 140.0 # Вместо бесконечности возвращаем 140 дБ для обучения
 
     log_max = 20 * np.log10(max_val)
     return log_max - 10 * np.log10(mse)

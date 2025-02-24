@@ -12,17 +12,14 @@ import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 from typing import Tuple, Optional
+
 from cli import parse_arguments, setup_logging, validate_paths
 from image_loader import load_image
 from image_processing import get_resize_function
-from metrics import (
-    compute_resolutions,
-    calculate_metrics
-)
+from metrics import compute_resolutions, calculate_metrics
 from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
 from config import SAVE_INTERMEDIATE_DIR, ML_DATA_DIR, InterpolationMethods, QualityMetrics
 from ml_predictor import QuickPredictor, extract_features_of_original_img
-
 
 def main():
     setup_logging()
@@ -51,7 +48,6 @@ def main():
     else:
         process_files(files, args)
 
-
 def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
     if args.no_parallel:
         for file_path in files:
@@ -70,7 +66,6 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
                 executor.submit(process_single_file, file_path, args): file_path
                 for file_path in files
             }
-
             for future in concurrent.futures.as_completed(future_to_file):
                 file_path = future_to_file[future]
                 try:
@@ -82,7 +77,6 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
                     print_console_results(file_path, results, args.channels, meta, QualityMetrics(args.metric))
                     if reporter is not None:
                         reporter.write_results(os.path.basename(file_path), results, args.channels)
-
 
 def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optional[list], Optional[dict]]:
     image_load_result = load_image(file_path)
@@ -106,15 +100,11 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
     predictor = None
     if use_prediction:
         predictor = QuickPredictor()
+        # Важно: сначала устанавливаем режим, затем загружаем модель
+        predictor.set_mode(args.channels)
         if not predictor.load():
             logging.info("ML-модель не найдена, будем вычислять реальные метрики.")
             use_prediction = False
-        elif args.channels:
-            # Загрузка модели для каналов
-            predictor.set_mode(analyze_channels=True)
-        else:
-            # Загрузка модели для общего случая
-            predictor.set_mode(analyze_channels=False)
 
     try:
         resize_fn = get_resize_function(args.interpolation)
@@ -122,13 +112,11 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
         logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
         return None, None
 
-    common_features_for_ml = {'method': args.interpolation}
-
     for (w, h) in resolutions:
         if w == width and h == height:
             continue
 
-        # Предсказываем или вычисляем метрики
+        # Предсказываем или вычисляем метрики для нового разрешения
         if use_prediction:
             features_for_ml = extract_features_of_original_img(img_original)
             features_for_ml.update({
@@ -138,7 +126,6 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
                 'num_channels': len(channels),
             })
             prediction = predictor.predict(features_for_ml)
-
         else:
             img_downscaled = resize_fn(img_original, w, h)
             if args.save_intermediate:
@@ -147,9 +134,12 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
 
         if args.channels:
             if use_prediction:
-                channels_metrics = {c: prediction.get(f"{args.metric.value}_{c}", 0.0) for c in channels}
+                val = prediction.get(f"{args.metric.value}_{c}", 0.0)
+                channels_metrics[c] = float('inf') if val >= 139.9 else val
+                # channels_metrics = {c: prediction.get(f"{args.metric.value}_{c}", 0.0) for c in channels}
             else:
                 channels_metrics = calculate_metrics(QualityMetrics(args.metric), img_original, img_upscaled, max_val, channels)
+                channels_metrics = {c: float('inf') if val >= 139.9 else val for c, val in channels_metrics.items()}
 
             min_metric = min(channels_metrics.values())
             results.append(
@@ -163,19 +153,21 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
         else:
             if use_prediction:
                 metric_value = prediction.get(args.metric.value, 0.0)
+                metric_value = float('inf') if metric_value >= 139.9 else metric_value
+                # metric_value = prediction.get(args.metric.value, 0.0)
             else:
                 metric_value = calculate_metrics(QualityMetrics(args.metric), img_original, img_upscaled, max_val)
-
-            results.append(
-                (
-                    f"{w}x{h}",
-                    metric_value,
-                    QualityHelper.get_hint(metric_value, QualityMetrics(args.metric))
+                if QualityMetrics(args.metric) == QualityMetrics.PSNR and metric_value >= 139.9:
+                    metric_value = float('inf')
+                results.append(
+                    (
+                        f"{w}x{h}",
+                        metric_value,
+                        QualityHelper.get_hint(metric_value, QualityMetrics(args.metric))
+                    )
                 )
-            )
 
     return results, {'max_val': max_val, 'channels': channels}
-
 
 def process_file_for_dataset(
         file_path: str,
@@ -240,34 +232,26 @@ def process_file_for_dataset(
                 for ch, val in channel_metrics.items():
                     metrics_channels[f"{metric.value}_{ch}"] = val
 
-            # Создаём две версии данных
+            # Создаём две версии данных: без каналов и с каналами
             for analyze_channels in [0, 1]:
-                # Клонируем фичи и добавляем флаг
                 features_entry = features_dict.copy()
                 features_entry['analyze_channels'] = analyze_channels
 
-                # Создаём соответствующие таргеты
                 targets_entry = {}
                 if analyze_channels:
                     targets_entry.update(metrics_channels)
-                    # Добавляем минимальные значения по метрикам для оценки качества
                     for metric in QualityMetrics:
-                        min_val = min(
-                            metrics_channels[f"{metric.value}_{ch}"]
-                            for ch in channels
-                        )
-                        targets_entry[f"min_{metric.value}"] = min_val
+                        m_val = min(metrics_channels[f"{metric.value}_{ch}"] for ch in channels)
+                        targets_entry[f"min_{metric.value}"] = m_val
                 else:
                     targets_entry.update(metrics_combined)
 
                 features_all.append(features_entry)
                 all_targets.append(targets_entry)
 
-            # Очистка памяти
             del img_downscaled, img_upscaled
 
     return features_all, all_targets
-
 
 def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, str]:
     features_all = []
@@ -289,13 +273,11 @@ def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, s
     ]
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.threads) as executor:
-        # Подготовка аргументов для параллельной обработки
         futures = [
             executor.submit(process_file_for_dataset, file_path,
                             interpolations_methods_to_test, argparse.Namespace(min_size=args.min_size))
             for file_path in files
         ]
-
         for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="Создание датасета"):
             try:
                 features, targets = future.result()
@@ -304,7 +286,6 @@ def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, s
             except Exception as e:
                 logging.error(f"Ошибка при обработке файла: {e}")
 
-    # Сохранение в CSV
     if features_all:
         df_features = pd.DataFrame(features_all)
         df_features.to_csv(features_csv, index=False)
@@ -319,27 +300,19 @@ def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, s
 
     return features_csv, targets_csv
 
-
 def print_console_results(
     file_path: str, results: list, analyze_channels: bool, meta: dict, metric_type: QualityMetrics
 ):
     ConsoleReporter.print_file_header(file_path)
-
     if meta['max_val'] < 0.001:
         logging.warning(f"Низкое максимальное значение: {meta['max_val']:.3e}")
-    ConsoleReporter.print_quality_table(
-        results, analyze_channels, meta.get('channels'), metric_type
-    )
+    ConsoleReporter.print_quality_table(results, analyze_channels, meta.get('channels'), metric_type)
 
-
-def create_original_entry(
-    width: int, height: int, channels: Optional[list[str]] = None, analyze_channels: bool = False
-) -> tuple:
+def create_original_entry(width: int, height: int, channels: Optional[list[str]] = None, analyze_channels: bool = False) -> tuple:
     base_entry = (f"{width}x{height}",)
     if analyze_channels and channels:
         return *base_entry, {c: float('inf') for c in channels}, float('inf'), "Оригинал"
     return *base_entry, float('inf'), "Оригинал"
-
 
 def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height: int):
     """
@@ -362,7 +335,6 @@ def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height
 
     pil_img = Image.fromarray(arr_uint8)
     pil_img.save(output_path, format="PNG")
-
 
 if __name__ == "__main__":
     main()

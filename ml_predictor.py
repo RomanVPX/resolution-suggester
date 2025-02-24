@@ -16,28 +16,30 @@ from sklearn.ensemble import GradientBoostingRegressor, HistGradientBoostingRegr
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import make_pipeline
 
-from config import ML_TARGET_COLUMNS, ML_DATA_DIR, QualityMetrics, CHANNEL_COLUMNS
-
+from config import ML_DATA_DIR, QualityMetrics, CHANNEL_COLUMNS
 
 class QuickPredictor:
     def __init__(self, model_dir: Path = ML_DATA_DIR / "models"):
         """Инициализация предиктора с путём к моделям."""
         self.model_dir = model_dir
-        self.pipeline = None
-        self.mode = False  # False: без каналов, True: с каналами
+        self.combined_model = None    # Модель для общего анализа (без каналов)
+        self.channels_model = None    # Модель для анализа по каналам
+        self.preprocessor = None      # Препроцессор фич, одинаковый для обоих режимов
+        self.mode = False             # False: без каналов, True: с каналами
 
     def set_mode(self, analyze_channels: bool):
-        """Устанавливает режим анализа."""
+        """Устанавливает режим анализа: с каналами (True) или без (False)."""
         self.mode = analyze_channels
-        if self.mode:
-            self.model_path = self.model_dir / "channels" / "model.joblib"
-        else:
-            self.model_path = self.model_dir / "combined" / "model.joblib"
 
     def load(self) -> bool:
-        """Загружает модель в зависимости от режима."""
+        """Загружает препроцессор и модель согласно текущему режиму."""
+        preprocessor_path = self.model_dir / "preprocessor.joblib"
+        if not preprocessor_path.exists():
+            logging.warning(f"Файл препроцессора не найден: {preprocessor_path}")
+            return False
+        self.preprocessor = joblib.load(preprocessor_path)
+
         if self.mode:
             model_path = self.model_dir / "channels" / "model.joblib"
         else:
@@ -46,7 +48,11 @@ class QuickPredictor:
         if not model_path.exists():
             logging.warning(f"Файл модели не найден: {model_path}")
             return False
-        self.pipeline = joblib.load(model_path)
+
+        if self.mode:
+            self.channels_model = joblib.load(model_path)
+        else:
+            self.combined_model = joblib.load(model_path)
         return True
 
     def train(self, features_csv: str, targets_csv: str) -> None:
@@ -58,26 +64,21 @@ class QuickPredictor:
             logging.error("Не найдены файлы с фичами/таргетами.")
             return
 
-        # Загрузка данных
         df_features = pd.read_csv(features_csv)
         df_targets = pd.read_csv(targets_csv)
 
-        # Предобработка фичей
         preprocessor = self._get_preprocessor()
         X_processed = preprocessor.fit_transform(df_features)
 
-        # Разделение данных на два режима
         mask = df_features['analyze_channels'] == 0
         X_combined = X_processed[mask]
         X_channels = X_processed[~mask]
 
-        # Подготовка таргетов
         y_combined = df_targets[['psnr', 'ssim', 'ms_ssim']][mask]
         y_channels = df_targets[
             [col for col in df_targets.columns if any(col.startswith(f"{m.value}_") for m in QualityMetrics)]
         ][~mask]
 
-        # Обучение моделей
         combined_model = MultiOutputRegressor(
             GradientBoostingRegressor(n_estimators=200, max_depth=7, random_state=42)
         ).fit(X_combined, y_combined)
@@ -86,7 +87,6 @@ class QuickPredictor:
             HistGradientBoostingRegressor(max_iter=200, max_depth=5, random_state=42)
         ).fit(X_channels, y_channels)
 
-        # Сохранение моделей
         (self.model_dir / "combined").mkdir(parents=True, exist_ok=True)
         (self.model_dir / "channels").mkdir(parents=True, exist_ok=True)
 
@@ -105,7 +105,6 @@ class QuickPredictor:
             'num_channels'
         ]
         categorical_features = ['method']
-
         preprocessor = ColumnTransformer(
             transformers=[
                 ('num', StandardScaler(), numeric_features),
@@ -118,39 +117,40 @@ class QuickPredictor:
     def predict(self, features: Dict[str, Any]) -> Dict[str, float]:
         """
         Предсказывает метрики на одном примере (словарь).
-        Возвращает соответствующие метрики в зависимости от режима.
+        Если режим установлен в True (анализ по каналам), возвращает:
+            {'psnr_R': value, 'psnr_G': value, ..., 'min_psnr': value, ...}
+        Иначе – возвращает общий результат:
+            {'psnr': value, 'ssim': value, 'ms_ssim': value}
         """
-        if not self.pipeline:
-            raise ValueError("Модель не загружена. Сначала вызовите load().")
-
-        df = pd.DataFrame([features])  # DataFrame из одного примера
-        processed = df  # Предполагается, что фичи уже соответствуют препроцессору
-
-        pred = self.pipeline.predict(processed)[0]
+        if self.preprocessor is None:
+            raise ValueError("Preprocessor не загружен.")
+        df = pd.DataFrame([features])
+        processed = self.preprocessor.transform(df)
 
         if self.mode:
-            # Возвращаем метрики по каналам
+            if self.channels_model is None:
+                raise ValueError("Модель для анализа по каналам не загружена.")
+            pred = self.channels_model.predict(processed)[0]
             predictions = {}
-            metric_channel_pairs = [
-                (metric.value, ch) for metric in QualityMetrics for ch in CHANNEL_COLUMNS
-            ]
+            metric_channel_pairs = [(metric.value, ch) for metric in QualityMetrics for ch in CHANNEL_COLUMNS]
             for i, (metric, ch) in enumerate(metric_channel_pairs):
                 predictions[f"{metric}_{ch}"] = pred[i]
+            for metric in QualityMetrics:
+                min_val = min(predictions[f"{metric.value}_{ch}"] for ch in CHANNEL_COLUMNS)
+                predictions[f"min_{metric.value}"] = min_val
             return predictions
         else:
-            # Возвращаем общие метрики
+            if self.combined_model is None:
+                raise ValueError("Модель для общего анализа не загружена.")
+            pred = self.combined_model.predict(processed)[0]
             return {
                 'psnr': pred[0],
                 'ssim': pred[1],
                 'ms_ssim': pred[2]
             }
 
-
 #############################################################################
 # Простейшая функция-обёртка для извлечения признаков из np.ndarray
-# Здесь — только пара фич (контраст и дисперсия), плюс категориальный признак 'method'.
-#############################################################################
-
 def extract_texture_features(img: np.ndarray, method: str) -> Dict[str, float]:
     contrast = float(np.std(img))
     variance = float(np.var(img))
@@ -160,47 +160,28 @@ def extract_texture_features(img: np.ndarray, method: str) -> Dict[str, float]:
         'method': method
     }
 
-
 #############################################################################
 # Извлечение набора признаков из оригинального изображения
-#############################################################################
 def extract_features_of_original_img(img: np.ndarray) -> dict:
     """Извлекает признаки только из оригинального изображения."""
     if img.ndim == 3:
         img_gray = np.mean(img, axis=2)  # конвертируем в grayscale
     else:
         img_gray = img
-
-    # Базовые статистики
     contrast = float(np.std(img_gray))
     variance = float(np.var(img_gray))
-
     entropy = shannon_entropy(img_gray)
-
-    # TODO: проверить корректность этого метода вычисления энтропии:
-    # img_uint8 = (np.clip(img_gray, 0, 1) * 255).astype(np.uint8)
-    # hist = np.histogram(img_uint8, bins=256, range=(0, 255))[0]
-    # hist_norm = hist / hist.sum()
-    # entropy = -np.sum(hist_norm * np.log2(hist_norm + 1e-10))
-
-    # Вейвлет-признаки (Haar, уровень 1)
     coefficients = pywt.dwt2(img_gray, 'haar')
     c_a, (c_h, c_v, c_d) = coefficients
-    # wavelet_energy = np.sum(c_a**2 + c_h**2 + c_v**2 + c_d**2) / (img_gray.size * 1e6)
     wavelet_energy = np.sum(c_a**2 + c_h**2 + c_v**2 + c_d**2) / img_gray.size
     logging.debug("Wavelet energy: %f", wavelet_energy)
-
-    # GLCM (Gray-Level Co-occurrence Matrix)
-    glcm = graycomatrix(
-        (img_gray * 255).astype(np.uint8),
-        distances=[1],
-        angles=[0],
-        symmetric=True,
-        normed=True
-    )
+    glcm = graycomatrix((img_gray * 255).astype(np.uint8),
+                        distances=[1],
+                        angles=[0],
+                        symmetric=True,
+                        normed=True)
     glcm_contrast = graycoprops(glcm, 'contrast')[0, 0]
     glcm_energy = graycoprops(glcm, 'energy')[0, 0]
-
     return {
         'contrast': contrast,
         'variance': variance,

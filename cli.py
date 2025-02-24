@@ -2,9 +2,7 @@
 Command line interface for image quality analysis.
 
 This module provides the command line interface for image quality analysis.
-It uses argparse to define the command line interface and parse the
-arguments.
-
+It uses argparse to define the command line interface and parse the arguments.
 """
 import argparse
 import logging
@@ -181,18 +179,13 @@ def format_interpolation_help() -> str:
 def validate_paths(paths: list[str]) -> list[str]:
     """
     Validate paths and return a list of valid paths.
-
-    For each path in the input list, the function checks if it is a valid file or directory.
-    If the path is a file, it is added to the output list.
-    If the path is a directory, the function calls collect_files_from_dir to get a list of
-    all files in the directory and adds them to the output list.
-
+    For each path, if it's a file, add it.
+    If it's a directory, collect files from that directory.
     Raises:
         ValueError: if no valid paths are found.
     """
     valid_paths = []
     invalid_paths_str = []
-
     for path in paths:
         if os.path.isfile(path):
             valid_paths.append(path)
@@ -201,23 +194,17 @@ def validate_paths(paths: list[str]) -> list[str]:
         else:
             logging.warning("Неверный путь: %s", path)
             invalid_paths_str.append(path)
-
     if not valid_paths:
         error_message = "Не найдено ни одного валидного файла или директории."
         if invalid_paths_str:
             error_message += " Проверьте следующие пути: " + ", ".join(invalid_paths_str)
         logging.error(error_message)
-        raise ValueError(error_message) # Raise ValueError instead of returning empty list
+        raise ValueError(error_message)
     return valid_paths
+
 def collect_files_from_dir(directory: str) -> list[str]:
     """
     Recursively collects and returns a list of file paths from the specified directory.
-    Args:
-        directory: The path to the directory to search for files.
-    Returns:
-        A list of file paths with extensions matching the SUPPORTED_EXTENSIONS.
-    Logs:
-        Logs an error if access to a directory is denied or if an unexpected error occurs.
     """
     collected = []
     try:
