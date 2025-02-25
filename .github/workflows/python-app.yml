@@ -55,22 +55,22 @@ jobs:
       run: |
         pytest
         
-    - name: Run test set 01
+    - name: Run test set 01 (PSNR)
       run: |
         res-suggest data/test_images/test_set_01/
         
-    - name: Run test set 00
+    - name: Run test set 00 (PSNR -c)
       run: |
-        res-suggest data/test_images/test_set_00/
+        res-suggest data/test_images/test_set_00/ -c
 
-    - name: Run test set 01 ms_ssim
+    - name: Run test set 01 (MS-SSIM -c)
       run: |
         res-suggest data/test_images/test_set_01/ -m ms_ssim -c
 
-    - name: Run test set 01 ssim
+    - name: Run test set 01 (SSIM -c)
       run: |
         res-suggest data/test_images/test_set_01/ -m ssim -c
 
-    - name: Run test set 00 ssim
+    - name: Run test set 00 (SSIM -c)
       run: |
         res-suggest data/test_images/test_set_01/ -m ssim -c
