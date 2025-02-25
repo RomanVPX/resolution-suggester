@@ -20,7 +20,6 @@ disable = [
     "C0111",  # missing-docstring
     "C0103",  # invalid-name
     "C0303",  # trailing-whitespace
-    "C0330",  # wrong-hanging-indentation
 ]
 
 [tool.pylint.basic]
