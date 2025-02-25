@@ -13,9 +13,20 @@ from typing import Final
 SUPPORTED_EXTENSIONS: Final = frozenset({'.exr', '.tga', '.png', '.jpg', '.jpeg'})
 CSV_SEPARATOR: Final = ';'
 
+ROOT_DIR = Path(__file__).parent.parent.parent
+
+LOGS_DIR = ROOT_DIR / "logs"
+
+DATA_DIR = ROOT_DIR / "data"
+
+GENERATED_IMAGES_DIR = DATA_DIR / "generated_images"
+
+ML_DATA_DIR = DATA_DIR / "ml"
+ML_MODELS_DIR = ML_DATA_DIR / "models"
+ML_FEATURES_DIR = ML_DATA_DIR / "features"
+ML_DATASETS_DIR = ML_DATA_DIR / "datasets"
+
 SAVE_INTERMEDIATE_DIR: Final = Path('_intermediate')
-ML_DATA_DIR: Final = Path('../../_ml_data')
-ML_MODEL_DIR = ML_DATA_DIR / "models"
 
 MITCHELL_B = 1/3
 MITCHELL_C = 1/3

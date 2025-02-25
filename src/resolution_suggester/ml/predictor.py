@@ -17,10 +17,11 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 
-from src.resolution_suggester.config import ML_DATA_DIR, QualityMetrics
+from ..config import QualityMetrics, ML_MODELS_DIR
+
 
 class QuickPredictor:
-    def __init__(self, model_dir: Path = ML_DATA_DIR / "models"):
+    def __init__(self, model_dir: Path = ML_MODELS_DIR):
         """Инициализация предиктора с путём к моделям."""
         self.model_dir = model_dir
         self.combined_model = None    # Модель для общего анализа (без каналов)
@@ -41,9 +42,9 @@ class QuickPredictor:
         self.preprocessor = joblib.load(preprocessor_path)
 
         if self.mode:
-            model_path = self.model_dir / "channels" / "model.joblib"
+            model_path = self.model_dir / "model_channels.joblib"
         else:
-            model_path = self.model_dir / "combined" / "model.joblib"
+            model_path = self.model_dir / "model_combined.joblib"
 
         if not model_path.exists():
             logging.warning(f"Файл модели не найден: {model_path}")
@@ -71,7 +72,7 @@ class QuickPredictor:
         x_processed = preprocessor.fit_transform(df_features)
 
         # Удаление строк с бесконечными значениями
-        # Удалить? Бесконечности всё равно риводятся к (PSNR_IS_LARGE_AS_INF + 1.0) в calculate_psnr()
+        # Удалить? Бесконечности всё равно приводятся к (PSNR_IS_LARGE_AS_INF + 1.0) в calculate_psnr()
         y = df_targets.to_numpy()
         mask = np.isfinite(y).all(axis=1)
         if not mask.all():
@@ -93,12 +94,11 @@ class QuickPredictor:
         channels_model = MultiOutputRegressor(
             HistGradientBoostingRegressor(max_iter=200, max_depth=5, random_state=42)).fit(x_channels, y_channels)
 
-        (self.model_dir / "combined").mkdir(parents=True, exist_ok=True)
-        (self.model_dir / "channels").mkdir(parents=True, exist_ok=True)
+        self.model_dir.mkdir(parents=True, exist_ok=True)
 
         joblib.dump(preprocessor, self.model_dir / "preprocessor.joblib")
-        joblib.dump(combined_model, self.model_dir / "combined" / "model.joblib")
-        joblib.dump(channels_model, self.model_dir / "channels" / "model.joblib")
+        joblib.dump(combined_model, self.model_dir / "model_combined.joblib")
+        joblib.dump(channels_model, self.model_dir / "model_channels.joblib")
         logging.info("Модели обучены и сохранены.")
 
     @staticmethod

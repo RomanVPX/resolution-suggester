@@ -6,7 +6,7 @@ import os
 from typing import List, Optional
 from colorama import Style
 
-from src.resolution_suggester.config import (
+from ..config import (
     STYLES,
     CSV_SEPARATOR,
     QUALITY_LEVEL_HINTS_DESCRIPTIONS,
@@ -17,7 +17,7 @@ from src.resolution_suggester.config import (
 )
 
 
-def generate_csv_filename(args: argparse.Namespace) -> str:
+def get_csv_log_filename(args: argparse.Namespace) -> str:
     """Generate CSV filename with timestamp"""
     parts = [
         "tx_analysis",

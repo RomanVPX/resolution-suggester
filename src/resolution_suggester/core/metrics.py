@@ -3,9 +3,9 @@ import math
 import numpy as np
 from numba import njit, prange
 from sewar.full_ref import msssim
-from src.resolution_suggester.config import TINY_EPSILON, QualityMetrics, MIN_DOWNSCALE_SIZE, PSNR_IS_LARGE_AS_INF
 import torch
 from torchmetrics.image import MultiScaleStructuralSimilarityIndexMeasure
+from ..config import TINY_EPSILON, QualityMetrics, MIN_DOWNSCALE_SIZE, PSNR_IS_LARGE_AS_INF
 
 if torch.backends.mps.is_available():
     device = torch.device("mps")

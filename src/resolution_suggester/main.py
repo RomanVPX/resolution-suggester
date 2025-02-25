@@ -13,14 +13,15 @@ from PIL import Image
 from tqdm import tqdm
 from typing import Tuple, Optional
 
-from src.resolution_suggester.utils.cli import parse_arguments, setup_logging, validate_paths
-from src.resolution_suggester.core.image_loader import load_image
-from src.resolution_suggester.core.image_processing import get_resize_function
-from src.resolution_suggester.core.metrics import compute_resolutions, calculate_metrics
-from src.resolution_suggester.utils.reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
-from src.resolution_suggester.config import (InterpolationMethods, QualityMetrics,
-                                             PSNR_IS_LARGE_AS_INF, INTERPOLATION_METHOD_UPSCALE, SAVE_INTERMEDIATE_DIR, ML_DATA_DIR)
-from src.resolution_suggester.ml.predictor import QuickPredictor, extract_features_of_original_img
+from .utils.cli import parse_arguments, setup_logging, validate_paths
+from .core.image_loader import load_image
+from .core.image_processing import get_resize_function
+from .core.metrics import compute_resolutions, calculate_metrics
+from .utils.reporting import ConsoleReporter, CSVReporter, QualityHelper, get_csv_log_filename
+from .config import (InterpolationMethods, QualityMetrics,
+                     PSNR_IS_LARGE_AS_INF, INTERPOLATION_METHOD_UPSCALE, SAVE_INTERMEDIATE_DIR, ML_DATA_DIR,
+                     ML_DATASETS_DIR)
+from .ml.predictor import QuickPredictor, extract_features_of_original_img
 
 
 def main():
@@ -42,7 +43,7 @@ def main():
         return   # завершаем работу после создания датасета
 
     if args.csv_output:
-        csv_path = generate_csv_filename(args)
+        csv_path = get_csv_log_filename(args)
         with CSVReporter(csv_path, QualityMetrics(args.metric)) as reporter:
             reporter.write_header(args.channels)
             process_files(files, args, reporter)
@@ -300,8 +301,8 @@ def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, s
     all_targets = []
 
     # Пути для сохранения датасета
-    features_csv_path = ML_DATA_DIR / 'features.csv'
-    targets_csv_path  = ML_DATA_DIR / 'targets.csv'
+    features_csv_path = ML_DATASETS_DIR / 'features.csv'
+    targets_csv_path  = ML_DATASETS_DIR / 'targets.csv'
     features_csv = str(features_csv_path)
     targets_csv = str(targets_csv_path)
 
