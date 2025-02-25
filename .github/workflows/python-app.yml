@@ -57,40 +57,20 @@ jobs:
         
     - name: Run on test_set_01 (PSNR)
       run: |
-        if [ "${{ runner.os }}" = "Windows" ]; then
-          res-suggest data\\test_images\\test_set_01\\
-        else
-          res-suggest data/test_images/test_set_01/
-        fi
+        res-suggest data/test_images/test_set_01/
         
     - name: Run on test_set_00 (PSNR -c)
       run: |
-        if [ "${{ runner.os }}" = "Windows" ]; then
-          res-suggest data\\test_images\\test_set_00\\ -c
-        else
-          res-suggest data/test_images/test_set_00/ -c
-        fi
+        res-suggest data/test_images/test_set_00/ -c
 
     - name: Run on test_set_01 (MS-SSIM -c)
       run: |
-        if [ "${{ runner.os }}" = "Windows" ]; then
-          res-suggest data\\test_images\\test_set_01\\ -m ms_ssim -c
-        else
-          res-suggest data/test_images/test_set_01/ -m ms_ssim -c
-        fi
+        res-suggest data/test_images/test_set_01/ -m ms_ssim -c
 
     - name: Run on test_set_01 (SSIM -c)
       run: |
-        if [ "${{ runner.os }}" = "Windows" ]; then
-          res-suggest data\\test_images\\test_set_01\\ -m ssim -c
-        else
-          res-suggest data/test_images/test_set_01/ -m ssim -c
-        fi
+        res-suggest data/test_images/test_set_01/ -m ssim -c
 
     - name: Run on test_set_00 (SSIM -c)
       run: |
-        if [ "${{ runner.os }}" = "Windows" ]; then
-          res-suggest data\\test_images\\test_set_00\\ -m ssim -c
-        else
-          res-suggest data/test_images/test_set_00/ -m ssim -c
-        fi
+        res-suggest data/test_images/test_set_00/ -m ssim -c
