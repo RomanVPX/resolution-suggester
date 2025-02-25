@@ -39,9 +39,9 @@ def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_v
     if max_val > 1.0 + TINY_EPSILON:
         original = original.astype(np.float32) / max_val
         processed = processed.astype(np.float32) / max_val
-
-    original = original.astype(np.float32)
-    processed = processed.astype(np.float32)
+    else:
+        original = original.astype(np.float32)
+        processed = processed.astype(np.float32)
 
     # Добавляем размерность батча и каналов
     if original.ndim == 2:
@@ -83,7 +83,7 @@ def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_v
 
 
 def calculate_ms_ssim_pytorch_channels(
-        original: np.ndarray,
+    original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
     channels: list[str]
