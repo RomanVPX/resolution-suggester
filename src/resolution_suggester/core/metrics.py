@@ -1,4 +1,4 @@
-# metrics.py
+# core/metrics.py
 import math
 
 import numpy as np
