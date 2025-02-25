@@ -177,6 +177,7 @@ def parse_arguments() -> argparse.Namespace:
             MIN_DOWNSCALE_SIZE, MIN_DOWNSCALE_SIZE
         )
         args.min_size = MIN_DOWNSCALE_SIZE
+
     if args.threads < 1:
         logging.warning(
             "Число параллельных процессов должно быть >= 1. "
@@ -217,35 +218,67 @@ def format_interpolation_help() -> str:
     ]
     return "Доступные методы интерполяции:\n" + "\n".join(methods)
 
+
 def validate_paths(paths: list[str]) -> list[str]:
     """
-    Validate paths and return a list of valid paths.
-    For each path, if it's a file, add it.
-    If it's a directory, collect files from that directory.
+    Validate paths and return a list of valid paths with supported extensions.
+
+    For each path:
+    - If it's a file with supported extension, add it
+    - If it's a directory, collect files with supported extensions from that directory
+    - Otherwise, log warning and skip
+
+    Args:
+        paths: List of paths to validate
+
+    Returns:
+        List of valid file paths with supported extensions
+
     Raises:
-        ValueError: if no valid paths are found.
+        ValueError: if no valid paths are found
     """
     valid_paths = []
-    invalid_paths_str = []
+    invalid_paths = []
+
     for path in paths:
         if os.path.isfile(path):
-            valid_paths.append(path)
+            # Проверяем расширение для отдельных файлов
+            if os.path.splitext(path)[1].lower() in SUPPORTED_EXTENSIONS:
+                valid_paths.append(path)
+            else:
+                logging.warning("Неподдерживаемое расширение файла: %s", path)
+                invalid_paths.append(path)
         elif os.path.isdir(path):
-            valid_paths.extend(collect_files_from_dir(path))
+            # Собираем файлы с поддерживаемыми расширениями из директории
+            dir_files = collect_files_from_dir(path)
+            if not dir_files:
+                logging.warning("В директории %s не найдено файлов с поддерживаемыми расширениями", path)
+                invalid_paths.append(path)
+            valid_paths.extend(dir_files)
         else:
             logging.warning("Неверный путь: %s", path)
-            invalid_paths_str.append(path)
+            invalid_paths.append(path)
+
     if not valid_paths:
-        error_message = "Не найдено ни одного валидного файла или директории."
-        if invalid_paths_str:
-            error_message += " Проверьте следующие пути: " + ", ".join(invalid_paths_str)
+        error_message = "Не найдено ни одного валидного файла с поддерживаемым расширением."
+        if invalid_paths:
+            error_message += " Проверьте следующие пути: " + ", ".join(invalid_paths)
         logging.error(error_message)
         raise ValueError(error_message)
+
     return valid_paths
+
 
 def collect_files_from_dir(directory: str) -> list[str]:
     """
-    Recursively collects and returns a list of file paths from the specified directory.
+    Recursively collects and returns a list of file paths with supported extensions
+    from the specified directory.
+
+    Args:
+        directory: Path to directory to scan
+
+    Returns:
+        List of file paths with supported extensions
     """
     collected = []
     try:

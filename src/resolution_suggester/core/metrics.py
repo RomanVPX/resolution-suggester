@@ -29,10 +29,10 @@ def _get_adaptive_ms_ssim_params(h: int, w: int) -> tuple[tuple[float, ...], int
 
 
 def calculate_ms_ssim_pytorch(
-    original: np.ndarray,
-    processed: np.ndarray,
-    max_val: float,
-    no_gpu: bool = False
+        original: np.ndarray,
+        processed: np.ndarray,
+        max_val: float,
+        no_gpu: bool = False
 ) -> float:
     """
     Вычисляет MS-SSIM между двумя изображениями с использованием PyTorch.
@@ -89,11 +89,11 @@ def calculate_ms_ssim_pytorch(
 
 
 def calculate_ms_ssim_pytorch_channels(
-    original: np.ndarray,
-    processed: np.ndarray,
-    max_val: float,
-    channels: list[str],
-    no_gpu: bool = False
+        original: np.ndarray,
+        processed: np.ndarray,
+        max_val: float,
+        channels: list[str],
+        no_gpu: bool = False
 ) -> dict[str, float]:
     """
     Вычисляет MS-SSIM для каждого канала отдельно (медленно).
@@ -108,9 +108,9 @@ def calculate_ms_ssim_pytorch_channels(
 
 @njit(cache=True)
 def calculate_psnr(
-    original: np.ndarray,
-    processed: np.ndarray,
-    max_val: float
+        original: np.ndarray,
+        processed: np.ndarray,
+        max_val: float
 ) -> float:
 
     diff = original - processed
@@ -121,10 +121,10 @@ def calculate_psnr(
 
 
 def calculate_psnr_channels(
-    original: np.ndarray,
-    processed: np.ndarray,
-    max_val: float,
-    channels: list[str]
+        original: np.ndarray,
+        processed: np.ndarray,
+        max_val: float,
+        channels: list[str]
 ) -> dict[str, float]:
     return {
         channel: calculate_psnr(original[..., i], processed[..., i], max_val)
@@ -237,13 +237,13 @@ def filter_2d_separable(img: np.ndarray, size: int, sigma: float) -> np.ndarray:
 
 
 def _calculate_ssim_gauss_single(
-    original: np.ndarray,
-    processed: np.ndarray,
-    k_1: float = 0.01,
-    k_2: float = 0.03,
-    l: float  = 1.0,
-    window_size: int = 11,
-    sigma: float = 1.5
+        original: np.ndarray,
+        processed: np.ndarray,
+        k_1: float = 0.01,
+        k_2: float = 0.03,
+        l: float  = 1.0,
+        window_size: int = 11,
+        sigma: float = 1.5
 ) -> float:
 
     # Фильтруем средние
@@ -266,13 +266,13 @@ def _calculate_ssim_gauss_single(
 
 
 def calculate_ssim_gauss(
-    original: np.ndarray,
-    processed: np.ndarray,
-    max_val: float,
-    k_1: float = 0.01,
-    k_2: float = 0.03,
-    window_size: int = 11,
-    sigma: float = 1.5
+        original: np.ndarray,
+        processed: np.ndarray,
+        max_val: float,
+        k_1: float = 0.01,
+        k_2: float = 0.03,
+        window_size: int = 11,
+        sigma: float = 1.5
 ) -> float:
     # Нормализуем, если max_val > 1
     if max_val > 1.0 + TINY_EPSILON:
@@ -296,12 +296,12 @@ def calculate_ssim_gauss(
 
 
 def calculate_ssim_gauss_channels(
-    original: np.ndarray,
-    processed: np.ndarray,
-    max_val: float,
-    channels: list[str],
-    window_size: int = 11,
-    sigma: float = 1.5
+        original: np.ndarray,
+        processed: np.ndarray,
+        max_val: float,
+        channels: list[str],
+        window_size: int = 11,
+        sigma: float = 1.5
 ) -> dict[str, float]:
     # Нормализуем, если max_val > 1
     if max_val > 1.0 + TINY_EPSILON:
@@ -331,12 +331,12 @@ def calculate_ssim_gauss_channels(
 
 
 def calculate_metrics(
-    quality_metric: QualityMetrics,
-    original: np.ndarray,
-    processed: np.ndarray,
-    max_val: float,
-    channels: list[str] = None,
-    no_gpu: bool = False
+        quality_metric: QualityMetrics,
+        original: np.ndarray,
+        processed: np.ndarray,
+        max_val: float,
+        channels: list[str] = None,
+        no_gpu: bool = False
 ) -> None | dict[str, float] | float:
 
     if original.shape != processed.shape:
@@ -364,13 +364,22 @@ def calculate_metrics(
     raise ValueError(f"Неподдерживаемая метрика: {quality_metric}")
 
 
-def compute_resolutions(original_width: int, original_height: int, min_size: int = 16, divider: int = 2) -> list[tuple[int, int]]:
+def compute_resolutions(
+        original_width: int,
+        original_height: int,
+        min_size: int = MIN_DOWNSCALE_SIZE,
+        divider: int = 2
+) -> list[tuple[int, int]]:
+    min_size = max(MIN_DOWNSCALE_SIZE, min_size)
     resolutions = []
     w, h = original_width, original_height
+
+    if w < min_size or h < min_size:
+        return resolutions
+
     while w >= min_size and h >= min_size:
-        if w < MIN_DOWNSCALE_SIZE or h < MIN_DOWNSCALE_SIZE:
-            break
         resolutions.append((w, h))
         w //= divider
         h //= divider
+
     return resolutions
