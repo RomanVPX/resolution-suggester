@@ -1,6 +1,4 @@
 #*.csv
-#*.spec
-#*/_intermediate
 
 data/test_images/private_tex_*
 
