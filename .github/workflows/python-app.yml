@@ -40,6 +40,7 @@ jobs:
         isort . --verbose 
     
     - name: Run pylint
+      if: runner.os != 'Windows'
       run: |
         # Run pylint in src/resolution_suggester (using .toml settings)
         pylint -v src/resolution_suggester || [ $? -lt 32 ]
