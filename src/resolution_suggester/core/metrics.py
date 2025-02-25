@@ -4,7 +4,6 @@ import math
 import numpy as np
 import torch
 from numba import njit, prange
-from sewar.full_ref import msssim
 from torchmetrics.image import MultiScaleStructuralSimilarityIndexMeasure
 
 from ..config import MIN_DOWNSCALE_SIZE, TINY_EPSILON, QualityMetrics
@@ -104,45 +103,6 @@ def calculate_ms_ssim_pytorch_channels(
         orig_ch = original[..., i] if original.ndim == 3 else original
         proc_ch = processed[..., i] if processed.ndim == 3 else processed
         results[ch] = calculate_ms_ssim_pytorch(orig_ch, proc_ch, max_val, no_gpu)
-    return results
-
-
-def calculate_ms_ssim(
-    original: np.ndarray,
-    processed: np.ndarray,
-    max_val: float
-) -> float:
-    # Нормализация для EXR
-    if max_val > 1.0 + TINY_EPSILON:
-        original = original.astype(np.float32) / max_val
-        processed = processed.astype(np.float32) / max_val
-        data_range = 1.0
-    else:
-        data_range = max_val
-
-    # Для многоканальных изображений sewar ожидает (H,W,C)
-    if original.ndim == 2:
-        original = original[..., np.newaxis]
-        processed = processed[..., np.newaxis]
-
-    # Защита от артефактов округления
-    original = np.clip(original, 0.0, 1.0)
-    processed = np.clip(processed, 0.0, 1.0)
-
-    return float(np.real(msssim(original, processed, MAX=data_range)))
-
-
-def calculate_ms_ssim_channels(
-    original: np.ndarray,
-    processed: np.ndarray,
-    max_val: float,
-    channels: list[str]
-) -> dict[str, float]:
-    results = {}
-    for i, ch in enumerate(channels):
-        orig_ch = original[..., i] if original.ndim == 3 else original
-        proc_ch = processed[..., i] if processed.ndim == 3 else processed
-        results[ch] = calculate_ms_ssim(orig_ch, proc_ch, max_val)
     return results
 
 
