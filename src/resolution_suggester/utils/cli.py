@@ -67,6 +67,12 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        '--json-output',
+        action='store_true',
+        help='Экспорт результатов в JSON'
+    )
+
+    parser.add_argument(
         '-m', '--metric', type=QualityMetrics,
         default=QUALITY_METRIC_DEFAULT,
         choices=[m.value for m in QualityMetrics],

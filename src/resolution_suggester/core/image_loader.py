@@ -1,4 +1,4 @@
-# image_loader.py
+# core/image_loader.py
 import logging
 import os
 from dataclasses import dataclass

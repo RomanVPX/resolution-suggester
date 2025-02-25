@@ -1,4 +1,4 @@
-# metrics.py
+# core/metrics.py
 import math
 
 import numpy as np
@@ -83,7 +83,7 @@ def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_v
 
 
 def calculate_ms_ssim_pytorch_channels(
-    original: np.ndarray,
+        original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
     channels: list[str]
@@ -147,9 +147,6 @@ def calculate_psnr(
 
     diff = original - processed
     mse = np.mean(diff * diff)
-
-    if mse < TINY_EPSILON:
-        return PSNR_IS_LARGE_AS_INF + 1.0 # Вместо бесконечности возвращаем PSNR_IS_LARGE_AS_INF + 1.0 дБ для обучения
 
     log_max = 20 * np.log10(max_val)
     return log_max - 10 * np.log10(mse)

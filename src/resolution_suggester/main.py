@@ -36,10 +36,18 @@ from .core.image_processing import get_resize_function
 from .core.metrics import calculate_metrics, compute_resolutions
 from .ml.predictor import QuickPredictor, extract_features_of_original_img
 from .utils.cli import parse_arguments, setup_logging, validate_paths
-from .utils.reporting import ConsoleReporter, CSVReporter, QualityHelper, get_csv_log_filename
+from .utils.reporting import ConsoleReporter, QualityHelper
+
+from .utils.reporters import (
+    IReporter,
+    CSVReporter,
+    JSONReporter,
+    get_csv_log_filename,
+    get_json_log_filename
+)
 
 
-def main():
+def main() -> None:
     setup_logging()
     args = parse_arguments()
     try:
@@ -55,18 +63,38 @@ def main():
             predictor = QuickPredictor()
             predictor.train(features_path, targets_path)
             logging.info("Модель обучена!")
-        return   # завершаем работу после создания датасета
+        return
+
+    reporters: list[IReporter] = []
 
     if args.csv_output:
         csv_path = get_csv_log_filename(args)
-        with CSVReporter(csv_path, QualityMetrics(args.metric)) as reporter:
-            reporter.write_header(args.channels)
-            process_files(files, args, reporter)
-        print(f"\nМетрики сохранены в: {csv_path}")
-    else:
-        process_files(files, args)
+        csv_reporter = CSVReporter(csv_path, QualityMetrics(args.metric))
+        csv_reporter.__enter__()  # вручную входим в контекст
+        csv_reporter.write_header(args.channels)
+        reporters.append(csv_reporter)
+        logging.info("CSV output включён, файл: %s", csv_path)
 
-def process_files(files: list[str], args: argparse.Namespace, reporter: Optional[CSVReporter] = None):
+    if args.json_output:
+        json_path = get_json_log_filename(args)
+        json_reporter = JSONReporter(json_path, QualityMetrics(args.metric))
+        json_reporter.__enter__()  # вручную
+        reporters.append(json_reporter)
+        logging.info("JSON output включён, файл: %s", json_path)
+
+    process_files(files, args, reporters)
+
+    for rep in reporters:
+        rep.__exit__(None, None, None)
+
+    # Выводим имя итоговых файлов
+    if args.csv_output:
+        print(f"\nМетрики (CSV) сохранены в: {csv_path}")
+    if args.json_output:
+        print(f"\nМетрики (JSON) сохранены в: {json_path}")
+
+
+def process_files(files: list[str], args: argparse.Namespace, reporters: list[IReporter]):
     if args.no_parallel:
         for file_path in files:
             try:
@@ -76,8 +104,8 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
                 continue
             if results:
                 print_console_results(file_path, results, args.channels, meta, QualityMetrics(args.metric))
-                if reporter is not None:
-                    reporter.write_results(os.path.basename(file_path), results, args.channels)
+                for rep in reporters:
+                    rep.write_results(os.path.basename(file_path), results, args.channels)
     else:
         with concurrent.futures.ProcessPoolExecutor(max_workers=args.threads) as executor:
             future_to_file = {
@@ -93,8 +121,8 @@ def process_files(files: list[str], args: argparse.Namespace, reporter: Optional
                     continue
                 if results:
                     print_console_results(file_path, results, args.channels, meta, QualityMetrics(args.metric))
-                    if reporter is not None:
-                        reporter.write_results(os.path.basename(file_path), results, args.channels)
+                    for rep in reporters:
+                        rep.write_results(os.path.basename(file_path), results, args.channels)
 
 def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optional[list], Optional[dict]]:
     image_load_result = load_image(file_path)

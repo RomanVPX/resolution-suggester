@@ -1,40 +1,16 @@
-# reporting.py
-import argparse
-import csv
+# utils/reporting.py
 import os
-from datetime import datetime
 from typing import List, Optional
 
 from colorama import Style
 
 from ..config import (
-    CSV_SEPARATOR,
     QUALITY_LEVEL_HINTS_DESCRIPTIONS,
     QUALITY_METRIC_THRESHOLDS,
     STYLES,
-    InterpolationMethods,
     QualityLevelHints,
     QualityMetrics,
-    get_output_csv_header,
 )
-
-
-def get_csv_log_filename(args: argparse.Namespace) -> str:
-    """Generate CSV filename with timestamp"""
-    parts = [
-        "tx_analysis",
-        datetime.now().strftime("%Y%m%d_%H%M%S"),
-        InterpolationMethods(args.interpolation).value.capitalize(),
-        QualityMetrics(args.metric).upper()
-    ]
-
-    if args.channels:
-        parts.append("ch")
-    if args.ml:
-        parts.append("ML")
-
-    return "_".join(parts) + ".csv"
-
 
 class ConsoleReporter:
     @staticmethod
@@ -108,7 +84,6 @@ class ConsoleReporter:
 
     @staticmethod
     def _print_simple_table(results: list, metric_type: QualityMetrics):
-
         metric_header = str(metric_type.value.upper())
 
         header = f"{Style.BRIGHT}{'Разрешение':<12} | {metric_header:^10} | {'Качество':<36}{Style.RESET_ALL}"
@@ -132,84 +107,12 @@ class ConsoleReporter:
                     f"{res:<12} {Style.DIM}|{Style.NORMAL} {val_styled} {Style.DIM}|{Style.NORMAL} {hint_styled:<36}"
                 )
 
-class CSVReporter:
-    def __init__(self, output_path: str, metric_type: QualityMetrics):
-        self.output_path = output_path
-        self.metric_type = metric_type  # QualityMetrics enum
-        self.file = None
-        self.writer = None
-
-    def __enter__(self):
-        """
-        Opens the output file and returns self.
-
-        The file is opened in text mode with UTF-8 encoding and CSV separator
-        set to `CSV_SEPARATOR`.
-
-        Returns:
-            self: The instance of this class.
-        """
-        self.file = open(self.output_path, 'w', newline='', encoding='utf-8')
-        self.writer = csv.writer(self.file, delimiter=CSV_SEPARATOR)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.file:
-            self.file.close()
-
-    def write_header(self, analyze_channels: bool):
-        # Передаём metric в get_output_csv_header
-        self.writer.writerow(get_output_csv_header(analyze_channels, self.metric_type))
-
-    def write_results(self, filename: str, results: list, analyze_channels: bool):
-        for i, result_item in enumerate(results):
-            res = result_item[0]
-            values = result_item[1]
-
-            row = [filename if i == 0 else '', res]
-
-            if analyze_channels:
-                ch_vals = values  # dict канал->значение
-                min_val = result_item[2]
-                if i == 0:
-                    # Пустая строка для «Оригинал»
-                    row.extend([""] * 6)
-                else:
-                    if 'L' in ch_vals and len(ch_vals) == 1:
-                        # Одноканальное grayscale
-                        row.extend([
-                            f"{ch_vals.get('L', float('inf')):.2f}",
-                            "", "", "",
-                            f"{min_val:.2f}",
-                            QualityHelper.get_hint(min_val, self.metric_type)
-                        ])
-                    else:
-                        row.extend([
-                            f"{ch_vals.get('R', float('inf')):.2f}",
-                            f"{ch_vals.get('G', float('inf')):.2f}",
-                            f"{ch_vals.get('B', float('inf')):.2f}",
-                            f"{ch_vals.get('A', float('inf')):.2f}",
-                            f"{min_val:.2f}",
-                            QualityHelper.get_hint(min_val, self.metric_type)
-                        ])
-            else:
-                metric_val = values
-                if i == 0:
-                    row.extend(["", ""])
-                else:
-                    row.extend([
-                        f"{metric_val:.2f}",
-                        QualityHelper.get_hint(metric_val, self.metric_type)
-                    ])
-                if len(row) < 4:
-                    row.extend([""] * (4 - len(row)))
-
-            self.writer.writerow(row)
-
 class QualityHelper:
     @staticmethod
     def get_hint(metric_value: float, metric_type: QualityMetrics) -> str:
-        """Возвращает текстовую оценку качества для заданной метрики"""
+        """
+        Возвращает текстовую оценку качества для заданной метрики.
+        """
         thresholds = QUALITY_METRIC_THRESHOLDS.get(metric_type)
         if thresholds is None:
             raise ValueError(f"Нет порогов качества для метрики: {metric_type}")
@@ -228,7 +131,9 @@ class QualityHelper:
 
     @staticmethod
     def get_style_for_hint(hint: str) -> str:
-        """Возвращает ANSI-код стиля на основе текстовой подсказки о качестве"""
+        """
+        Возвращает ANSI-код стиля на основе текстовой подсказки о качестве.
+        """
         if hint == QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.EXCELLENT]:
             return STYLES['good']
         if hint == QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.VERY_GOOD]:

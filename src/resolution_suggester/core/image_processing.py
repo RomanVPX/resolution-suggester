@@ -1,4 +1,4 @@
-# image_processing.py
+# core/image_processing.py
 from functools import lru_cache
 from typing import Callable
 
