@@ -148,19 +148,7 @@ class QuickPredictor:
                 'ms_ssim': pred[2]
             }
 
-#############################################################################
-# Простейшая функция-обёртка для извлечения признаков из np.ndarray
-def extract_texture_features(img: np.ndarray, method: str) -> Dict[str, float]:
-    contrast = float(np.std(img))
-    variance = float(np.var(img))
-    return {
-        'contrast': contrast,
-        'variance': variance,
-        'method': method
-    }
 
-#############################################################################
-# Извлечение набора признаков из оригинального изображения
 def extract_features_of_original_img(img: np.ndarray) -> dict:
     """Извлекает признаки из 2D-изображения (канала)."""
     if img.ndim == 3:
