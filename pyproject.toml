@@ -30,3 +30,6 @@ good-names = ["i", "j", "k", "ex", "Run", "_", "x", "y", "w", "h"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-ra -q"
+filterwarnings = [
+    "ignore::DeprecationWarning:sewar.*:"
+]
