@@ -1,6 +1,7 @@
+import numpy as np
 import pytest
 from resolution_suggester.config import PSNR_IS_LARGE_AS_INF, QualityMetrics
-from resolution_suggester.core.metrics import postprocess_psnr_value
+from resolution_suggester.main import postprocess_psnr_value
 
 
 @pytest.mark.parametrize("psnr_value, metric_type, expected", [
@@ -45,12 +46,13 @@ def test_postprocess_psnr_value_invalid_metric():
         postprocess_psnr_value(100.0, "invalid_metric")
 
 
-# Test for special float values
-@pytest.mark.parametrize("special_value, metric_type", [
-    (float('nan'), QualityMetrics.PSNR),
-    (float('-inf'), QualityMetrics.PSNR),
-])
-def test_postprocess_psnr_value_special_values(special_value, metric_type):
-    """Test handling of special float values"""
-    result = postprocess_psnr_value(special_value, metric_type)
-    assert result == special_value
+def test_postprocess_psnr_value_nan():
+    """Test handling of NaN value"""
+    result = postprocess_psnr_value(float('nan'), QualityMetrics.PSNR)
+    assert np.isnan(result)
+
+
+def test_postprocess_psnr_value_negative_inf():
+    """Test handling of negative infinity"""
+    result = postprocess_psnr_value(float('-inf'), QualityMetrics.PSNR)
+    assert result == float('-inf')
