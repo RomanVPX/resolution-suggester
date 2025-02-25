@@ -28,7 +28,7 @@ good-names = ["i", "j", "k", "ex", "Run", "_", "x", "y", "w", "h"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = ["test_*.py"]
+python_files = ["tests_*.py"]
 addopts = "-ra -q"
 filterwarnings = [
     "ignore::DeprecationWarning:sewar.*:"

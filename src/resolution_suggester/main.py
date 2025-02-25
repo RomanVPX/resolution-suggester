@@ -182,7 +182,7 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
             else:
                 channels_metrics = calculate_metrics(QualityMetrics(args.metric), img_original,
                                                      img_upscaled, max_val, channels, no_gpu=args.no_gpu)
-                channels_metrics = postprocess_channel_metrics(channels_metrics, args.metric)
+                channels_metrics = postprocess_metric_value(channels_metrics, args.metric)
                 min_metric = min(channels_metrics.values())
                 results_entry = (f"{w}x{h}", channels_metrics, min_metric)
         else:
@@ -192,7 +192,7 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
                 results_entry = (f"{w}x{h}", metric_value)
             else:
                 metric_value = calculate_metrics(QualityMetrics(args.metric), img_original, img_upscaled, max_val, no_gpu=args.no_gpu)
-                metric_value = postprocess_psnr_value(metric_value, args.metric)
+                metric_value = postprocess_metric_value(metric_value, args.metric)
                 results_entry = (f"{w}x{h}", metric_value)
 
         if args.channels:
@@ -235,12 +235,6 @@ def _predict_combined_metric(img_original, w, width, h, height, args, predictor)
     metric_value = float('inf') if metric_value >= PSNR_IS_LARGE_AS_INF else metric_value
     return metric_value
 
-def postprocess_psnr_value(psnr_value, metric_type):
-    """Заменяет значения PSNR >= PSNR_IS_LARGE_AS_INF на float('inf')."""
-    if QualityMetrics(metric_type) == QualityMetrics.PSNR:
-        return float('inf') if psnr_value >= PSNR_IS_LARGE_AS_INF else psnr_value
-    return psnr_value
-
 def postprocess_channel_metrics(channels_metrics, metric_type):
     """Заменяет значения PSNR >= PSNR_IS_LARGE_AS_INF на float('inf') в словаре поканальных метрик."""
     processed_metrics = {}
@@ -250,6 +244,33 @@ def postprocess_channel_metrics(channels_metrics, metric_type):
         else:
             processed_metrics[c] = metric_value
     return processed_metrics
+
+
+def postprocess_metric_value(metric_value, metric_type):
+    """
+    Постобработка значений метрик.
+
+    Для PSNR: заменяет значения >= PSNR_IS_LARGE_AS_INF на float('inf').
+    Работает как с одиночными числовыми значениями, так и со словарями поканальных метрик.
+
+    Args:
+        metric_value: Одиночное значение метрики или словарь {канал: значение}
+        metric_type: Тип метрики (QualityMetrics)
+    """
+    if QualityMetrics(metric_type) != QualityMetrics.PSNR:
+        return metric_value
+
+    try:
+        return {
+            channel: float('inf') if value >= PSNR_IS_LARGE_AS_INF else value
+            for channel, value in metric_value.items()
+        }
+    except (AttributeError, TypeError):
+        try:
+            return float('inf') if metric_value >= PSNR_IS_LARGE_AS_INF else metric_value
+        except (TypeError, ValueError):
+            # Не удалось обработать и как скаляр
+            raise TypeError(f"Ожидается число или словарь, получено: {type(metric_value).__name__}")
 
 
 def process_file_for_dataset(
