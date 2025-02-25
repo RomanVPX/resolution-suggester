@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+
 from resolution_suggester.config import PSNR_IS_LARGE_AS_INF, QualityMetrics
 from resolution_suggester.main import postprocess_psnr_value
 

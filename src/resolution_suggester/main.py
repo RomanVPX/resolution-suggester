@@ -4,6 +4,14 @@ import os
 # отключаем предупреждение omp_set_nested routine deprecated от PyTorch
 os.environ["KMP_WARNINGS"] = "off"
 
+import sys
+
+if sys.platform == 'win32':
+    if sys.stdout.encoding != 'utf-8':
+        import codecs
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer)
+        sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer)
+
 import argparse
 import concurrent.futures
 import logging
