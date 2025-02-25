@@ -36,7 +36,12 @@ def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_v
     # Инициализируем вычислитель для каждого вызова для очистки памяти
     # Нормализация изображения
     if max_val > 1.0 + TINY_EPSILON:
-        max_val = max(max_val, TINY_EPSILON)  # Защита от нуля
+        max_val = max(max_val, TINY_EPSILON)
+    else:
+        if max_val < TINY_EPSILON:
+            max_val = TINY_EPSILON
+
+    if max_val > 1.0 + TINY_EPSILON:
         original = original.astype(np.float32) / max_val
         processed = processed.astype(np.float32) / max_val
     else:
@@ -69,13 +74,21 @@ def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_v
 
     # Явное освобождение ресурсов
     del original_tensor, processed_tensor
-    torch.mps.empty_cache() if device.type == 'mps' else torch.cuda.empty_cache()
+    # Безопасная очистка кэша для MPS, если функция доступна:
+    if device.type == 'mps':
+        if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
+            torch.mps.empty_cache()
+        else:
+            pass
+    else:
+        # Для CUDA вызываем очистку без проверок
+        torch.cuda.empty_cache()
 
     return float(ms_ssim_val)
 
 
 def calculate_ms_ssim_pytorch_channels(
-    original: np.ndarray,
+        original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
     channels: list[str]
@@ -139,9 +152,6 @@ def calculate_psnr(
 
     diff = original - processed
     mse = np.mean(diff * diff)
-
-    if mse < TINY_EPSILON:
-        return PSNR_IS_LARGE_AS_INF + 1.0 # Вместо бесконечности возвращаем PSNR_IS_LARGE_AS_INF + 1.0 дБ для обучения
 
     log_max = 20 * np.log10(max_val)
     return log_max - 10 * np.log10(mse)
