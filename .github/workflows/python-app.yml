@@ -14,7 +14,6 @@ permissions:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -51,4 +50,6 @@ jobs:
 
     - name: Run test set 00
       run: |
-        res-suggest data/test_images/test_set_00/ -m ms_ssim -c
+        res-suggest data/test_images/test_set_01/ -m ms_ssim -c
+        res-suggest data/test_images/test_set_01/
+        res-suggest data/test_images/test_set_00/
