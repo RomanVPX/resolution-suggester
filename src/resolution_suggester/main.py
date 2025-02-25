@@ -70,7 +70,7 @@ def main() -> None:
     if args.csv_output:
         csv_path = get_csv_log_filename(args)
         csv_reporter = CSVReporter(csv_path, QualityMetrics(args.metric))
-        csv_reporter.__enter__()  # вручную входим в контекст
+        csv_reporter.__enter__()
         csv_reporter.write_header(args.channels)
         reporters.append(csv_reporter)
         logging.info("CSV output включён, файл: %s", csv_path)
@@ -78,7 +78,7 @@ def main() -> None:
     if args.json_output:
         json_path = get_json_log_filename(args)
         json_reporter = JSONReporter(json_path, QualityMetrics(args.metric))
-        json_reporter.__enter__()  # вручную
+        json_reporter.__enter__()
         reporters.append(json_reporter)
         logging.info("JSON output включён, файл: %s", json_path)
 
@@ -87,7 +87,6 @@ def main() -> None:
     for rep in reporters:
         rep.__exit__(None, None, None)
 
-    # Выводим имя итоговых файлов
     if args.csv_output:
         print(f"\nМетрики (CSV) сохранены в: {csv_path}")
     if args.json_output:
