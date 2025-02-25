@@ -55,10 +55,10 @@ jobs:
       run: |
         pytest
 
-    - name: Set UTF-8 output for Python
+    - name: Set code page to UTF-8 (Windows only)
       if: runner.os == 'Windows'
       run: |
-        setx PYTHONIOENCODING=utf-8
+        chcp 65001
         
     - name: Run on test_set_01 (PSNR)
       run: |
