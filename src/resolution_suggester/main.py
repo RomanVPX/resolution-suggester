@@ -19,8 +19,8 @@ from .core.image_processing import get_resize_function
 from .core.metrics import compute_resolutions, calculate_metrics
 from .utils.reporting import ConsoleReporter, CSVReporter, QualityHelper, get_csv_log_filename
 from .config import (InterpolationMethods, QualityMetrics,
-                     PSNR_IS_LARGE_AS_INF, INTERPOLATION_METHOD_UPSCALE, SAVE_INTERMEDIATE_DIR, ML_DATA_DIR,
-                     ML_DATASETS_DIR)
+                     PSNR_IS_LARGE_AS_INF, INTERPOLATION_METHOD_UPSCALE, ML_DATA_DIR,
+                     ML_DATASETS_DIR, INTERMEDIATE_DIR)
 from .ml.predictor import QuickPredictor, extract_features_of_original_img
 
 
@@ -122,9 +122,13 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
 
         if not use_prediction:
             img_downscaled = resize_fn(img_original, w, h)
-            if args.save_intermediate:
-                _save_intermediate(img_downscaled, file_path, w, h)
+            if args.save_im_down:
+                _save_intermediate(img_downscaled, file_path, w, h,
+                                   InterpolationMethods(args.interpolation), '')
             img_upscaled = resize_fn_upscale(img_downscaled, width, height)
+            if args.save_im_up:
+                _save_intermediate(img_upscaled, file_path, w, h,
+                                   InterpolationMethods(args.interpolation), 'upscaled')
 
         if args.channels:
             if use_prediction:
@@ -357,16 +361,17 @@ def create_original_entry(width: int, height: int, channels: Optional[list[str]]
         return *base_entry, {c: float('inf') for c in channels}, float('inf'), "Оригинал"
     return *base_entry, float('inf'), "Оригинал"
 
-def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height: int):
+def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height: int, interpolation: InterpolationMethods, suffix: str):
     """
     Saves intermediate result as PNG.
     """
-    file_path_dir = os.path.join(os.path.dirname(file_path), SAVE_INTERMEDIATE_DIR)
+    file_path_dir = INTERMEDIATE_DIR
     if not os.path.exists(file_path_dir):
         os.makedirs(file_path_dir, exist_ok=True)
 
     output_filename = (
-        os.path.splitext(os.path.basename(file_path))[0] + f"_{width}x{height}.png"
+        os.path.splitext(os.path.basename(file_path))[0] +
+        f"_({interpolation.value}_{width}x{height}){'_' + suffix if suffix else ''}.png"
     )
     output_path = os.path.join(file_path_dir, output_filename)
 
@@ -377,7 +382,7 @@ def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height
     arr_uint8 = np.clip(arr_for_save * 255.0, 0, 255).astype(np.uint8)
 
     pil_img = Image.fromarray(arr_uint8)
-    pil_img.save(output_path, format="PNG")
+    pil_img.save(output_path, format="PNG", optimize=True)
 
 if __name__ == "__main__":
     main()

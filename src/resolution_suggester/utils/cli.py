@@ -98,9 +98,24 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        '-s', '--save-intermediate',
+        '--save-im-down',
         action='store_true',
-        help='Сохранять результаты даунскейла'
+        help='Сохранять результаты даунскейла, производимого во время анализа\n'
+             '(не работает с --ml, --train-ml и --generate-dataset)'
+    )
+
+    parser.add_argument(
+        '--save-im-up',
+        action='store_true',
+        help='Сохранять результаты апскейла, произведённого после даунскейла\n'
+             '(не работает с --ml, --train-ml и --generate-dataset)'
+    )
+
+    parser.add_argument(
+        '-s', '--save-im-all',
+        action='store_true',
+        help='Сохранять результаты все результаты масштабирования изображений (даунскейл и апскейл)\n'
+             '(не работает с --ml, --train-ml и --generate-dataset)'
     )
 
     parser.add_argument(
@@ -128,6 +143,17 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     args = parser.parse_args()
+
+    if args.save_im_all:
+        args.save_im_down = True
+        args.save_im_up = True
+
+    if args.generate_dataset or args.train_ml or args.ml:
+        if args.save_im_down or args.save_im_up or args.save_im_all:
+            logging.warning("Нельзя использовать --save-im-* и --generate-dataset, --train-ml, --ml с одновременно!\n"
+                            "параметры --save-im-* будут проигнорированы.")
+            args.save_im_down = False
+            args.save_im_up = False
 
     if args.min_size < MIN_DOWNSCALE_SIZE:
         logging.warning(
