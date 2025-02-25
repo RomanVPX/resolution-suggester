@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="resolution-suggester",
+    name="resolution_suggester",
     version="0.1.0",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
@@ -12,7 +12,8 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "resolution-suggester=resolution-suggester.main:main",
+            "resolution_suggester=resolution_suggester.main:main",
+            "res-suggest=resolution_suggester.main:main",
         ],
     },
 )
