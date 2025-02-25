@@ -1,4 +1,4 @@
-# predictor.py
+# ml/predictor.py
 import logging
 import os
 from pathlib import Path
@@ -15,7 +15,7 @@ from sklearn.ensemble import GradientBoostingRegressor, HistGradientBoostingRegr
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from ..config import ML_MODELS_DIR, QualityMetrics
+from ..config import ML_MODELS_DIR, QualityMetrics, PSNR_IS_LARGE_AS_INF
 
 
 class QuickPredictor:
@@ -65,6 +65,9 @@ class QuickPredictor:
 
         df_features = pd.read_csv(features_csv)
         df_targets = pd.read_csv(targets_csv)
+
+        # Замена бесконечных значений на большое число (для PSNR)
+        df_targets.replace(np.inf, PSNR_IS_LARGE_AS_INF + 1.0, inplace=True)
 
         preprocessor = self._get_preprocessor()
         x_processed = preprocessor.fit_transform(df_features)
