@@ -56,8 +56,8 @@ jobs:
         pytest
 
     - name: Set UTF-8 output for Python
+      if: runner.os == 'Windows'
       run: |
-        if: runner.os == 'Windows'
         setx PYTHONIOENCODING=utf-8
         
     - name: Run on test_set_01 (PSNR)
