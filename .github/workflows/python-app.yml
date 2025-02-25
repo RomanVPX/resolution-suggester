@@ -48,3 +48,7 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+
+    - name: Run test set 00
+      run: |
+        res-suggest data/test_images/test_set_00/ -m ms_ssim -c
