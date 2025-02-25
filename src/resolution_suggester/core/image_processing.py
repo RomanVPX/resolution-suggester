@@ -1,11 +1,13 @@
 # image_processing.py
+from functools import lru_cache
+from typing import Callable
+
 import cv2
 import numpy as np
 import numpy.typing as npt
-from functools import lru_cache
-from typing import Callable
 from numba import njit, prange
-from ..config import MITCHELL_B, MITCHELL_C, TINY_EPSILON, INTERPOLATION_METHODS_CV2, InterpolationMethods
+
+from ..config import INTERPOLATION_METHODS_CV2, MITCHELL_B, MITCHELL_C, TINY_EPSILON, InterpolationMethods
 
 ResizeFunction = Callable[[npt.NDArray[np.float32], int, int], npt.NDArray[np.float32]]
 

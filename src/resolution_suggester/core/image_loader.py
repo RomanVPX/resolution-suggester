@@ -1,10 +1,11 @@
 # image_loader.py
-import os
 import logging
-import numpy as np
-import pyexr
+import os
 from dataclasses import dataclass
 from typing import Dict
+
+import numpy as np
+import pyexr
 from PIL import Image, ImageFile, UnidentifiedImageError
 
 from ..config import TINY_EPSILON

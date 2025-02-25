@@ -6,18 +6,20 @@ It uses argparse to define the command line interface and parse the arguments.
 """
 import argparse
 import logging
-import os
 import multiprocessing
+import os
 
 from ..config import (
-    INTERPOLATION_METHODS_INFO,
     INTERPOLATION_METHOD_DEFAULT,
+    INTERPOLATION_METHODS_INFO,
+    MIN_DOWNSCALE_SIZE,
+    QUALITY_METRIC_DEFAULT,
+    QUALITY_METRICS_INFO,
     SUPPORTED_EXTENSIONS,
     InterpolationMethods,
-    QUALITY_METRICS_INFO,
-    QUALITY_METRIC_DEFAULT,
-    QualityMetrics, MIN_DOWNSCALE_SIZE
+    QualityMetrics,
 )
+
 
 def setup_logging():
     """

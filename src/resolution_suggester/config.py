@@ -7,8 +7,9 @@ This module provides constants for configuration and output formatting.
 
 from enum import Enum
 from pathlib import Path
-from colorama import Fore, Back, Style
 from typing import Final
+
+from colorama import Back, Fore, Style
 
 SUPPORTED_EXTENSIONS: Final = frozenset({'.exr', '.tga', '.png', '.jpg', '.jpeg'})
 CSV_SEPARATOR: Final = ';'

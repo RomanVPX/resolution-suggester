@@ -1,19 +1,21 @@
 # reporting.py
 import argparse
-from datetime import datetime
 import csv
 import os
+from datetime import datetime
 from typing import List, Optional
+
 from colorama import Style
 
 from ..config import (
-    STYLES,
     CSV_SEPARATOR,
     QUALITY_LEVEL_HINTS_DESCRIPTIONS,
     QUALITY_METRIC_THRESHOLDS,
-    get_output_csv_header,
+    STYLES,
+    InterpolationMethods,
     QualityLevelHints,
-    QualityMetrics, InterpolationMethods
+    QualityMetrics,
+    get_output_csv_header,
 )
 
 

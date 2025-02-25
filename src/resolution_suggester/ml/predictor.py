@@ -1,23 +1,21 @@
 # predictor.py
-import os
 import logging
+import os
+from pathlib import Path
+from typing import Any, Dict
 
 import joblib
-import pywt
 import numpy as np
 import pandas as pd
-
-from pathlib import Path
-from typing import Dict, Any
-
+import pywt
 from skimage.feature import graycomatrix, graycoprops
 from skimage.measure import shannon_entropy
+from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import GradientBoostingRegressor, HistGradientBoostingRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.compose import ColumnTransformer
 
-from ..config import QualityMetrics, ML_MODELS_DIR
+from ..config import ML_MODELS_DIR, QualityMetrics
 
 
 class QuickPredictor:

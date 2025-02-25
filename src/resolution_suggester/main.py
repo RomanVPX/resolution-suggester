@@ -1,27 +1,34 @@
 # main.py
 import os
+
 # отключаем предупреждение omp_set_nested routine deprecated от PyTorch
 os.environ["KMP_WARNINGS"] = "off"
 
 import argparse
-import logging
 import concurrent.futures
+import logging
+from typing import Optional, Tuple
+
 import numpy as np
 import pandas as pd
-
 from PIL import Image
 from tqdm import tqdm
-from typing import Tuple, Optional
 
-from .utils.cli import parse_arguments, setup_logging, validate_paths
+from .config import (
+    INTERMEDIATE_DIR,
+    INTERPOLATION_METHOD_UPSCALE,
+    ML_DATA_DIR,
+    ML_DATASETS_DIR,
+    PSNR_IS_LARGE_AS_INF,
+    InterpolationMethods,
+    QualityMetrics,
+)
 from .core.image_loader import load_image
 from .core.image_processing import get_resize_function
-from .core.metrics import compute_resolutions, calculate_metrics
-from .utils.reporting import ConsoleReporter, CSVReporter, QualityHelper, get_csv_log_filename
-from .config import (InterpolationMethods, QualityMetrics,
-                     PSNR_IS_LARGE_AS_INF, INTERPOLATION_METHOD_UPSCALE, ML_DATA_DIR,
-                     ML_DATASETS_DIR, INTERMEDIATE_DIR)
+from .core.metrics import calculate_metrics, compute_resolutions
 from .ml.predictor import QuickPredictor, extract_features_of_original_img
+from .utils.cli import parse_arguments, setup_logging, validate_paths
+from .utils.reporting import ConsoleReporter, CSVReporter, QualityHelper, get_csv_log_filename
 
 
 def main():
