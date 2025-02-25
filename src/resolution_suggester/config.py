@@ -14,7 +14,7 @@ SUPPORTED_EXTENSIONS: Final = frozenset({'.exr', '.tga', '.png', '.jpg', '.jpeg'
 CSV_SEPARATOR: Final = ';'
 
 SAVE_INTERMEDIATE_DIR: Final = Path('_intermediate')
-ML_DATA_DIR: Final = Path('_ml_data')
+ML_DATA_DIR: Final = Path('../../_ml_data')
 ML_MODEL_DIR = ML_DATA_DIR / "models"
 
 MITCHELL_B = 1/3

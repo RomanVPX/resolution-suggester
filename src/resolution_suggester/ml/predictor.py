@@ -1,4 +1,4 @@
-# ml_predictor.py
+# predictor.py
 import os
 import logging
 
@@ -17,7 +17,7 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 
-from config import ML_DATA_DIR, QualityMetrics
+from src.resolution_suggester.config import ML_DATA_DIR, QualityMetrics
 
 class QuickPredictor:
     def __init__(self, model_dir: Path = ML_DATA_DIR / "models"):

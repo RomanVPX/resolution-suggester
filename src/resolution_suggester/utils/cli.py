@@ -9,7 +9,7 @@ import logging
 import os
 import multiprocessing
 
-from config import (
+from src.resolution_suggester.config import (
     INTERPOLATION_METHODS_INFO,
     INTERPOLATION_METHOD_DEFAULT,
     SUPPORTED_EXTENSIONS,

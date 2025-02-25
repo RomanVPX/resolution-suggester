@@ -6,7 +6,7 @@ import os
 from typing import List, Optional
 from colorama import Style
 
-from config import (
+from src.resolution_suggester.config import (
     STYLES,
     CSV_SEPARATOR,
     QUALITY_LEVEL_HINTS_DESCRIPTIONS,

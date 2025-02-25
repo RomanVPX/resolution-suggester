@@ -13,14 +13,15 @@ from PIL import Image
 from tqdm import tqdm
 from typing import Tuple, Optional
 
-from cli import parse_arguments, setup_logging, validate_paths
-from image_loader import load_image
-from image_processing import get_resize_function
-from metrics import compute_resolutions, calculate_metrics
-from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
-from config import (InterpolationMethods, QualityMetrics,
-                    PSNR_IS_LARGE_AS_INF, INTERPOLATION_METHOD_UPSCALE, SAVE_INTERMEDIATE_DIR, ML_DATA_DIR)
-from ml_predictor import QuickPredictor, extract_features_of_original_img
+from src.resolution_suggester.utils.cli import parse_arguments, setup_logging, validate_paths
+from src.resolution_suggester.core.image_loader import load_image
+from src.resolution_suggester.core.image_processing import get_resize_function
+from src.resolution_suggester.core.metrics import compute_resolutions, calculate_metrics
+from src.resolution_suggester.utils.reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
+from src.resolution_suggester.config import (InterpolationMethods, QualityMetrics,
+                                             PSNR_IS_LARGE_AS_INF, INTERPOLATION_METHOD_UPSCALE, SAVE_INTERMEDIATE_DIR, ML_DATA_DIR)
+from src.resolution_suggester.ml.predictor import QuickPredictor, extract_features_of_original_img
+
 
 def main():
     setup_logging()
