@@ -53,10 +53,6 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
-
-    - name: Run test set 01 ms_ssim
-      run: |
-        res-suggest data/test_images/test_set_01/ -m ms_ssim -c
         
     - name: Run test set 01
       run: |
@@ -65,3 +61,15 @@ jobs:
     - name: Run test set 00
       run: |
         res-suggest data/test_images/test_set_00/
+
+    - name: Run test set 01 ms_ssim
+      run: |
+        res-suggest data/test_images/test_set_01/ -m ms_ssim -c
+
+    - name: Run test set 01 ssim
+      run: |
+        res-suggest data/test_images/test_set_01/ -m ssim -c
+
+    - name: Run test set 00 ssim
+      run: |
+        res-suggest data/test_images/test_set_01/ -m ssim -c
