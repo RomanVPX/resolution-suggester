@@ -7,7 +7,7 @@ from numba import njit, prange
 from sewar.full_ref import msssim
 from torchmetrics.image import MultiScaleStructuralSimilarityIndexMeasure
 
-from ..config import MIN_DOWNSCALE_SIZE, PSNR_IS_LARGE_AS_INF, TINY_EPSILON, QualityMetrics
+from ..config import MIN_DOWNSCALE_SIZE, TINY_EPSILON, QualityMetrics
 
 if torch.backends.mps.is_available():
     device = torch.device("mps")
@@ -29,7 +29,12 @@ def _get_adaptive_ms_ssim_params(h: int, w: int) -> tuple[tuple[float, ...], int
         return (0.5, 0.5), 3   # минимальные параметры для мелочи
 
 
-def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_val: float) -> float:
+def calculate_ms_ssim_pytorch(
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float,
+    no_gpu: bool = False
+) -> float:
     """
     Вычисляет MS-SSIM между двумя изображениями с использованием PyTorch.
     """
@@ -55,27 +60,29 @@ def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_v
     else:
         raise ValueError("Неподдерживаемая размерность изображений")
 
+    torch_device = device if not no_gpu else torch.device("cpu")
+
     weights, kernel_size = _get_adaptive_ms_ssim_params(original.shape[-2], original.shape[-1])
     msssim_calc = MultiScaleStructuralSimilarityIndexMeasure(data_range=1.0, betas=weights,
-                                                             kernel_size=kernel_size).to(device)
+                                                             kernel_size=kernel_size).to(torch_device)
     # Переводим в тензоры и переносим на устройство
-    original_tensor = torch.from_numpy(original).to(device)
-    processed_tensor = torch.from_numpy(processed).to(device)
+    original_tensor = torch.from_numpy(original).to(torch_device)
+    processed_tensor = torch.from_numpy(processed).to(torch_device)
 
     # Вычисление MS-SSIM
     with torch.no_grad():
-        with torch.autocast(device_type=device.type, dtype=torch.float16):
+        with torch.autocast(device_type=torch_device.type, dtype=torch.float16):
             ms_ssim_val = msssim_calc(original_tensor, processed_tensor).item()
     # Явное освобождение ресурсов
     del original_tensor, processed_tensor
     # Очистка кэша для MPS, если функция доступна:
-    if device.type == 'mps':
+    if torch_device.type == 'mps':
         if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
             torch.mps.empty_cache()
         else:
             # Иначе просто пропускаем, чтобы не вызывать ошибку
             pass
-    else:
+    elif torch_device.type == 'cuda':
         # Для CUDA вызываем очистку без проверок
         torch.cuda.empty_cache()
 
@@ -86,7 +93,8 @@ def calculate_ms_ssim_pytorch_channels(
     original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
-    channels: list[str]
+    channels: list[str],
+    no_gpu: bool = False
 ) -> dict[str, float]:
     """
     Вычисляет MS-SSIM для каждого канала отдельно (медленно).
@@ -95,7 +103,7 @@ def calculate_ms_ssim_pytorch_channels(
     for i, ch in enumerate(channels):
         orig_ch = original[..., i] if original.ndim == 3 else original
         proc_ch = processed[..., i] if processed.ndim == 3 else processed
-        results[ch] = calculate_ms_ssim_pytorch(orig_ch, proc_ch, max_val)
+        results[ch] = calculate_ms_ssim_pytorch(orig_ch, proc_ch, max_val, no_gpu)
     return results
 
 
@@ -367,7 +375,8 @@ def calculate_metrics(
     original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
-    channels: list[str] = None
+    channels: list[str] = None,
+    no_gpu: bool = False
 ) -> None | dict[str, float] | float:
 
     if original.shape != processed.shape:
@@ -382,7 +391,7 @@ def calculate_metrics(
             case QualityMetrics.SSIM:
                 return calculate_ssim_gauss(original, processed, max_val)
             case QualityMetrics.MS_SSIM:
-                return calculate_ms_ssim_pytorch(original, processed, max_val)
+                return calculate_ms_ssim_pytorch(original, processed, max_val, no_gpu=no_gpu)
     else:
         match quality_metric:
             case QualityMetrics.PSNR:
@@ -390,7 +399,7 @@ def calculate_metrics(
             case QualityMetrics.SSIM:
                 return calculate_ssim_gauss_channels(original, processed, max_val, channels)
             case QualityMetrics.MS_SSIM:
-                return calculate_ms_ssim_pytorch_channels(original, processed, max_val, channels)
+                return calculate_ms_ssim_pytorch_channels(original, processed, max_val, channels, no_gpu=no_gpu)
 
     raise ValueError(f"Неподдерживаемая метрика: {quality_metric}")
 

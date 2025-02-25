@@ -181,7 +181,7 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
                 results_entry = (f"{w}x{h}", channels_metrics, min_metric)
             else:
                 channels_metrics = calculate_metrics(QualityMetrics(args.metric), img_original,
-                                                     img_upscaled, max_val, channels)
+                                                     img_upscaled, max_val, channels, no_gpu=args.no_gpu)
                 channels_metrics = postprocess_channel_metrics(channels_metrics, args.metric)
                 min_metric = min(channels_metrics.values())
                 results_entry = (f"{w}x{h}", channels_metrics, min_metric)
@@ -191,7 +191,7 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
                 )
                 results_entry = (f"{w}x{h}", metric_value)
             else:
-                metric_value = calculate_metrics(QualityMetrics(args.metric), img_original, img_upscaled, max_val)
+                metric_value = calculate_metrics(QualityMetrics(args.metric), img_original, img_upscaled, max_val, no_gpu=args.no_gpu)
                 metric_value = postprocess_psnr_value(metric_value, args.metric)
                 results_entry = (f"{w}x{h}", metric_value)
 
@@ -316,7 +316,7 @@ def process_file_for_dataset(
 
                         targets_entry = {}
                         for metric in QualityMetrics:
-                            channel_metric_value = calculate_metrics(metric, img_channel, img_upscaled_channel, max_val)
+                            channel_metric_value = calculate_metrics(metric, img_channel, img_upscaled_channel, max_val, no_gpu=args.no_gpu)
                             targets_entry[metric.value] = channel_metric_value
 
                         features_all.append(features_entry)
@@ -329,9 +329,9 @@ def process_file_for_dataset(
                     features_entry.update(features_original)  # Добавляем общие фичи
 
                     metrics_combined = {  # Вычисление metrics_combined здесь, в блоке else
-                        'psnr': calculate_metrics(QualityMetrics.PSNR, img_original, img_upscaled, max_val),
-                        'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val),
-                        'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val)
+                        'psnr': calculate_metrics(QualityMetrics.PSNR, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
+                        'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
+                        'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu)
                     }
                     targets_entry = metrics_combined.copy()
 

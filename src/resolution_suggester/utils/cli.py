@@ -1,3 +1,4 @@
+# utils/cli.py
 """
 Command line interface for image quality analysis.
 
@@ -133,9 +134,9 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        '--no-pytorch',
+        '--no-gpu',
         action='store_true',
-        help='Не использовать PyTorch для расчёта метрик (на случай проблем с CUDA, MPS и т.д.)'
+        help='Не использовать GPU для расчёта метрик (на случай проблем с CUDA, MPS и т.д. в PyTorch)'
     )
 
     parser.add_argument(
