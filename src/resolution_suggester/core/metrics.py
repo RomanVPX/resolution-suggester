@@ -3,9 +3,9 @@ import math
 import numpy as np
 from numba import njit, prange
 from sewar.full_ref import msssim
-from config import TINY_EPSILON, QualityMetrics, MIN_DOWNSCALE_SIZE
 import torch
 from torchmetrics.image import MultiScaleStructuralSimilarityIndexMeasure
+from ..config import TINY_EPSILON, QualityMetrics, MIN_DOWNSCALE_SIZE, PSNR_IS_LARGE_AS_INF
 
 if torch.backends.mps.is_available():
     device = torch.device("mps")
@@ -139,7 +139,7 @@ def calculate_psnr(
     mse = np.mean(diff * diff)
 
     if mse < TINY_EPSILON:
-        return 140.0 # Вместо бесконечности возвращаем 140 дБ для обучения
+        return PSNR_IS_LARGE_AS_INF + 1.0 # Вместо бесконечности возвращаем PSNR_IS_LARGE_AS_INF + 1.0 дБ для обучения
 
     log_max = 20 * np.log10(max_val)
     return log_max - 10 * np.log10(mse)

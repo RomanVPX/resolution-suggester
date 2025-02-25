@@ -1,4 +1,4 @@
-# ml_predictor.py
+# predictor.py
 import os
 import logging
 
@@ -17,10 +17,11 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 
-from config import ML_DATA_DIR, QualityMetrics
+from ..config import QualityMetrics, ML_MODELS_DIR
+
 
 class QuickPredictor:
-    def __init__(self, model_dir: Path = ML_DATA_DIR / "models"):
+    def __init__(self, model_dir: Path = ML_MODELS_DIR):
         """Инициализация предиктора с путём к моделям."""
         self.model_dir = model_dir
         self.combined_model = None    # Модель для общего анализа (без каналов)
@@ -41,9 +42,9 @@ class QuickPredictor:
         self.preprocessor = joblib.load(preprocessor_path)
 
         if self.mode:
-            model_path = self.model_dir / "channels" / "model.joblib"
+            model_path = self.model_dir / "model_channels.joblib"
         else:
-            model_path = self.model_dir / "combined" / "model.joblib"
+            model_path = self.model_dir / "model_combined.joblib"
 
         if not model_path.exists():
             logging.warning(f"Файл модели не найден: {model_path}")
@@ -68,24 +69,19 @@ class QuickPredictor:
         df_targets = pd.read_csv(targets_csv)
 
         preprocessor = self._get_preprocessor()
-        X_processed = preprocessor.fit_transform(df_features)
+        x_processed = preprocessor.fit_transform(df_features)
 
-        # Фильтруем только те строки, в которых все таргет-значения конечны.
-        # Это можно сделать так:
+        # Удаление строк с бесконечными значениями
+        # Удалить? Бесконечности всё равно приводятся к (PSNR_IS_LARGE_AS_INF + 1.0) в calculate_psnr()
         y = df_targets.to_numpy()
         mask = np.isfinite(y).all(axis=1)
         if not mask.all():
             logging.info("Будут удалены строки с бесконечными значениями в таргетах.")
-        # Для общего случая
         mask_combined = (df_features['analyze_channels'] == 0) & mask
-        X_combined = X_processed[mask_combined]
+        x_combined = x_processed[mask_combined]
         y_combined = df_targets[['psnr', 'ssim', 'ms_ssim']].to_numpy()[mask_combined]
-
-        # Для канального случая
         mask_channels = (df_features['analyze_channels'] != 0) & mask
-        X_channels = X_processed[mask_channels]
-        # Выбираем все колонки, начинающиеся с метрики (например, "psnr_", "ssim_", "ms_ssim"...),
-        # предполагаем, что они идут в нужном порядке
+        x_channels = x_processed[mask_channels]
         y_channels = df_targets[
             [col for col in df_targets.columns if any(col.startswith(f"{m.value}") for m in QualityMetrics)]
         ].to_numpy()[mask_channels]
@@ -93,20 +89,20 @@ class QuickPredictor:
         # Обучение моделей
         combined_model = MultiOutputRegressor(
             GradientBoostingRegressor(n_estimators=200, max_depth=7, random_state=42)
-        ).fit(X_combined, y_combined)
+        ).fit(x_combined, y_combined)
 
         channels_model = MultiOutputRegressor(
-            HistGradientBoostingRegressor(max_iter=200, max_depth=5, random_state=42)).fit(X_channels, y_channels)
+            HistGradientBoostingRegressor(max_iter=200, max_depth=5, random_state=42)).fit(x_channels, y_channels)
 
-        (self.model_dir / "combined").mkdir(parents=True, exist_ok=True)
-        (self.model_dir / "channels").mkdir(parents=True, exist_ok=True)
+        self.model_dir.mkdir(parents=True, exist_ok=True)
 
         joblib.dump(preprocessor, self.model_dir / "preprocessor.joblib")
-        joblib.dump(combined_model, self.model_dir / "combined" / "model.joblib")
-        joblib.dump(channels_model, self.model_dir / "channels" / "model.joblib")
+        joblib.dump(combined_model, self.model_dir / "model_combined.joblib")
+        joblib.dump(channels_model, self.model_dir / "model_channels.joblib")
         logging.info("Модели обучены и сохранены.")
 
-    def _get_preprocessor(self) -> ColumnTransformer:
+    @staticmethod
+    def _get_preprocessor() -> ColumnTransformer:
         """Создаёт препроцессор фичей."""
         numeric_features = [
             'contrast', 'variance', 'entropy',
@@ -143,7 +139,7 @@ class QuickPredictor:
                 raise ValueError("Модель для анализа по каналам не загружена.")
             pred = self.channels_model.predict(processed)[0]
             # Возвращаем словарь, где ключи - названия метрик, значения - предсказанные значения.
-            return {metric.value: val for metric, val in zip(QualityMetrics, pred)}
+            return {metric: val for metric, val in zip(QualityMetrics, pred)}
         else:
             if self.combined_model is None:
                 raise ValueError("Модель для общего анализа не загружена.")
@@ -167,7 +163,7 @@ def extract_texture_features(img: np.ndarray, method: str) -> Dict[str, float]:
 
 #############################################################################
 # Извлечение набора признаков из оригинального изображения
-def extract_features_of_original_img(img: np.ndarray, channel_name: str = None) -> dict:
+def extract_features_of_original_img(img: np.ndarray) -> dict:
     """Извлекает признаки из 2D-изображения (канала)."""
     if img.ndim == 3:
         img = np.mean(img, axis=2)
@@ -182,7 +178,6 @@ def extract_features_of_original_img(img: np.ndarray, channel_name: str = None) 
     coefficients = pywt.dwt2(img, 'haar')
     c_a, (c_h, c_v, c_d) = coefficients
     features['wavelet_energy'] = np.sum(c_a**2 + c_h**2 + c_v**2 + c_d**2) / img.size
-    logging.debug(f"Wavelet energy ({channel_name}): {features['wavelet_energy']:.4f}")
 
     # GLCM-признаки
     glcm = graycomatrix((img * 255).astype(np.uint8),

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Dict
 from PIL import Image, ImageFile, UnidentifiedImageError
 
-from config import TINY_EPSILON
+from ..config import TINY_EPSILON
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 

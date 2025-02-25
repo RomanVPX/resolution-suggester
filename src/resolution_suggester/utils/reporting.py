@@ -1,11 +1,12 @@
 # reporting.py
+import argparse
 from datetime import datetime
 import csv
 import os
 from typing import List, Optional
 from colorama import Style
 
-from config import (
+from ..config import (
     STYLES,
     CSV_SEPARATOR,
     QUALITY_LEVEL_HINTS_DESCRIPTIONS,
@@ -15,10 +16,23 @@ from config import (
     QualityMetrics, InterpolationMethods
 )
 
-def generate_csv_filename(metric: str, interpolation: InterpolationMethods) -> str:
-    """Генерация имени CSV файла с временной меткой"""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return f"tx_analysis_{timestamp}_{interpolation.value.capitalize()}_{metric.upper()}.csv"
+
+def get_csv_log_filename(args: argparse.Namespace) -> str:
+    """Generate CSV filename with timestamp"""
+    parts = [
+        "tx_analysis",
+        datetime.now().strftime("%Y%m%d_%H%M%S"),
+        InterpolationMethods(args.interpolation).value.capitalize(),
+        QualityMetrics(args.metric).upper()
+    ]
+
+    if args.channels:
+        parts.append("ch")
+    if args.ml:
+        parts.append("ML")
+
+    return "_".join(parts) + ".csv"
+
 
 class ConsoleReporter:
     @staticmethod

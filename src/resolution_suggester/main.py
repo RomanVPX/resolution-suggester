@@ -13,13 +13,16 @@ from PIL import Image
 from tqdm import tqdm
 from typing import Tuple, Optional
 
-from cli import parse_arguments, setup_logging, validate_paths
-from image_loader import load_image
-from image_processing import get_resize_function
-from metrics import compute_resolutions, calculate_metrics
-from reporting import ConsoleReporter, CSVReporter, QualityHelper, generate_csv_filename
-from config import SAVE_INTERMEDIATE_DIR, ML_DATA_DIR, InterpolationMethods, QualityMetrics
-from ml_predictor import QuickPredictor, extract_features_of_original_img
+from .utils.cli import parse_arguments, setup_logging, validate_paths
+from .core.image_loader import load_image
+from .core.image_processing import get_resize_function
+from .core.metrics import compute_resolutions, calculate_metrics
+from .utils.reporting import ConsoleReporter, CSVReporter, QualityHelper, get_csv_log_filename
+from .config import (InterpolationMethods, QualityMetrics,
+                     PSNR_IS_LARGE_AS_INF, INTERPOLATION_METHOD_UPSCALE, ML_DATA_DIR,
+                     ML_DATASETS_DIR, INTERMEDIATE_DIR)
+from .ml.predictor import QuickPredictor, extract_features_of_original_img
+
 
 def main():
     setup_logging()
@@ -40,7 +43,7 @@ def main():
         return   # завершаем работу после создания датасета
 
     if args.csv_output:
-        csv_path = generate_csv_filename(args.metric, InterpolationMethods(args.interpolation))
+        csv_path = get_csv_log_filename(args)
         with CSVReporter(csv_path, QualityMetrics(args.metric)) as reporter:
             reporter.write_header(args.channels)
             process_files(files, args, reporter)
@@ -105,12 +108,13 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
         if not predictor.load():
             logging.info("ML-модель не найдена, будем вычислять реальные метрики.")
             use_prediction = False
-
-    try:
-        resize_fn = get_resize_function(args.interpolation)
-    except ValueError as e:
-        logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
-        return None, None
+    else:
+        try:
+            resize_fn = get_resize_function(args.interpolation)
+            resize_fn_upscale = get_resize_function(INTERPOLATION_METHOD_UPSCALE)
+        except ValueError as e:
+            logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
+            return None, None
 
     for (w, h) in resolutions:
         if w == width and h == height:
@@ -118,9 +122,13 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
 
         if not use_prediction:
             img_downscaled = resize_fn(img_original, w, h)
-            if args.save_intermediate:
-                _save_intermediate(img_downscaled, file_path, w, h)
-            img_upscaled = resize_fn(img_downscaled, width, height)
+            if args.save_im_down:
+                _save_intermediate(img_downscaled, file_path, w, h,
+                                   InterpolationMethods(args.interpolation), '')
+            img_upscaled = resize_fn_upscale(img_downscaled, width, height)
+            if args.save_im_up:
+                _save_intermediate(img_upscaled, file_path, w, h,
+                                   InterpolationMethods(args.interpolation), 'upscaled')
 
         if args.channels:
             if use_prediction:
@@ -166,7 +174,7 @@ def _predict_channel_metrics(img_original, w, width, h, height, args, predictor,
         })
         prediction_channel = predictor.predict(features_for_ml_channel)
         val = prediction_channel.get(args.metric.value, 0.0)
-        channels_metrics[c] = float('inf') if val >= 139.9 else val
+        channels_metrics[c] = float('inf') if val >= PSNR_IS_LARGE_AS_INF else val
     return channels_metrics
 
 def _predict_combined_metric(img_original, w, width, h, height, args, predictor):
@@ -181,21 +189,21 @@ def _predict_combined_metric(img_original, w, width, h, height, args, predictor)
     })
     prediction = predictor.predict(features_for_ml)
     metric_value = prediction.get(args.metric.value, 0.0)
-    metric_value = float('inf') if metric_value >= 139.9 else metric_value
+    metric_value = float('inf') if metric_value >= PSNR_IS_LARGE_AS_INF else metric_value
     return metric_value
 
 def postprocess_psnr_value(psnr_value, metric_type):
-    """Заменяет значения PSNR >= 139.9 на float('inf')."""
+    """Заменяет значения PSNR >= PSNR_IS_LARGE_AS_INF на float('inf')."""
     if QualityMetrics(metric_type) == QualityMetrics.PSNR:
-        return float('inf') if psnr_value >= 139.9 else psnr_value
+        return float('inf') if psnr_value >= PSNR_IS_LARGE_AS_INF else psnr_value
     return psnr_value
 
 def postprocess_channel_metrics(channels_metrics, metric_type):
-    """Заменяет значения PSNR >= 139.9 на float('inf') в словаре поканальных метрик."""
+    """Заменяет значения PSNR >= PSNR_IS_LARGE_AS_INF на float('inf') в словаре поканальных метрик."""
     processed_metrics = {}
     for c, metric_value in channels_metrics.items():
         if QualityMetrics(metric_type) == QualityMetrics.PSNR:
-            processed_metrics[c] = float('inf') if metric_value >= 139.9 else metric_value
+            processed_metrics[c] = float('inf') if metric_value >= PSNR_IS_LARGE_AS_INF else metric_value
         else:
             processed_metrics[c] = metric_value
     return processed_metrics
@@ -226,6 +234,7 @@ def process_file_for_dataset(
     for method in interpolations_methods:
         try:
             resize_fn = get_resize_function(method)
+            resize_fn_upscale = get_resize_function(INTERPOLATION_METHOD_UPSCALE)
         except ValueError as e:
             logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
             continue
@@ -245,7 +254,7 @@ def process_file_for_dataset(
             }
 
             img_downscaled = resize_fn(img_original, w, h)
-            img_upscaled = resize_fn(img_downscaled, original_w, original_h)
+            img_upscaled = resize_fn_upscale(img_downscaled, original_w, original_h)
 
             # Создаём две версии данных: без каналов и с каналами
             for analyze_channels in [0, 1]:
@@ -259,7 +268,7 @@ def process_file_for_dataset(
                         img_channel = img_original[..., channels.index(c)] if img_original.ndim == 3 else img_original
                         img_upscaled_channel = img_upscaled[..., channels.index(c)] if img_upscaled.ndim == 3 else img_original
 
-                        channel_features = extract_features_of_original_img(img_channel, c)
+                        channel_features = extract_features_of_original_img(img_channel)
                         features_entry.update(channel_features)  # Добавляем канальные фичи
 
                         targets_entry = {}
@@ -296,8 +305,8 @@ def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, s
     all_targets = []
 
     # Пути для сохранения датасета
-    features_csv_path = ML_DATA_DIR / 'features.csv'
-    targets_csv_path  = ML_DATA_DIR / 'targets.csv'
+    features_csv_path = ML_DATASETS_DIR / 'features.csv'
+    targets_csv_path  = ML_DATASETS_DIR / 'targets.csv'
     features_csv = str(features_csv_path)
     targets_csv = str(targets_csv_path)
 
@@ -352,16 +361,17 @@ def create_original_entry(width: int, height: int, channels: Optional[list[str]]
         return *base_entry, {c: float('inf') for c in channels}, float('inf'), "Оригинал"
     return *base_entry, float('inf'), "Оригинал"
 
-def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height: int):
+def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height: int, interpolation: InterpolationMethods, suffix: str):
     """
     Saves intermediate result as PNG.
     """
-    file_path_dir = os.path.join(os.path.dirname(file_path), SAVE_INTERMEDIATE_DIR)
+    file_path_dir = INTERMEDIATE_DIR
     if not os.path.exists(file_path_dir):
         os.makedirs(file_path_dir, exist_ok=True)
 
     output_filename = (
-        os.path.splitext(os.path.basename(file_path))[0] + f"_{width}x{height}.png"
+        os.path.splitext(os.path.basename(file_path))[0] +
+        f"_({interpolation.value}_{width}x{height}){'_' + suffix if suffix else ''}.png"
     )
     output_path = os.path.join(file_path_dir, output_filename)
 
@@ -372,7 +382,7 @@ def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height
     arr_uint8 = np.clip(arr_for_save * 255.0, 0, 255).astype(np.uint8)
 
     pil_img = Image.fromarray(arr_uint8)
-    pil_img.save(output_path, format="PNG")
+    pil_img.save(output_path, format="PNG", optimize=True)
 
 if __name__ == "__main__":
     main()
