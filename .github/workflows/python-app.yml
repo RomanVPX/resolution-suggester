@@ -55,22 +55,42 @@ jobs:
       run: |
         pytest
         
-    - name: Run test set 01 (PSNR)
+    - name: Run on test_set_01 (PSNR)
       run: |
-        res-suggest data/test_images/test_set_01/
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          res-suggest data\\test_images\\test_set_01\\
+        else
+          res-suggest data/test_images/test_set_01/
+        fi
         
-    - name: Run test set 00 (PSNR -c)
+    - name: Run on test_set_00 (PSNR -c)
       run: |
-        res-suggest data/test_images/test_set_00/ -c
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          res-suggest data\\test_images\\test_set_00\\ -c
+        else
+          res-suggest data/test_images/test_set_00/ -c
+        fi
 
-    - name: Run test set 01 (MS-SSIM -c)
+    - name: Run on test_set_01 (MS-SSIM -c)
       run: |
-        res-suggest data/test_images/test_set_01/ -m ms_ssim -c
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          res-suggest data\\test_images\\test_set_01\\ -m ms_ssim -c
+        else
+          res-suggest data/test_images/test_set_01/ -m ms_ssim -c
+        fi
 
-    - name: Run test set 01 (SSIM -c)
+    - name: Run on test_set_01 (SSIM -c)
       run: |
-        res-suggest data/test_images/test_set_01/ -m ssim -c
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          res-suggest data\\test_images\\test_set_01\\ -m ssim -c
+        else
+          res-suggest data/test_images/test_set_01/ -m ssim -c
+        fi
 
-    - name: Run test set 00 (SSIM -c)
+    - name: Run on test_set_00 (SSIM -c)
       run: |
-        res-suggest data/test_images/test_set_01/ -m ssim -c
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          res-suggest data\\test_images\\test_set_00\\ -m ms_ssim -c
+        else
+          res-suggest data/test_images/test_set_00/ -m ms_ssim -c
+        fi
