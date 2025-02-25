@@ -90,7 +90,7 @@ jobs:
     - name: Run on test_set_00 (SSIM -c)
       run: |
         if [ "${{ runner.os }}" = "Windows" ]; then
-          res-suggest data\\test_images\\test_set_00\\ -m ms_ssim -c
+          res-suggest data\\test_images\\test_set_00\\ -m ssim -c
         else
-          res-suggest data/test_images/test_set_00/ -m ms_ssim -c
+          res-suggest data/test_images/test_set_00/ -m ssim -c
         fi
