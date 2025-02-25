@@ -1,0 +1,33 @@
+[tool.isort]
+line_length = 127
+multi_line_output = 3
+include_trailing_comma = true
+use_parentheses = true
+src_paths = ["src", "tests"]
+skip = [".git", "__pycache__", "venv"]
+known_first_party = ["resolution_suggester"]
+
+
+[tool.pylint.main]
+recursive = true
+ignore = ["CVS", ".git", "__pycache__", "venv"]
+
+[tool.pylint.format]
+max-line-length = 127
+
+[tool.pylint.messages_control]
+disable = [
+    "C0111",  # missing-docstring
+    "C0103",  # invalid-name
+    "C0303",  # trailing-whitespace
+    "C0330",  # wrong-hanging-indentation
+]
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "ex", "Run", "_", "x", "y", "w", "h"]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra -q"
