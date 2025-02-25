@@ -127,6 +127,12 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        '--no-pytorch',
+        action='store_true',
+        help='Не использовать PyTorch для расчёта метрик (на случай проблем с CUDA, MPS и т.д.)'
+    )
+
+    parser.add_argument(
         '--generate-dataset',
         action='store_true',
         help='Сгенерировать датасет (features/targets) для обучения модели'
