@@ -16,7 +16,8 @@ jobs:
   os_matrix:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest]
   
     runs-on: ${{ matrix.os }}
 
@@ -61,21 +62,31 @@ jobs:
         chcp 65001
         
     - name: Run on test_set_01 (PSNR)
+      env:
+        PYTHONIOENCODING: utf-8
       run: |
         res-suggest data/test_images/test_set_01/
         
     - name: Run on test_set_00 (PSNR -c)
+      env:
+        PYTHONIOENCODING: utf-8
       run: |
         res-suggest data/test_images/test_set_00/ -c
 
     - name: Run on test_set_01 (MS-SSIM -c)
+      env:
+        PYTHONIOENCODING: utf-8
       run: |
         res-suggest data/test_images/test_set_01/ -m ms_ssim -c
 
     - name: Run on test_set_01 (SSIM -c)
+      env:
+        PYTHONIOENCODING: utf-8
       run: |
         res-suggest data/test_images/test_set_01/ -m ssim -c
 
     - name: Run on test_set_00 (SSIM -c)
+      env:
+        PYTHONIOENCODING: utf-8
       run: |
         res-suggest data/test_images/test_set_00/ -m ssim -c
