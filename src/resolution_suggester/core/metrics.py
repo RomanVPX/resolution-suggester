@@ -35,13 +35,13 @@ def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_v
     """
     # Инициализируем вычислитель для каждого вызова для очистки памяти
     # Нормализация изображения
+    max_val = max(max_val, TINY_EPSILON)
     if max_val > 1.0 + TINY_EPSILON:
-        max_val = max(max_val, TINY_EPSILON)  # Защита от нуля
         original = original.astype(np.float32) / max_val
         processed = processed.astype(np.float32) / max_val
-    else:
-        original = original.astype(np.float32)
-        processed = processed.astype(np.float32)
+
+    original = original.astype(np.float32)
+    processed = processed.astype(np.float32)
 
     # Добавляем размерность батча и каналов
     if original.ndim == 2:
@@ -66,10 +66,18 @@ def calculate_ms_ssim_pytorch(original: np.ndarray, processed: np.ndarray, max_v
     with torch.no_grad():
         with torch.autocast(device_type=device.type, dtype=torch.float16):
             ms_ssim_val = msssim_calc(original_tensor, processed_tensor).item()
-
     # Явное освобождение ресурсов
     del original_tensor, processed_tensor
-    torch.mps.empty_cache() if device.type == 'mps' else torch.cuda.empty_cache()
+    # Очистка кэша для MPS, если функция доступна:
+    if device.type == 'mps':
+        if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
+            torch.mps.empty_cache()
+        else:
+            # Иначе просто пропускаем, чтобы не вызывать ошибку
+            pass
+    else:
+        # Для CUDA вызываем очистку без проверок
+        torch.cuda.empty_cache()
 
     return float(ms_ssim_val)
 
@@ -81,7 +89,7 @@ def calculate_ms_ssim_pytorch_channels(
     channels: list[str]
 ) -> dict[str, float]:
     """
-    Вычисляет MS-SSIM для каждого канала отдельно (не рекомендуется из-за медленной работы).
+    Вычисляет MS-SSIM для каждого канала отдельно (медленно).
     """
     results = {}
     for i, ch in enumerate(channels):
