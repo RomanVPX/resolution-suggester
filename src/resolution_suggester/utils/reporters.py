@@ -32,7 +32,7 @@ class IReporter(ABC):
 
 def get_csv_log_filename(args) -> str:
     """
-    Генерирует имя CSV-файла с отметкой времени.
+    Generates the name of the CSV file with a timestamp.
     """
     parts = [
         "tx_analysis",
@@ -51,8 +51,8 @@ def get_csv_log_filename(args) -> str:
 
 def get_json_log_filename(args) -> str:
     """
-    Генерирует имя JSON-файла с отметкой времени.
-    По аналогии с get_csv_log_filename, но с расширением .json.
+    Generates the name of the JSON file with a timestamp.
+    Similar to get_csv_log_filename, but with the .json extension.
     """
     parts = [
         "tx_analysis",
@@ -71,7 +71,7 @@ def get_json_log_filename(args) -> str:
 
 class CSVReporter(IReporter):
     """
-    Запись результатов в CSV-файл.
+    Recording results in a CSV file.
     """
     def __init__(self, output_path: str, metric_type: QualityMetrics):
         self.output_path = output_path
@@ -90,13 +90,13 @@ class CSVReporter(IReporter):
 
     def write_header(self, analyze_channels: bool) -> None:
         """
-        Записывает заголовок (первую строку).
+        Writes the title (first line).
         """
         self.writer.writerow(get_output_csv_header(analyze_channels, self.metric_type))
 
     def write_results(self, filename: str, results: list, analyze_channels: bool) -> None:
         """
-        Записывает результаты в CSV.
+        Writes results to CSV.
         """
         for i, result_item in enumerate(results):
             res = result_item[0]
@@ -145,9 +145,10 @@ class CSVReporter(IReporter):
 
 class JSONReporter(IReporter):
     """
-    Репорт в формате JSON. По аналогии с CSVReporter.
-    При выходе из контекста (exit) сохраняет накопленные результаты.
+    Report in JSON format. Similar to CSVReporter.
+    When exiting the context (exit), saves the accumulated results.
     """
+
     def __init__(self, output_path: str, metric_type: QualityMetrics):
         self.output_path = output_path
         self.metric_type = metric_type
@@ -160,8 +161,22 @@ class JSONReporter(IReporter):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.file is not None:
+            # Сохраняем в JSON людей-читаемом формате
+            import json
             json.dump(self.data, self.file, ensure_ascii=False, indent=2)
             self.file.close()
+
+    def _format_json_value(self, val: float) -> str | float:
+        """
+        Returns the string 'inf' if val == float('inf'),
+        otherwise rounds to 3 digits and returns as float (number).
+        """
+        if val == float('inf'):
+            # Бесконечность в JSON недопустима в виде числа,
+            # поэтому даём строковое представление:
+            return "inf"
+        # Округляем до 3-х знаков
+        return round(val, 3)
 
     def write_results(self, filename: str, results: list, analyze_channels: bool) -> None:
         file_entry = {
@@ -169,14 +184,20 @@ class JSONReporter(IReporter):
             "results": []
         }
 
-        for i, row in enumerate(results):
+        for row in results:
             if analyze_channels:
                 # row: (res_str, channel_dict, min_val, hint)
                 resolution, channel_dict, min_val, hint = row
+
+                # Приводим поканальные значения к нужному виду
+                formatted_channels = {}
+                for chan_name, chan_val in channel_dict.items():
+                    formatted_channels[chan_name] = self._format_json_value(chan_val)
+
                 file_entry["results"].append({
                     "resolution": resolution,
-                    "channels": channel_dict,
-                    "min_value": min_val,
+                    "channels": formatted_channels,
+                    "min_value": self._format_json_value(min_val),
                     "hint": hint
                 })
             else:
@@ -184,8 +205,9 @@ class JSONReporter(IReporter):
                 resolution, metric_value, hint = row
                 file_entry["results"].append({
                     "resolution": resolution,
-                    "value": metric_value,
+                    "value": self._format_json_value(metric_value),
                     "hint": hint
                 })
 
         self.data.append(file_entry)
+
