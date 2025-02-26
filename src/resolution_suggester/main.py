@@ -385,7 +385,7 @@ def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, s
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.threads) as executor:
         futures = [
             executor.submit(process_file_for_dataset, file_path,
-                            interpolations_methods_to_test, argparse.Namespace(min_size=args.min_size))
+                            interpolations_methods_to_test, args)
             for file_path in files
         ]
         for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="Создание датасета"):
