@@ -99,7 +99,7 @@ def process_files(files: list[str], args: argparse.Namespace, reporters: list[IR
             try:
                 results, meta = process_single_file(file_path, args)
             except Exception as e:
-                logging.error(f"Ошибка обработки {file_path}: {e}")
+                logging.error(f"Ошибка обработки файла {file_path}: {e}")
                 continue
             if results:
                 print_console_results(file_path, results, args.channels, meta, QualityMetrics(args.metric))
@@ -116,7 +116,7 @@ def process_files(files: list[str], args: argparse.Namespace, reporters: list[IR
                 try:
                     results, meta = future.result()
                 except Exception as e:
-                    logging.error(f"Ошибка обработки {file_path}: {e}")
+                    logging.error(f"Ошибка обработки файла {file_path}: {e}")
                     continue
                 if results:
                     print_console_results(file_path, results, args.channels, meta, QualityMetrics(args.metric))
@@ -302,7 +302,7 @@ def process_file_for_dataset(
             scale_factor = (w / original_w + h / original_h) / 2
 
             # Базовые фичи (для общего режима)
-            features_dict_base = {  # выносим базовые фичи в отдельный словарь
+            features_dict_base = {
                 'scale_factor': scale_factor,
                 'method': method.value,
                 'original_width': original_w,

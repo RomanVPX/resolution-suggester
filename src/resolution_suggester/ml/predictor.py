@@ -135,7 +135,7 @@ class QuickPredictor:
         df = pd.DataFrame([features])
         processed = self.preprocessor.transform(df)
 
-        if self.mode: # channels
+        if self.mode:  # channels
             if self.channels_model is None:
                 raise ValueError("Модель для анализа по каналам не загружена.")
             pred = self.channels_model.predict(processed)[0]
