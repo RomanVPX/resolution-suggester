@@ -5,7 +5,9 @@ import numpy as np
 import torch
 from numba import njit, prange
 from torchmetrics.image import MultiScaleStructuralSimilarityIndexMeasure
-
+from skimage.feature import canny
+from skimage.filters import sobel
+from skimage.morphology import dilation, footprint_rectangle
 from ..config import MIN_DOWNSCALE_SIZE, TINY_EPSILON, QualityMetrics
 
 if torch.backends.mps.is_available():
@@ -130,6 +132,130 @@ def calculate_psnr_channels(
         channel: calculate_psnr(original[..., i], processed[..., i], max_val)
         for i, channel in enumerate(channels)
     }
+
+
+def calculate_tdpr(
+        original: np.ndarray,
+        processed: np.ndarray,
+        edge_sigma: float = 1.0,
+        dilation_size: int = 1
+) -> float:
+    """
+    Вычисляет коэффициент сохранения текстурных деталей (TDPR).
+    """
+    # Обнаруживаем края на оригинальном изображении
+    original_edges = detect_texture_edges(original, sigma=edge_sigma)
+
+    # Расширяем маску краев для учета небольших смещений
+    if dilation_size > 0:
+        # Создаем квадратный footprint размером dilation_size x dilation_size
+        footprint = footprint_rectangle((dilation_size, dilation_size))
+        original_edges_dilated = dilation(original_edges, footprint)
+    else:
+        original_edges_dilated = original_edges
+
+    # Обнаруживаем края на обработанном изображении
+    processed_edges = detect_texture_edges(processed, sigma=edge_sigma)
+
+    # Считаем количество краев в оригинальном и обработанном изображениях
+    original_edge_count = np.sum(original_edges)
+
+    # Если в оригинальном изображении нет краев, возвращаем 1.0 (идеальное сохранение)
+    if original_edge_count == 0:
+        return 1.0
+
+    # Находим пересечение краев (сохраненные детали)
+    preserved_edges = np.logical_and(original_edges_dilated, processed_edges)
+    preserved_edge_count = np.sum(preserved_edges)
+
+    tdpr = preserved_edge_count / original_edge_count
+
+    return float(tdpr)
+
+
+def calculate_tdpr_channels(
+        original: np.ndarray,
+        processed: np.ndarray,
+        channels: list[str],
+        edge_sigma: float = 1.0
+) -> dict[str, float]:
+    """
+    Вычисляет TDPR для каждого канала отдельно.
+    """
+    results = {}
+
+    # Если изображение одноканальное
+    if original.ndim == 2:
+        results['L'] = calculate_tdpr(
+            original, processed, edge_sigma
+        )
+        return results
+
+    # Для многоканальных изображений
+    for i, ch in enumerate(channels):
+        orig_ch = original[..., i]
+        proc_ch = processed[..., i]
+
+        results[ch] = calculate_tdpr(
+            orig_ch, proc_ch, edge_sigma
+        )
+
+    return results
+
+
+def detect_texture_edges(image: np.ndarray, sigma: float = 1.5) -> np.ndarray:
+    """
+    Обнаруживает края на изображении, которые представляют текстурные детали.
+
+    Args:
+        image: Входное изображение
+        sigma: Параметр сглаживания для методов обнаружения краёв
+
+    Returns:
+        Бинарная маска краев
+    """
+    # Нормализуем изображение, если оно не в диапазоне [0, 1]
+    if image.max() > 1.0 + TINY_EPSILON:
+        normalized = image / image.max()
+    else:
+        normalized = image.copy()
+
+    # Если изображение многоканальное, конвертируем в оттенки серого
+    if normalized.ndim == 3:
+        gray = np.mean(normalized, axis=2)
+    else:
+        gray = normalized
+
+    # Вычисляем порог на основе статистики изображения
+    img_std = np.std(gray)
+    img_mean = np.mean(gray)
+
+    # Проверяем, имеет ли изображение достаточную вариацию для Canny
+    if img_std < 0.01:
+        sobel_edges = sobel(gray)
+        sobel_edges_np = np.asarray(sobel_edges)
+        max_val = np.max(sobel_edges_np)
+        if max_val < TINY_EPSILON:
+            max_val = TINY_EPSILON
+        threshold = 0.05 * max_val
+        return sobel_edges_np > threshold
+
+    # Устанавливаем безопасные пороги, гарантируя, что low < high
+    low_threshold = max(0.01, img_mean * 0.5)
+    high_threshold = max(low_threshold + 0.01, img_mean * 1.0)
+
+    try:
+        edges = canny(gray, sigma=sigma, low_threshold=low_threshold, high_threshold=high_threshold)
+        return edges
+    except ValueError:
+        # В случае ошибки с порогами используем метод Собеля как запасной вариант
+        sobel_edges = sobel(gray)
+        sobel_edges_np = np.asarray(sobel_edges)
+        max_val = np.max(sobel_edges_np)
+        if max_val < TINY_EPSILON:
+            max_val = TINY_EPSILON
+        threshold = 0.05 * max_val
+        return sobel_edges_np > threshold
 
 
 def gaussian_kernel_1d(size: int, sigma: float) -> np.ndarray:
@@ -352,6 +478,8 @@ def calculate_metrics(
                 return calculate_ssim_gauss(original, processed, max_val)
             case QualityMetrics.MS_SSIM:
                 return calculate_ms_ssim_pytorch(original, processed, max_val, no_gpu=no_gpu)
+            case QualityMetrics.TDPR:
+                return calculate_tdpr(original, processed)
     else:
         match quality_metric:
             case QualityMetrics.PSNR:
@@ -360,6 +488,8 @@ def calculate_metrics(
                 return calculate_ssim_gauss_channels(original, processed, max_val, channels)
             case QualityMetrics.MS_SSIM:
                 return calculate_ms_ssim_pytorch_channels(original, processed, max_val, channels, no_gpu=no_gpu)
+            case QualityMetrics.TDPR:
+                return calculate_tdpr_channels(original, processed, channels)
 
     raise ValueError(f"Неподдерживаемая метрика: {quality_metric}")
 

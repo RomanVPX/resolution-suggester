@@ -62,12 +62,14 @@ class QualityMetrics(str, Enum):
     PSNR = 'psnr'
     SSIM = 'ssim'
     MS_SSIM = 'ms_ssim'
+    TDPR = 'tdpr'
 
 # Описания метрик для справки
 QUALITY_METRICS_INFO = {
     QualityMetrics.PSNR: 'Пиковое отношение сигнала к шуму',
     QualityMetrics.SSIM: 'Индекс структурного сходства',
     QualityMetrics.MS_SSIM: 'Многоуровневый индекс структурного сходства',
+    QualityMetrics.TDPR: 'Коэффициент сохранения текстурных деталей',
 }
 
 ML_TARGET_COLUMNS: Final = [m.value for m in QualityMetrics]
@@ -92,6 +94,12 @@ QUALITY_METRIC_THRESHOLDS = {
         QualityLevelHints.EXCELLENT: 0.97,
         QualityLevelHints.VERY_GOOD: 0.95,
         QualityLevelHints.GOOD: 0.90,
+        QualityLevelHints.NOTICEABLE_LOSS: 0.0,
+    },
+    QualityMetrics.TDPR: {
+        QualityLevelHints.EXCELLENT: 0.90,
+        QualityLevelHints.VERY_GOOD: 0.80,
+        QualityLevelHints.GOOD: 0.70,
         QualityLevelHints.NOTICEABLE_LOSS: 0.0,
     }
 }

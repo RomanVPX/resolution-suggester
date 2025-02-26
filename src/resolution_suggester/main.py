@@ -99,7 +99,7 @@ def process_files(files: list[str], args: argparse.Namespace, reporters: list[IR
             try:
                 results, meta = process_single_file(file_path, args)
             except Exception as e:
-                logging.error(f"Ошибка обработки {file_path}: {e}")
+                logging.error(f"Ошибка обработки файла {file_path}: {e}")
                 continue
             if results:
                 print_console_results(file_path, results, args.channels, meta, QualityMetrics(args.metric))
@@ -116,7 +116,7 @@ def process_files(files: list[str], args: argparse.Namespace, reporters: list[IR
                 try:
                     results, meta = future.result()
                 except Exception as e:
-                    logging.error(f"Ошибка обработки {file_path}: {e}")
+                    logging.error(f"Ошибка обработки файла {file_path}: {e}")
                     continue
                 if results:
                     print_console_results(file_path, results, args.channels, meta, QualityMetrics(args.metric))
@@ -302,7 +302,7 @@ def process_file_for_dataset(
             scale_factor = (w / original_w + h / original_h) / 2
 
             # Базовые фичи (для общего режима)
-            features_dict_base = {  # выносим базовые фичи в отдельный словарь
+            features_dict_base = {
                 'scale_factor': scale_factor,
                 'method': method.value,
                 'original_width': original_w,
@@ -341,10 +341,11 @@ def process_file_for_dataset(
                     features_original = extract_features_of_original_img(img_original)
                     features_entry.update(features_original)  # Добавляем общие фичи
 
-                    metrics_combined = {  # Вычисление metrics_combined здесь, в блоке else
+                    metrics_combined = {
                         'psnr': calculate_metrics(QualityMetrics.PSNR, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
                         'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
-                        'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu)
+                        'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
+                        'tdpr': calculate_metrics(QualityMetrics.TDPR, img_original, img_upscaled, max_val, no_gpu=args.no_gpu)
                     }
                     targets_entry = metrics_combined.copy()
 
