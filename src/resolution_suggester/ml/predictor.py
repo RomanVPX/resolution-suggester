@@ -80,7 +80,7 @@ class QuickPredictor:
             logging.info("Будут удалены строки с бесконечными значениями в таргетах.")
         mask_combined = (df_features['analyze_channels'] == 0) & mask
         x_combined = x_processed[mask_combined]
-        y_combined = df_targets[['psnr', 'ssim', 'ms_ssim']].to_numpy()[mask_combined]
+        y_combined = df_targets[['psnr', 'ssim', 'ms_ssim', 'tdpr']].to_numpy()[mask_combined]
         mask_channels = (df_features['analyze_channels'] != 0) & mask
         x_channels = x_processed[mask_channels]
         y_channels = df_targets[
@@ -128,7 +128,7 @@ class QuickPredictor:
         Если режим установлен в True (анализ по каналам), возвращает:
             {'psnr_R': value, 'psnr_G': value, ..., 'min_psnr': value, ...}
         Иначе – возвращает общий результат:
-            {'psnr': value, 'ssim': value, 'ms_ssim': value}
+            {'psnr': value, 'ssim': value, 'ms_ssim': value, 'tdpr': value}
         """
         if self.preprocessor is None:
             raise ValueError("Preprocessor не загружен.")
@@ -148,7 +148,8 @@ class QuickPredictor:
             return {
                 'psnr': pred[0],
                 'ssim': pred[1],
-                'ms_ssim': pred[2]
+                'ms_ssim': pred[2],
+                'tdpr': pred[3]
             }
 
 

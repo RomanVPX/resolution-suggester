@@ -341,10 +341,11 @@ def process_file_for_dataset(
                     features_original = extract_features_of_original_img(img_original)
                     features_entry.update(features_original)  # Добавляем общие фичи
 
-                    metrics_combined = {  # Вычисление metrics_combined здесь, в блоке else
+                    metrics_combined = {
                         'psnr': calculate_metrics(QualityMetrics.PSNR, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
                         'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
-                        'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu)
+                        'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
+                        'tdpr': calculate_metrics(QualityMetrics.TDPR, img_original, img_upscaled, max_val, no_gpu=args.no_gpu)
                     }
                     targets_entry = metrics_combined.copy()
 
