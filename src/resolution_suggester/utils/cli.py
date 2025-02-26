@@ -1,9 +1,6 @@
 # utils/cli.py
 """
-Command line interface for image quality analysis.
-
-This module provides the command line interface for image quality analysis.
-It uses argparse to define the command line interface and parse the arguments.
+Command line interface for ResolutionSuggester.
 """
 import argparse
 import logging
@@ -195,9 +192,6 @@ def format_threads_help() -> str:
 def format_metric_help() -> str:
     """
     Return a string containing the list of available quality metrics.
-    Each metric is represented as a string with the following format:
-    <metric name> <(default)> <metric description>
-    The <(default)> part is only present if the metric is the default one.
     """
     metrics = [
         f"{m.value:<8}{' (default)' if m.value == QUALITY_METRIC_DEFAULT else '':<10} {desc}"
@@ -208,9 +202,6 @@ def format_metric_help() -> str:
 def format_interpolation_help() -> str:
     """
     Return a string containing the list of available interpolation methods.
-    Each method is represented as a string with the following format:
-    <method name> <(default)> <method description>
-    The <(default)> part is only present if the method is the default one.
     """
     methods = [
         f"{m.value:<8}{' (default)' if m.value == INTERPOLATION_METHOD_DEFAULT else '':<10} {desc}"
@@ -222,20 +213,6 @@ def format_interpolation_help() -> str:
 def validate_paths(paths: list[str]) -> list[str]:
     """
     Validate paths and return a list of valid paths with supported extensions.
-
-    For each path:
-    - If it's a file with supported extension, add it
-    - If it's a directory, collect files with supported extensions from that directory
-    - Otherwise, log warning and skip
-
-    Args:
-        paths: List of paths to validate
-
-    Returns:
-        List of valid file paths with supported extensions
-
-    Raises:
-        ValueError: if no valid paths are found
     """
     valid_paths = []
     invalid_paths = []
@@ -273,12 +250,6 @@ def collect_files_from_dir(directory: str) -> list[str]:
     """
     Recursively collects and returns a list of file paths with supported extensions
     from the specified directory.
-
-    Args:
-        directory: Path to directory to scan
-
-    Returns:
-        List of file paths with supported extensions
     """
     collected = []
     try:

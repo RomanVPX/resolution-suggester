@@ -247,14 +247,7 @@ def postprocess_channel_metrics(channels_metrics, metric_type):
 
 def postprocess_metric_value(metric_value, metric_type):
     """
-    Постобработка значений метрик.
-
-    Для PSNR: заменяет значения >= PSNR_IS_LARGE_AS_INF на float('inf').
-    Работает как с одиночными числовыми значениями, так и со словарями поканальных метрик.
-
-    Args:
-        metric_value: Одиночное значение метрики или словарь {канал: значение}
-        metric_type: Тип метрики (QualityMetrics)
+    Method for postprocessing metric value.
     """
     if QualityMetrics(metric_type) != QualityMetrics.PSNR:
         return metric_value
