@@ -2,7 +2,10 @@
 """
 Command line interface for ResolutionSuggester.
 """
+from ..i18n import _
 import argparse
+import sys
+
 import logging
 import multiprocessing
 import os
@@ -34,127 +37,54 @@ def setup_logging():
 cpu_count = multiprocessing.cpu_count()
 default_threads_count = (cpu_count - 2, cpu_count)[cpu_count < 8]
 
+
 def parse_arguments() -> argparse.Namespace:
     """
     Parse command line arguments.
-
-    Raises:
-      - argparse.ArgumentError if arguments are invalid
     """
-    parser = argparse.ArgumentParser(
-        description='Анализ потерь качества текстур при масштабировании.',
-        formatter_class=argparse.RawTextHelpFormatter
+    # Создаем парсер с локализованным описанием
+    from ..i18n import _, setup_localization
+    pre_parser = argparse.ArgumentParser(
+        description=_('Texture quality analysis tool'),
+        formatter_class=argparse.RawTextHelpFormatter,
+        add_help=False
     )
 
-    parser.add_argument(
-        'paths',
-        nargs='+',
-        help='Пути к файлам/директориям для анализа'
-    )
-
-    parser.add_argument(
-        '-c', '--channels',
+    # Добавляем аргумент справки вручную
+    pre_parser.add_argument(
+        '-h', '--help',
         action='store_true',
-        help='Анализ по цветовым каналам'
+        help=_('Show this help message and exit')
     )
 
-    parser.add_argument(
-        '-o', '--csv-output',
-        action='store_true',
-        help='Экспорт результатов в CSV'
+    # Добавляем аргумент для выбора языка (должен быть обработан рано)
+    pre_parser.add_argument(
+        '-l', '--lang',
+        choices=['en', 'ru', 'auto'],
+        default='auto',
+        help=_('Interface language (default: auto)')
     )
 
-    parser.add_argument(
-        '--json-output',
-        action='store_true',
-        help='Экспорт результатов в JSON'
-    )
+    # Сначала парсим только аргументы языка и справки
+    pre_args, _ = pre_parser.parse_known_args()
 
-    parser.add_argument(
-        '-m', '--metric', type=QualityMetrics,
-        default=QUALITY_METRIC_DEFAULT,
-        choices=[m.value for m in QualityMetrics],
-        metavar='METRIC',
-        help=format_metric_help()
-    )
+    # Если указан язык, переустанавливаем локализацию
+    if pre_args.lang != 'auto':
+        setup_localization(pre_args.lang)
 
-    parser.add_argument(
-        '-i', '--interpolation', type=InterpolationMethods,
-        default=INTERPOLATION_METHOD_DEFAULT,
-        choices=[m.value for m in InterpolationMethods],
-        metavar='METHOD',
-        help=format_interpolation_help()
-    )
+    parser = create_parser()
 
-    parser.add_argument(
-        '--min-size',
-        type=int,
-        default=MIN_DOWNSCALE_SIZE,
-        metavar='SIZE',
-        help="Минимальный размер (по ширине и высоте) для анализа (по умолчанию и минимально: " +
-             str(MIN_DOWNSCALE_SIZE) + ")"
-    )
+    # Если запрошена справка, показываем её и выходим
+    if pre_args.help:
+        parser.print_help()
+        sys.exit(0)
 
-    parser.add_argument(
-        '-t', '--threads',
-        type=int,
-        default=default_threads_count,
-        metavar='N',
-        help=format_threads_help()
-    )
-
-    parser.add_argument(
-        '--save-im-down',
-        action='store_true',
-        help='Сохранять результаты даунскейла, производимого во время анализа\n'
-             '(не работает с --ml, --train-ml и --generate-dataset)'
-    )
-
-    parser.add_argument(
-        '--save-im-up',
-        action='store_true',
-        help='Сохранять результаты апскейла, произведённого после даунскейла\n'
-             '(не работает с --ml, --train-ml и --generate-dataset)'
-    )
-
-    parser.add_argument(
-        '-s', '--save-im-all',
-        action='store_true',
-        help='Сохранять результаты все результаты масштабирования изображений (даунскейл и апскейл)\n'
-             '(не работает с --ml, --train-ml и --generate-dataset)'
-    )
-
-    parser.add_argument(
-        '--no-parallel',
-        action='store_true',
-        help='Отключить параллельную обработку и использовать однопоточную схему'
-    )
-
-    parser.add_argument(
-        '--no-gpu',
-        action='store_true',
-        help='Не использовать GPU для расчёта метрик (на случай проблем с CUDA, MPS и т.д. в PyTorch)'
-    )
-
-    parser.add_argument(
-        '--generate-dataset',
-        action='store_true',
-        help='Сгенерировать датасет (features/targets) для обучения модели'
-    )
-
-    parser.add_argument(
-        '--train-ml',
-        action='store_true',
-        help='После генерации датасета обучить модель ML'
-    )
-
-    parser.add_argument(
-        '--ml',
-        action='store_true',
-        help='Использовать ML-модель для предсказания метрик вместо реального вычисления (быстро)'
-    )
-
+    # Теперь парсим все аргументы
     args = parser.parse_args()
+
+    if args.lang != 'auto':
+        from ..i18n import setup_localization
+        setup_localization(args.lang)
 
     if args.save_im_all:
         args.save_im_down = True
@@ -184,9 +114,136 @@ def parse_arguments() -> argparse.Namespace:
 
     return args
 
+def create_parser() -> argparse.ArgumentParser:
+    """
+    Создает и настраивает парсер аргументов с текущими переводами.
+    """
+    parser = argparse.ArgumentParser(
+        description=_('Texture quality analysis tool'),
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+
+    parser.add_argument(
+        'paths',
+        nargs='+',
+        help=_('Paths to files/directories for analysis')
+    )
+
+    parser.add_argument(
+        '-c', '--channels',
+        action='store_true',
+        help=_('Analysis by color channels')
+    )
+
+    parser.add_argument(
+        '-o', '--csv-output',
+        action='store_true',
+        help=_('Export results to CSV')
+    )
+
+    parser.add_argument(
+        '--json-output',
+        action='store_true',
+        help=_('Export results to JSON')
+    )
+
+    parser.add_argument(
+        '-m', '--metric', type=QualityMetrics,
+        default=QUALITY_METRIC_DEFAULT,
+        choices=[m.value for m in QualityMetrics],
+        metavar='METRIC',
+        help=format_metric_help()
+    )
+
+    parser.add_argument(
+        '-i', '--interpolation', type=InterpolationMethods,
+        default=INTERPOLATION_METHOD_DEFAULT,
+        choices=[m.value for m in InterpolationMethods],
+        metavar='METHOD',
+        help=format_interpolation_help()
+    )
+
+    parser.add_argument(
+        '--min-size',
+        type=int,
+        default=MIN_DOWNSCALE_SIZE,
+        metavar='SIZE',
+        help=_("Minimum size (width and height) for analysis (default and minimum: ") +
+             str(MIN_DOWNSCALE_SIZE) + ")"
+    )
+
+    parser.add_argument(
+        '-t', '--threads',
+        type=int,
+        default=default_threads_count,
+        metavar='N',
+        help=format_threads_help()
+    )
+
+    parser.add_argument(
+        '--save-im-down',
+        action='store_true',
+        help=_('Save downscale results produced during analysis\n') +
+             _('(does not work with --ml, --train-ml and --generate-dataset)')
+    )
+
+    parser.add_argument(
+        '--save-im-up',
+        action='store_true',
+        help=_('Save upscale results produced after downscale\n') +
+             _('(does not work with --ml, --train-ml and --generate-dataset)')
+    )
+
+    parser.add_argument(
+        '-s', '--save-im-all',
+        action='store_true',
+        help=_('Save all image scaling results (downscale and upscale)\n') +
+             _('(does not work with --ml, --train-ml and --generate-dataset)')
+    )
+
+    parser.add_argument(
+        '--no-parallel',
+        action='store_true',
+        help=_('Disable parallel processing and use single-threaded scheme')
+    )
+
+    parser.add_argument(
+        '--no-gpu',
+        action='store_true',
+        help=_('Do not use GPU for metrics calculation (in case of problems with CUDA, MPS, etc. in PyTorch)')
+    )
+
+    parser.add_argument(
+        '--generate-dataset',
+        action='store_true',
+        help=_('Generate dataset (features/targets) for model training')
+    )
+
+    parser.add_argument(
+        '--train-ml',
+        action='store_true',
+        help=_('Train ML model after dataset generation')
+    )
+
+    parser.add_argument(
+        '--ml',
+        action='store_true',
+        help=_('Use ML model to predict metrics instead of real calculation (fast)')
+    )
+
+    parser.add_argument(
+        '--lang',
+        choices=['en', 'ru', 'auto'],
+        default='auto',
+        help=_('Interface language (default: auto)')
+    )
+
+    return parser
+
 def format_threads_help() -> str:
-    return ("Число параллельных процессов для обработки файлов. Игнорируется при --no-parallel,\n"
-            "по умолчанию равно " + str(default_threads_count) + " (логических ядер процессора обнаружено " +
+    return (_("Number of parallel processes for file processing. Ignored with --no-parallel,\n") +
+            _("default is ") + str(default_threads_count) + " (" +
+            _("logical processor cores detected: ") +
             str(multiprocessing.cpu_count()) + ")")
 
 def format_metric_help() -> str:
@@ -194,20 +251,20 @@ def format_metric_help() -> str:
     Return a string containing the list of available quality metrics.
     """
     metrics = [
-        f"{m.value:<8}{' (default)' if m.value == QUALITY_METRIC_DEFAULT else '':<10} {desc}"
-        for m, desc in QUALITY_METRICS_INFO.items()
+        f"{m.value:<12} {QUALITY_METRICS_INFO[m]:<20}{' (' + _('default') + ')' if m.value == QUALITY_METRIC_DEFAULT else '':>10}"
+        for m in QualityMetrics
     ]
-    return "Доступные метрики качества:\n" + "\n".join(metrics)
+    return _("Available quality metrics") + ":\n" + "\n".join(metrics)
 
 def format_interpolation_help() -> str:
     """
     Return a string containing the list of available interpolation methods.
     """
     methods = [
-        f"{m.value:<8}{' (default)' if m.value == INTERPOLATION_METHOD_DEFAULT else '':<10} {desc}"
-        for m, desc in INTERPOLATION_METHODS_INFO.items()
+        f"{m.value:<12}{INTERPOLATION_METHODS_INFO[m]:<20}{' (' + _('default') + ')' if m.value == INTERPOLATION_METHOD_DEFAULT else '':>10}"
+        for m in InterpolationMethods
     ]
-    return "Доступные методы интерполяции:\n" + "\n".join(methods)
+    return _("Available interpolation methods") + ":\n" + "\n".join(methods)
 
 
 def validate_paths(paths: list[str]) -> list[str]:

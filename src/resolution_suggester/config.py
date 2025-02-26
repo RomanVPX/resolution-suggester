@@ -5,6 +5,7 @@ Configuration constants for the image quality analysis tool.
 This module provides constants for configuration and output formatting.
 """
 
+from .i18n import _
 from enum import Enum
 from pathlib import Path
 from typing import Final
@@ -48,10 +49,10 @@ class QualityLevelHints(Enum):
     NOTICEABLE_LOSS = "noticeable_loss"
 
 QUALITY_LEVEL_HINTS_DESCRIPTIONS = {
-    QualityLevelHints.EXCELLENT: "практически идентичные изображения",
-    QualityLevelHints.VERY_GOOD: "очень хорошее качество",
-    QualityLevelHints.GOOD: "приемлемое качество",
-    QualityLevelHints.NOTICEABLE_LOSS: "заметные потери",
+    QualityLevelHints.EXCELLENT: _("excellent"),
+    QualityLevelHints.VERY_GOOD: _("very_good"),
+    QualityLevelHints.GOOD: _("good"),
+    QualityLevelHints.NOTICEABLE_LOSS: _("noticeable_loss"),
 }
 
 # === Quality metrics ===
@@ -66,10 +67,10 @@ class QualityMetrics(str, Enum):
 
 # Описания метрик для справки
 QUALITY_METRICS_INFO = {
-    QualityMetrics.PSNR: 'Пиковое отношение сигнала к шуму',
-    QualityMetrics.SSIM: 'Индекс структурного сходства',
-    QualityMetrics.MS_SSIM: 'Многоуровневый индекс структурного сходства',
-    QualityMetrics.TDPR: 'Коэффициент сохранения текстурных деталей',
+    QualityMetrics.PSNR: _("Peak Signal-to-Noise Ratio"),
+    QualityMetrics.SSIM: _("Structural Similarity Index"),
+    QualityMetrics.MS_SSIM: _("Multi-Scale Structural Similarity Index"),
+    QualityMetrics.TDPR: _("Texture Detail Preservation Ratio"),
 }
 
 ML_TARGET_COLUMNS: Final = [m.value for m in QualityMetrics]
@@ -120,9 +121,9 @@ INTERPOLATION_METHODS_CV2 = {
 }
 
 INTERPOLATION_METHODS_INFO = {
-    InterpolationMethods.BILINEAR: 'Билинейная интерполяция',
-    InterpolationMethods.BICUBIC: 'Бикубическая интерполяция',
-    InterpolationMethods.MITCHELL: 'Фильтр Митчелла-Нетравали',
+    InterpolationMethods.BILINEAR: _("Bilinear interpolation"),
+    InterpolationMethods.BICUBIC: _("Bicubic interpolation"),
+    InterpolationMethods.MITCHELL: _("Mitchell-Netravali filter"),
 }
 
 INTERPOLATION_METHOD_DEFAULT = InterpolationMethods.MITCHELL

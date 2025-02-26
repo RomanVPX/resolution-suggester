@@ -1,4 +1,5 @@
 #*.csv
+*.mo
 
 data/test_images/private_tex_*
 
