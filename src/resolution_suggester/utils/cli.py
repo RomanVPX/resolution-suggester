@@ -1,8 +1,6 @@
+# utils/cli.py
 """
-Command line interface for image quality analysis.
-
-This module provides the command line interface for image quality analysis.
-It uses argparse to define the command line interface and parse the arguments.
+Command line interface for ResolutionSuggester.
 """
 import argparse
 import logging
@@ -133,6 +131,12 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        '--no-gpu',
+        action='store_true',
+        help='Не использовать GPU для расчёта метрик (на случай проблем с CUDA, MPS и т.д. в PyTorch)'
+    )
+
+    parser.add_argument(
         '--generate-dataset',
         action='store_true',
         help='Сгенерировать датасет (features/targets) для обучения модели'
@@ -170,6 +174,7 @@ def parse_arguments() -> argparse.Namespace:
             MIN_DOWNSCALE_SIZE, MIN_DOWNSCALE_SIZE
         )
         args.min_size = MIN_DOWNSCALE_SIZE
+
     if args.threads < 1:
         logging.warning(
             "Число параллельных процессов должно быть >= 1. "
@@ -187,9 +192,6 @@ def format_threads_help() -> str:
 def format_metric_help() -> str:
     """
     Return a string containing the list of available quality metrics.
-    Each metric is represented as a string with the following format:
-    <metric name> <(default)> <metric description>
-    The <(default)> part is only present if the metric is the default one.
     """
     metrics = [
         f"{m.value:<8}{' (default)' if m.value == QUALITY_METRIC_DEFAULT else '':<10} {desc}"
@@ -200,9 +202,6 @@ def format_metric_help() -> str:
 def format_interpolation_help() -> str:
     """
     Return a string containing the list of available interpolation methods.
-    Each method is represented as a string with the following format:
-    <method name> <(default)> <method description>
-    The <(default)> part is only present if the method is the default one.
     """
     methods = [
         f"{m.value:<8}{' (default)' if m.value == INTERPOLATION_METHOD_DEFAULT else '':<10} {desc}"
@@ -210,35 +209,47 @@ def format_interpolation_help() -> str:
     ]
     return "Доступные методы интерполяции:\n" + "\n".join(methods)
 
+
 def validate_paths(paths: list[str]) -> list[str]:
     """
-    Validate paths and return a list of valid paths.
-    For each path, if it's a file, add it.
-    If it's a directory, collect files from that directory.
-    Raises:
-        ValueError: if no valid paths are found.
+    Validate paths and return a list of valid paths with supported extensions.
     """
     valid_paths = []
-    invalid_paths_str = []
+    invalid_paths = []
+
     for path in paths:
         if os.path.isfile(path):
-            valid_paths.append(path)
+            # Проверяем расширение для отдельных файлов
+            if os.path.splitext(path)[1].lower() in SUPPORTED_EXTENSIONS:
+                valid_paths.append(path)
+            else:
+                logging.warning("Неподдерживаемое расширение файла: %s", path)
+                invalid_paths.append(path)
         elif os.path.isdir(path):
-            valid_paths.extend(collect_files_from_dir(path))
+            # Собираем файлы с поддерживаемыми расширениями из директории
+            dir_files = collect_files_from_dir(path)
+            if not dir_files:
+                logging.warning("В директории %s не найдено файлов с поддерживаемыми расширениями", path)
+                invalid_paths.append(path)
+            valid_paths.extend(dir_files)
         else:
             logging.warning("Неверный путь: %s", path)
-            invalid_paths_str.append(path)
+            invalid_paths.append(path)
+
     if not valid_paths:
-        error_message = "Не найдено ни одного валидного файла или директории."
-        if invalid_paths_str:
-            error_message += " Проверьте следующие пути: " + ", ".join(invalid_paths_str)
+        error_message = "Не найдено ни одного валидного файла с поддерживаемым расширением."
+        if invalid_paths:
+            error_message += " Проверьте следующие пути: " + ", ".join(invalid_paths)
         logging.error(error_message)
         raise ValueError(error_message)
+
     return valid_paths
+
 
 def collect_files_from_dir(directory: str) -> list[str]:
     """
-    Recursively collects and returns a list of file paths from the specified directory.
+    Recursively collects and returns a list of file paths with supported extensions
+    from the specified directory.
     """
     collected = []
     try:

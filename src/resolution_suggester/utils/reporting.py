@@ -26,12 +26,12 @@ class ConsoleReporter:
         metric_type: QualityMetrics
     ):
         if analyze_channels and channels:
-            ConsoleReporter._print_channel_table(results, channels)
+            ConsoleReporter._print_channel_table(results, channels, metric_type)
         else:
             ConsoleReporter._print_simple_table(results, metric_type)
 
     @staticmethod
-    def _print_channel_table(results: list, channels: List[str]):
+    def _print_channel_table(results: list, channels: List[str], metric_type: QualityMetrics):
         channel_headers = [c.center(9) for c in channels]
         header = (
             f"{Style.BRIGHT}{'Разрешение':<12} | "

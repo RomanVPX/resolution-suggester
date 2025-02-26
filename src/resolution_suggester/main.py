@@ -70,7 +70,7 @@ def main() -> None:
     if args.csv_output:
         csv_path = get_csv_log_filename(args)
         csv_reporter = CSVReporter(csv_path, QualityMetrics(args.metric))
-        csv_reporter.__enter__()  # вручную входим в контекст
+        csv_reporter.__enter__()
         csv_reporter.write_header(args.channels)
         reporters.append(csv_reporter)
         logging.info("CSV output включён, файл: %s", csv_path)
@@ -78,7 +78,7 @@ def main() -> None:
     if args.json_output:
         json_path = get_json_log_filename(args)
         json_reporter = JSONReporter(json_path, QualityMetrics(args.metric))
-        json_reporter.__enter__()  # вручную
+        json_reporter.__enter__()
         reporters.append(json_reporter)
         logging.info("JSON output включён, файл: %s", json_path)
 
@@ -87,7 +87,6 @@ def main() -> None:
     for rep in reporters:
         rep.__exit__(None, None, None)
 
-    # Выводим имя итоговых файлов
     if args.csv_output:
         print(f"\nМетрики (CSV) сохранены в: {csv_path}")
     if args.json_output:
@@ -181,8 +180,8 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
                 results_entry = (f"{w}x{h}", channels_metrics, min_metric)
             else:
                 channels_metrics = calculate_metrics(QualityMetrics(args.metric), img_original,
-                                                     img_upscaled, max_val, channels)
-                channels_metrics = postprocess_channel_metrics(channels_metrics, args.metric)
+                                                     img_upscaled, max_val, channels, no_gpu=args.no_gpu)
+                channels_metrics = postprocess_metric_value(channels_metrics, args.metric)
                 min_metric = min(channels_metrics.values())
                 results_entry = (f"{w}x{h}", channels_metrics, min_metric)
         else:
@@ -191,8 +190,8 @@ def process_single_file(file_path: str, args: argparse.Namespace) -> Tuple[Optio
                 )
                 results_entry = (f"{w}x{h}", metric_value)
             else:
-                metric_value = calculate_metrics(QualityMetrics(args.metric), img_original, img_upscaled, max_val)
-                metric_value = postprocess_psnr_value(metric_value, args.metric)
+                metric_value = calculate_metrics(QualityMetrics(args.metric), img_original, img_upscaled, max_val, no_gpu=args.no_gpu)
+                metric_value = postprocess_metric_value(metric_value, args.metric)
                 results_entry = (f"{w}x{h}", metric_value)
 
         if args.channels:
@@ -235,12 +234,6 @@ def _predict_combined_metric(img_original, w, width, h, height, args, predictor)
     metric_value = float('inf') if metric_value >= PSNR_IS_LARGE_AS_INF else metric_value
     return metric_value
 
-def postprocess_psnr_value(psnr_value, metric_type):
-    """Заменяет значения PSNR >= PSNR_IS_LARGE_AS_INF на float('inf')."""
-    if QualityMetrics(metric_type) == QualityMetrics.PSNR:
-        return float('inf') if psnr_value >= PSNR_IS_LARGE_AS_INF else psnr_value
-    return psnr_value
-
 def postprocess_channel_metrics(channels_metrics, metric_type):
     """Заменяет значения PSNR >= PSNR_IS_LARGE_AS_INF на float('inf') в словаре поканальных метрик."""
     processed_metrics = {}
@@ -250,6 +243,26 @@ def postprocess_channel_metrics(channels_metrics, metric_type):
         else:
             processed_metrics[c] = metric_value
     return processed_metrics
+
+
+def postprocess_metric_value(metric_value, metric_type):
+    """
+    Method for postprocessing metric value.
+    """
+    if QualityMetrics(metric_type) != QualityMetrics.PSNR:
+        return metric_value
+
+    try:
+        return {
+            channel: float('inf') if value >= PSNR_IS_LARGE_AS_INF else value
+            for channel, value in metric_value.items()
+        }
+    except (AttributeError, TypeError):
+        try:
+            return float('inf') if metric_value >= PSNR_IS_LARGE_AS_INF else metric_value
+        except (TypeError, ValueError):
+            # Не удалось обработать и как скаляр
+            raise TypeError(f"Ожидается число или словарь, получено: {type(metric_value).__name__}")
 
 
 def process_file_for_dataset(
@@ -316,7 +329,7 @@ def process_file_for_dataset(
 
                         targets_entry = {}
                         for metric in QualityMetrics:
-                            channel_metric_value = calculate_metrics(metric, img_channel, img_upscaled_channel, max_val)
+                            channel_metric_value = calculate_metrics(metric, img_channel, img_upscaled_channel, max_val, no_gpu=args.no_gpu)
                             targets_entry[metric.value] = channel_metric_value
 
                         features_all.append(features_entry)
@@ -329,9 +342,9 @@ def process_file_for_dataset(
                     features_entry.update(features_original)  # Добавляем общие фичи
 
                     metrics_combined = {  # Вычисление metrics_combined здесь, в блоке else
-                        'psnr': calculate_metrics(QualityMetrics.PSNR, img_original, img_upscaled, max_val),
-                        'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val),
-                        'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val)
+                        'psnr': calculate_metrics(QualityMetrics.PSNR, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
+                        'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
+                        'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu)
                     }
                     targets_entry = metrics_combined.copy()
 
@@ -365,7 +378,7 @@ def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, s
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.threads) as executor:
         futures = [
             executor.submit(process_file_for_dataset, file_path,
-                            interpolations_methods_to_test, argparse.Namespace(min_size=args.min_size))
+                            interpolations_methods_to_test, args)
             for file_path in files
         ]
         for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="Создание датасета"):
