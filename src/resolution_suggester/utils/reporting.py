@@ -240,11 +240,11 @@ class QualityHelper:
         sorted_levels = sorted(
             thresholds.keys(),
             key=lambda level: thresholds[level],
-            reverse=True
+            reverse=False
         )
 
         for level in sorted_levels:
-            if metric_value >= thresholds[level]:
+            if metric_value < thresholds[level]:
                 return QUALITY_LEVEL_HINTS_DESCRIPTIONS[level]
 
-        return QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.NOTICEABLE_LOSS]
+        return QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.ORIGINAL]

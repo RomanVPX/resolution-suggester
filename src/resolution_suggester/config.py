@@ -81,32 +81,32 @@ QUALITY_METRIC_DEFAULT = QualityMetrics.PSNR
 # --- Quality thresholds for metrics ---
 QUALITY_METRIC_THRESHOLDS = {
     QualityMetrics.PSNR: {
-        QualityLevelHints.ORIGINAL: PSNR_IS_LARGE_AS_INF,
-        QualityLevelHints.EXCELLENT: 50,
-        QualityLevelHints.VERY_GOOD: 40,
-        QualityLevelHints.GOOD: 30,
-        QualityLevelHints.NOTICEABLE_LOSS: 0,
+        QualityLevelHints.ORIGINAL: PSNR_IS_LARGE_AS_INF + 1.0,
+        QualityLevelHints.EXCELLENT: PSNR_IS_LARGE_AS_INF,
+        QualityLevelHints.VERY_GOOD: 50,
+        QualityLevelHints.GOOD: 40,
+        QualityLevelHints.NOTICEABLE_LOSS: 30,
     },
     QualityMetrics.SSIM: {
-        QualityLevelHints.ORIGINAL: 1.00,
-        QualityLevelHints.EXCELLENT: 0.92,
-        QualityLevelHints.VERY_GOOD: 0.82,
-        QualityLevelHints.GOOD: 0.75,
-        QualityLevelHints.NOTICEABLE_LOSS: 0.0,
+        QualityLevelHints.ORIGINAL: 1.001,
+        QualityLevelHints.EXCELLENT: 1.00,
+        QualityLevelHints.VERY_GOOD: 0.92,
+        QualityLevelHints.GOOD: 0.82,
+        QualityLevelHints.NOTICEABLE_LOSS: 0.75,
     },
     QualityMetrics.MS_SSIM: {
-        QualityLevelHints.ORIGINAL: 1.00,
-        QualityLevelHints.EXCELLENT: 0.97,
-        QualityLevelHints.VERY_GOOD: 0.95,
-        QualityLevelHints.GOOD: 0.90,
-        QualityLevelHints.NOTICEABLE_LOSS: 0.0,
+        QualityLevelHints.ORIGINAL: 1.001,
+        QualityLevelHints.EXCELLENT: 1.00,
+        QualityLevelHints.VERY_GOOD: 0.97,
+        QualityLevelHints.GOOD: 0.95,
+        QualityLevelHints.NOTICEABLE_LOSS: 0.90,
     },
     QualityMetrics.TDPR: {
-        QualityLevelHints.ORIGINAL: 1.00,
-        QualityLevelHints.EXCELLENT: 0.90,
-        QualityLevelHints.VERY_GOOD: 0.80,
-        QualityLevelHints.GOOD: 0.70,
-        QualityLevelHints.NOTICEABLE_LOSS: 0.0,
+        QualityLevelHints.ORIGINAL: 1.001,
+        QualityLevelHints.EXCELLENT: 1.00,
+        QualityLevelHints.VERY_GOOD: 0.90,
+        QualityLevelHints.GOOD: 0.80,
+        QualityLevelHints.NOTICEABLE_LOSS: 0.70,
     }
 }
 
