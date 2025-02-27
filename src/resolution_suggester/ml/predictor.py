@@ -129,25 +129,30 @@ class QuickPredictor:
         Predicts metrics using models.
         Returns dictionary with keys corresponding to metrics (from config.QualityMetrics)
         """
-        if self.preprocessor is None:
-            raise ValueError(_("Preprocessor is not loaded"))
-        df = pd.DataFrame([features])
-        processed = self.preprocessor.transform(df)
-        if self.mode:  # channels
-            if self.channels_model is None:
-                raise ValueError(_("Channel model is not loaded"))
-            pred = self.channels_model.predict(processed)[0]
-            return {metric: val for metric, val in zip(QualityMetrics, pred)}
-        else:
-            if self.combined_model is None:
-                raise ValueError(_("Combined model is not loaded"))
-            pred = self.combined_model.predict(processed)[0]
-            return {
-                'psnr': pred[0],
-                'ssim': pred[1],
-                'ms_ssim': pred[2],
-                'tdpr': pred[3]
-            }
+        try:
+            if self.preprocessor is None:
+                raise ValueError(_("Preprocessor is not loaded"))
+            df = pd.DataFrame([features])
+            processed = self.preprocessor.transform(df)
+            if self.mode:  # channels
+                if self.channels_model is None:
+                    raise ValueError(_("Channel model is not loaded"))
+                pred = self.channels_model.predict(processed)[0]
+                return {metric: val for metric, val in zip(QualityMetrics, pred)}
+            else:
+                if self.combined_model is None:
+                    raise ValueError(_("Combined model is not loaded"))
+                pred = self.combined_model.predict(processed)[0]
+                return {
+                    'psnr': pred[0],
+                    'ssim': pred[1],
+                    'ms_ssim': pred[2],
+                    'tdpr': pred[3]
+                }
+        except Exception as e:
+            logging.error(f"Ошибка при предсказании: {e}")
+            logging.debug(f"Размерность входных данных: {processed.shape}, ключи признаков: {list(features.keys())}")
+            return {m.value: 0.0 for m in QualityMetrics}
 
 
 @lru_cache(maxsize=32)
