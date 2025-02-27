@@ -125,26 +125,21 @@ class QuickPredictor:
 
     def predict(self, features: Dict[str, Any]) -> Dict[str, float]:
         """
-        Предсказывает метрики на одном примере (словарь).
-        Если режим установлен в True (анализ по каналам), возвращает:
-            {'psnr_R': value, 'psnr_G': value, ..., 'min_psnr': value, ...}
-        Иначе – возвращает общий результат:
-            {'psnr': value, 'ssim': value, 'ms_ssim': value, 'tdpr': value}
+        Predicts metrics using models.
+        Returns dictionary with keys corresponding to metrics (from config.QualityMetrics)
         """
         if self.preprocessor is None:
             raise ValueError(_("Preprocessor is not loaded"))
         df = pd.DataFrame([features])
         processed = self.preprocessor.transform(df)
-
         if self.mode:  # channels
             if self.channels_model is None:
-                raise ValueError("Модель для анализа по каналам не загружена.")
+                raise ValueError(_("Channel model is not loaded"))
             pred = self.channels_model.predict(processed)[0]
-            # Возвращаем словарь, где ключи - названия метрик, значения - предсказанные значения.
             return {metric: val for metric, val in zip(QualityMetrics, pred)}
         else:
             if self.combined_model is None:
-                raise ValueError("Модель для общего анализа не загружена.")
+                raise ValueError(_("Combined model is not loaded"))
             pred = self.combined_model.predict(processed)[0]
             return {
                 'psnr': pred[0],

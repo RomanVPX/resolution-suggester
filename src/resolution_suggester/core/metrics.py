@@ -1,5 +1,7 @@
 # core/metrics.py
+import logging
 import math
+from functools import lru_cache
 
 from ..i18n import _
 import numpy as np
@@ -11,10 +13,34 @@ from skimage.filters import sobel
 from skimage.morphology import dilation, footprint_rectangle
 from ..config import MIN_DOWNSCALE_SIZE, TINY_EPSILON, QualityMetrics
 
-if torch.backends.mps.is_available():
-    device = torch.device("mps")
-else:
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+def get_torch_device(no_gpu: bool = False) -> torch.device:
+    """
+    Определяет оптимальное устройство PyTorch с учетом доступности и совместимости.
+    """
+    if no_gpu:
+        return torch.device("cpu")
+
+    # Проверка на доступность MPS (Apple Silicon)
+    has_mps = False
+    if hasattr(torch, 'backends') and hasattr(torch.backends, 'mps'):
+        has_mps = hasattr(torch.backends.mps, 'is_available') and torch.backends.mps.is_available()
+
+    # Проверка на доступность CUDA
+    has_cuda = torch.cuda.is_available()
+
+    # Выбираем устройство
+    if has_mps:
+        device = torch.device("mps")
+        logging.debug("Используется ускорение MPS (Apple Silicon)")
+    elif has_cuda:
+        device = torch.device("cuda")
+        logging.debug("Используется ускорение CUDA")
+    else:
+        device = torch.device("cpu")
+        logging.debug("Используется CPU (GPU не доступен)")
+
+    return device
 
 
 def _get_adaptive_ms_ssim_params(h: int, w: int) -> tuple[tuple[float, ...], int]:
@@ -30,6 +56,15 @@ def _get_adaptive_ms_ssim_params(h: int, w: int) -> tuple[tuple[float, ...], int
     else:
         return (0.5, 0.5), 3   # минимальные параметры для мелочи
 
+@lru_cache(maxsize=8)
+def get_msssim_calculator(weights_tuple, kernel_size, device_str):
+    """Кэшированный создатель MS-SSIM калькуляторов"""
+    device = torch.device(device_str)
+    return MultiScaleStructuralSimilarityIndexMeasure(
+        data_range=1.0,
+        betas=weights_tuple,
+        kernel_size=kernel_size
+    ).to(device)
 
 def calculate_ms_ssim_pytorch(
         original: np.ndarray,
@@ -62,11 +97,11 @@ def calculate_ms_ssim_pytorch(
     else:
         raise ValueError(_("MS-SSIM: unsupported images dimensions"))
 
-    torch_device = device if not no_gpu else torch.device("cpu")
+    torch_device = get_torch_device(no_gpu)
 
     weights, kernel_size = _get_adaptive_ms_ssim_params(original.shape[-2], original.shape[-1])
-    msssim_calc = MultiScaleStructuralSimilarityIndexMeasure(data_range=1.0, betas=weights,
-                                                             kernel_size=kernel_size).to(torch_device)
+    weights_tuple = tuple(weights)  # преобразуем в хэшируемый тип
+    msssim_calc = get_msssim_calculator(weights_tuple, kernel_size, str(torch_device))
     # Переводим в тензоры и переносим на устройство
     original_tensor = torch.from_numpy(original).to(torch_device)
     processed_tensor = torch.from_numpy(processed).to(torch_device)
@@ -75,17 +110,15 @@ def calculate_ms_ssim_pytorch(
     with torch.no_grad():
         with torch.autocast(device_type=torch_device.type, dtype=torch.float16):
             ms_ssim_val = msssim_calc(original_tensor, processed_tensor).item()
+
     # Явное освобождение ресурсов
     del original_tensor, processed_tensor
-    # Очистка кэша для MPS, если функция доступна:
+
+    # Очистка кэша GPU
     if torch_device.type == 'mps':
-        if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
+        if hasattr(torch.mps, 'empty_cache'):
             torch.mps.empty_cache()
-        else:
-            # Иначе просто пропускаем, чтобы не вызывать ошибку
-            pass
     elif torch_device.type == 'cuda':
-        # Для CUDA вызываем очистку без проверок
         torch.cuda.empty_cache()
 
     return float(ms_ssim_val)
