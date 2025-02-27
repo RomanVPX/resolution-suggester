@@ -23,17 +23,17 @@ from ..utils.reporting import QualityHelper, ConsoleReporter
 
 class ImageAnalyzer:
     """
-    Класс, инкапсулирующий логику анализа изображений.
-    Предоставляет методы для анализа отдельных файлов и групп файлов.
+    Class encapsulating image analysis logic.
+    Provides methods for analyzing individual files and file groups.
     """
 
     def __init__(self, args: argparse.Namespace, reporters: list[IReporter] = None):
         """
-        Инициализирует анализатор изображений.
+        Initializes the image analyzer.
 
         Args:
-            args: Аргументы командной строки
-            reporters: Список объектов для отчетности (CSV, JSON и т.д.)
+            args: Command line arguments
+            reporters: List of reporting objects (CSV, JSON, etc.)
         """
         self.args = args
         self.reporters = reporters or []
@@ -55,20 +55,20 @@ class ImageAnalyzer:
                 raise
 
     def _initialize_predictor(self) -> Optional[QuickPredictor]:
-        """Инициализирует и настраивает предиктор для ML-предсказаний."""
+        """Initializes and configures the predictor for ML predictions."""
         predictor = QuickPredictor()
         predictor.set_mode(self.args.channels)
         if not predictor.load():
-            logging.info("ML-модель не найдена, будем вычислять реальные метрики.")
+            logging.info(_("ML model not found, the actual metrics will be calculated."))
             return None
         return predictor
 
     def analyze_files(self, files: list[str]) -> None:
         """
-        Анализирует список файлов.
+        Analyzes a list of files.
 
         Args:
-            files: Список путей к файлам для анализа
+            files: List of file paths to analyze
         """
         if self.args.no_parallel:
             self._analyze_files_sequential(files)
@@ -76,7 +76,7 @@ class ImageAnalyzer:
             self._analyze_files_parallel(files)
 
     def _analyze_files_sequential(self, files: list[str]) -> None:
-        """Последовательный анализ файлов."""
+        """Sequential file analysis."""
         from tqdm import tqdm
         for file_path in tqdm(files, desc="Обработка файлов", leave=False):
             try:
@@ -88,7 +88,7 @@ class ImageAnalyzer:
                 logging.debug("Детали:", exc_info=True)
 
     def _analyze_files_parallel(self, files: list[str]) -> None:
-        """Параллельный анализ файлов с использованием ProcessPoolExecutor."""
+        """Parallel file analysis using ProcessPoolExecutor."""
         # Преобразуем аргументы в словарь для передачи
         args_dict = vars(self.args)
 
@@ -112,13 +112,13 @@ class ImageAnalyzer:
 
     def analyze_file(self, file_path: str) -> Tuple[Optional[list], Optional[dict]]:
         """
-        Анализирует одно изображение.
+        Analyzes a single image.
 
         Args:
-            file_path: Путь к файлу изображения
+            file_path: Path to the image file
 
         Returns:
-            Кортеж (результаты, метаданные) или (None, None) в случае ошибки
+            Tuple (results, metadata) or (None, None) in case of error
         """
         try:
             # Загрузка изображения
@@ -170,7 +170,7 @@ class ImageAnalyzer:
             return None, None
 
     def _analyze_resize_real(self, img_original, max_val, channels, w, h, orig_width, orig_height, file_path):
-        """Анализирует изменение размера с реальным вычислением метрик."""
+        """Analyzes resize with real metrics calculation."""
         # Уменьшаем изображение
         img_downscaled = self.resize_fn(img_original, w, h)
 
@@ -208,7 +208,7 @@ class ImageAnalyzer:
             return f"{w}x{h}", metric_value, hint
 
     def _analyze_resize_ml(self, img_original, channels, w, h, orig_width, orig_height):
-        """Анализирует изменение размера с использованием ML-предсказания."""
+        """Analyzes resize using ML prediction."""
         if self.args.channels: # Поканальный анализ
             channels_metrics = {}
             for c in channels:
@@ -244,7 +244,7 @@ class ImageAnalyzer:
             return f"{w}x{h}", metric_value, hint
 
     def _create_original_entry(self, width, height, channels):
-        """Создаёт запись для оригинального изображения."""
+        """Creates an entry for the original image."""
         base_entry = (f"{width}x{height}",)
         channel_value = float('inf') if self.args.metric == QualityMetrics.PSNR else float(1.0)
         if self.args.channels and channels:
@@ -252,7 +252,7 @@ class ImageAnalyzer:
         return *base_entry, channel_value, "Оригинал"
 
     def _report_results(self, file_path, results, meta):
-        """Выводит и сохраняет результаты анализа."""
+        """Outputs and saves analysis results."""
         # Вывод в консоль
         ConsoleReporter.print_file_header(file_path, QualityMetrics(self.args.metric))
         if meta['max_val'] < 0.001:
@@ -284,7 +284,7 @@ class ImageAnalyzer:
 
     @staticmethod
     def _save_intermediate(img_array, file_path, width, height, interpolation, suffix):
-        """Сохраняет промежуточный результат как PNG."""
+        """Saves intermediate result as PNG."""
         file_path_dir = INTERMEDIATE_DIR
         if not os.path.exists(file_path_dir):
             os.makedirs(file_path_dir, exist_ok=True)
@@ -307,15 +307,15 @@ class ImageAnalyzer:
 
     def generate_chart(self, file_path: str, results: list, meta: dict) -> Optional[str]:
         """
-        Генерирует график зависимости качества от разрешения.
+        Generates a chart showing quality dependency on resolution.
 
         Args:
-            file_path: Путь к файлу изображения
-            results: Результаты анализа качества
-            meta: Метаданные изображения
+            file_path: Path to the image file
+            results: Quality analysis results
+            meta: Image metadata
 
         Returns:
-            Путь к созданному графику или None
+            Path to the created chart or None
         """
         if not self.args.chart:
             return None
@@ -351,11 +351,11 @@ class ImageAnalyzer:
 
 def process_file_for_analyzer(args_dict, file_path):
     """
-    Функция-обертка для обработки файла в отдельном процессе.
+    Wrapper function for processing a file in a separate process.
 
     Args:
-        args_dict: Словарь с аргументами для создания ImageAnalyzer
-        file_path: Путь к файлу для анализа
+        args_dict: Dictionary with arguments for creating ImageAnalyzer
+        file_path: Path to the file for analysis
     """
     try:
         # Создаём анализатор из словаря аргументов

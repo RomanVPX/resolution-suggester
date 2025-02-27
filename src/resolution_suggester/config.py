@@ -81,7 +81,7 @@ QUALITY_METRIC_DEFAULT = QualityMetrics.PSNR
 # --- Quality thresholds for metrics ---
 QUALITY_METRIC_THRESHOLDS = {
     QualityMetrics.PSNR: {
-        QualityLevelHints.ORIGINAL: 159,
+        QualityLevelHints.ORIGINAL: PSNR_IS_LARGE_AS_INF,
         QualityLevelHints.EXCELLENT: 50,
         QualityLevelHints.VERY_GOOD: 40,
         QualityLevelHints.GOOD: 30,
