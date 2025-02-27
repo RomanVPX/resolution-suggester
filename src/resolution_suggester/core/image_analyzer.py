@@ -244,11 +244,12 @@ class ImageAnalyzer:
             return f"{w}x{h}", metric_value, hint
 
     def _create_original_entry(self, width, height, channels):
-        """Создает запись для оригинального изображения."""
+        """Создаёт запись для оригинального изображения."""
         base_entry = (f"{width}x{height}",)
+        channel_value = float('inf') if self.args.metric == QualityMetrics.PSNR else float(1.0)
         if self.args.channels and channels:
-            return *base_entry, {c: float('inf') for c in channels}, float('inf'), "Оригинал"
-        return *base_entry, float('inf'), "Оригинал"
+            return *base_entry, {c: channel_value for c in channels}, channel_value, "Оригинал"
+        return *base_entry, channel_value, "Оригинал"
 
     def _report_results(self, file_path, results, meta):
         """Выводит и сохраняет результаты анализа."""
@@ -261,7 +262,7 @@ class ImageAnalyzer:
             QualityMetrics(self.args.metric)
         )
 
-        # Создаем график, если нужно
+        # Создаём график, если нужно
         if hasattr(self.args, 'chart') and self.args.chart:
             chart_path = self.generate_chart(file_path, results, meta)
             if chart_path:

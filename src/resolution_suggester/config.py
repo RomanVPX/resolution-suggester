@@ -42,12 +42,14 @@ class QualityLevelHints(Enum):
     """
     Enumeration of quality level hints for image analysis output.
     """
+    ORIGINAL = "original"
     EXCELLENT = "excellent"
     VERY_GOOD = "very_good"
     GOOD = "good"
     NOTICEABLE_LOSS = "noticeable_loss"
 
 QUALITY_LEVEL_HINTS_DESCRIPTIONS = {
+    QualityLevelHints.ORIGINAL: _("original"),
     QualityLevelHints.EXCELLENT: _("excellent"),
     QualityLevelHints.VERY_GOOD: _("very_good"),
     QualityLevelHints.GOOD: _("good"),
@@ -79,24 +81,28 @@ QUALITY_METRIC_DEFAULT = QualityMetrics.PSNR
 # --- Quality thresholds for metrics ---
 QUALITY_METRIC_THRESHOLDS = {
     QualityMetrics.PSNR: {
+        QualityLevelHints.ORIGINAL: 159,
         QualityLevelHints.EXCELLENT: 50,
         QualityLevelHints.VERY_GOOD: 40,
         QualityLevelHints.GOOD: 30,
         QualityLevelHints.NOTICEABLE_LOSS: 0,
     },
     QualityMetrics.SSIM: {
+        QualityLevelHints.ORIGINAL: 1.00,
         QualityLevelHints.EXCELLENT: 0.92,
         QualityLevelHints.VERY_GOOD: 0.82,
         QualityLevelHints.GOOD: 0.75,
         QualityLevelHints.NOTICEABLE_LOSS: 0.0,
     },
     QualityMetrics.MS_SSIM: {
+        QualityLevelHints.ORIGINAL: 1.00,
         QualityLevelHints.EXCELLENT: 0.97,
         QualityLevelHints.VERY_GOOD: 0.95,
         QualityLevelHints.GOOD: 0.90,
         QualityLevelHints.NOTICEABLE_LOSS: 0.0,
     },
     QualityMetrics.TDPR: {
+        QualityLevelHints.ORIGINAL: 1.00,
         QualityLevelHints.EXCELLENT: 0.90,
         QualityLevelHints.VERY_GOOD: 0.80,
         QualityLevelHints.GOOD: 0.70,
