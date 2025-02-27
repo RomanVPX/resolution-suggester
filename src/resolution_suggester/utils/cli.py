@@ -59,7 +59,7 @@ def parse_arguments() -> argparse.Namespace:
 
     # Добавляем аргумент для выбора языка (должен быть обработан рано)
     pre_parser.add_argument(
-        '-l', '--lang',
+        '--lang',
         choices=['en', 'ru', 'auto'],
         default='auto',
         help=_('Interface language (default: auto)')
@@ -127,6 +127,13 @@ def create_parser() -> argparse.ArgumentParser:
         'paths',
         nargs='+',
         help=_('Paths to files/directories for analysis')
+    )
+
+    parser.add_argument(
+        '--lang',
+        choices=['en', 'ru', 'auto'],
+        default='auto',
+        help=_('Interface language (default: auto)')
     )
 
     parser.add_argument(
@@ -235,13 +242,6 @@ def create_parser() -> argparse.ArgumentParser:
         '--ml',
         action='store_true',
         help=_('Use ML model to predict metrics instead of real calculation (fast)')
-    )
-
-    parser.add_argument(
-        '--lang',
-        choices=['en', 'ru', 'auto'],
-        default='auto',
-        help=_('Interface language (default: auto)')
     )
 
     return parser

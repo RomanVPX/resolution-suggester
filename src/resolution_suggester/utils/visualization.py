@@ -5,13 +5,11 @@ Module for visualization of image quality analysis results.
 from ..i18n import _
 import os
 import re
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Patch, Rectangle
-from matplotlib.ticker import FuncFormatter, LogFormatter
-import matplotlib.colors as mcolors
+from matplotlib.patches import Patch
+from matplotlib.ticker import FuncFormatter
 from ..config import (
     QualityMetrics, LOGS_DIR, QUALITY_LEVEL_HINTS_DESCRIPTIONS,
     QualityLevelHints, QUALITY_METRIC_THRESHOLDS
@@ -64,15 +62,13 @@ def get_chart_filename(
     Returns:
         Path to the chart file
     """
-    # Create directory for charts if it doesn't exist
     charts_dir = LOGS_DIR / "charts"
     charts_dir.mkdir(parents=True, exist_ok=True)
 
-    # Form the filename
     chart_filename = (
         f"{file_basename}_"
         f"{metric_type.value.upper()}"
-        f"{'_channels' if analyze_channels else ''}"
+        f"{'_ch' if analyze_channels else ''}"
         f".png"
     )
 
@@ -82,12 +78,6 @@ def get_chart_filename(
 def get_quality_color_map(metric_type: QualityMetrics) -> Tuple[Dict, List]:
     """
     Creates a colormap for quality levels.
-
-    Args:
-        metric_type: The quality metric being used
-
-    Returns:
-        Tuple of (color_dict, boundary_values)
     """
     thresholds = QUALITY_METRIC_THRESHOLDS.get(metric_type, {})
 
@@ -132,10 +122,8 @@ def generate_quality_chart(
     Returns:
         Path to the saved chart
     """
-    # Create directory if it doesn't exist
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    # Set up plotting style
     plt.style.use('ggplot')
 
     # Create the main figure
@@ -150,7 +138,6 @@ def generate_quality_chart(
     filtered_results = [r for r in results if QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.ORIGINAL] not in r[-1]]
 
     if not filtered_results:
-        # No results to display
         plt.close(fig)
         return output_path
 
@@ -354,14 +341,16 @@ def generate_quality_chart(
     y_padding = (max_y - min_y) * 0.1
     y_min = max(0, min_y - y_padding)
 
+    # Get the threshold for noticeable loss to ensure it's visible
+    noticeable_loss_threshold = QUALITY_METRIC_THRESHOLDS[metric_type][QualityLevelHints.NOTICEABLE_LOSS]
+
     # For PSNR, make the upper limit adaptive to the data
     if metric_type == QualityMetrics.PSNR:
         # Add more headroom for PSNR values
         y_max = max_y + y_padding * 2
 
-        # Ensure we show at least up to the Excellent threshold
-        excellent_threshold = QUALITY_METRIC_THRESHOLDS[QualityMetrics.PSNR][QualityLevelHints.EXCELLENT]
-        y_max = max(y_max, excellent_threshold * 1.2)
+        # Ensure we show at least up to the Noticeable Loss threshold
+        y_max = max(y_max, noticeable_loss_threshold * 1.2)
     else:
         # For normalized metrics (SSIM, MS-SSIM), always show the full quality range if possible
         # Check if we have any excellent quality points
@@ -376,6 +365,13 @@ def generate_quality_chart(
             y_max = max_y + y_padding
             y_max = min(y_max, 1.05)  # But don't exceed 1.05
 
+        # Ensure the noticeable loss threshold is visible
+        y_max = max(y_max, noticeable_loss_threshold * 1.2)
+
+    # Ensure y_min is below the data points
+    y_min = min(y_min, min_y * 0.9)
+
+    # Set the y-axis limits
     ax.set_ylim(y_min, y_max)
 
     # Add quality threshold lines
@@ -386,7 +382,7 @@ def generate_quality_chart(
         (QualityLevelHints.EXCELLENT, _("Excellent")),
         (QualityLevelHints.VERY_GOOD, _("Very Good")),
         (QualityLevelHints.GOOD, _("Good")),
-        (QualityLevelHints.NOTICEABLE_LOSS, _("noticeable_loss")),
+        (QualityLevelHints.NOTICEABLE_LOSS, _("Noticeable Loss")),
     ]
 
     # Track which thresholds are visible in the chart
@@ -405,18 +401,6 @@ def generate_quality_chart(
                 )
                 visible_thresholds.append(level)
 
-                # Add label to threshold line
-                ax.text(
-                    max(pixel_counts) * 1.15,
-                    threshold,
-                    f"{label}",
-                    va='center',
-                    ha='left',
-                    fontsize=9,
-                    color=quality_colors[level],
-                    weight='bold'
-                )
-
     # Add legend for channels if they're plotted
     if analyze_channels and channels:
         legend = ax.legend(loc='upper left', fontsize=10, framealpha=0.9)
@@ -434,12 +418,7 @@ def generate_quality_chart(
                 break
 
     # Add patches for all visible thresholds and used quality levels
-    for level, label in [
-        (QualityLevelHints.EXCELLENT, _("Excellent")),
-        (QualityLevelHints.VERY_GOOD, _("Very Good")),
-        (QualityLevelHints.GOOD, _("Good")),
-        (QualityLevelHints.NOTICEABLE_LOSS, _("Noticeable Loss"))
-    ]:
+    for level, label in quality_levels:
         if level in quality_colors and (level in visible_thresholds or level in used_quality_levels):
             quality_patches.append(
                 Patch(facecolor=quality_colors[level], edgecolor='black', label=label)
@@ -462,31 +441,31 @@ def generate_quality_chart(
     ax.set_xlabel(_('Total Pixels (log scale)'), fontsize=12, fontweight='bold')
 
     if metric_type == QualityMetrics.PSNR:
-        ylabel = f"{metric_type.value.upper()} (dB)"
+        y_label = f"{metric_type.value.upper()} (dB)"
     else:
-        ylabel = f"{metric_type.value.upper()}"
+        y_label = f"{metric_type.value.upper()}"
 
-    ax.set_ylabel(ylabel, fontsize=12, fontweight='bold')
+    ax.set_ylabel(y_label, fontsize=12, fontweight='bold')
 
     # Set title
     ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
 
     # Add secondary x-axis with resolutions
-    secax = ax.twiny()
-    secax.set_xscale('log')
-    secax.set_xlim(ax.get_xlim())
+    sec_ax = ax.twiny()
+    sec_ax.set_xscale('log')
+    sec_ax.set_xlim(ax.get_xlim())
 
     # Show all resolution points on the secondary axis
-    secax.set_xticks(pixel_counts)
-    secax.set_xticklabels(resolutions, rotation=45)
-    secax.set_xlabel(_('Resolution'), fontsize=12, fontweight='bold', labelpad=10)
+    sec_ax.set_xticks(pixel_counts)
+    sec_ax.set_xticklabels(resolutions, rotation=45)
+    sec_ax.set_xlabel(_('Resolution'), fontsize=12, fontweight='bold', labelpad=10)
 
     # Add grid
     ax.grid(True, linestyle='--', alpha=0.7)
 
     # Layout and save
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.savefig(output_path, dpi=96, bbox_inches='tight')
     plt.close(fig)
 
     return output_path
