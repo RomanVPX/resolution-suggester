@@ -1,5 +1,6 @@
 # utils/reporting.py
 import os
+from ..i18n import _
 from typing import List, Optional
 
 from rich.console import Console
@@ -83,12 +84,12 @@ class ConsoleReporter:
         table = Table(show_header=True, header_style="bold")
 
         # Добавляем колонки
-        table.add_column("Разрешение", style="bold")
+        table.add_column(_("Resolution"), style="bold")
         for channel in channels:
             table.add_column(channel)
         table.add_column("Min")
-        table.add_column("Качество")
-        table.add_column("Индикатор")
+        table.add_column(_("Quality"))
+        table.add_column(_("Quality Indicator"))
 
         # Определяем максимальное значение для шкалы в зависимости от метрики
         if metric_type == QualityMetrics.PSNR:
@@ -161,10 +162,10 @@ class ConsoleReporter:
         table = Table(show_header=True, header_style="bold")
 
         # Добавляем колонки
-        table.add_column("Разрешение", style="bold")
+        table.add_column((_("Resolution")), style="bold")
         table.add_column(f"{metric_type.value.upper()}")
-        table.add_column("Качество")
-        table.add_column("Индикатор")
+        table.add_column(_("Quality"))
+        table.add_column(_("Quality Indicator"))
 
         # Определяем максимальное значение для шкалы в зависимости от метрики
         if metric_type == QualityMetrics.PSNR:

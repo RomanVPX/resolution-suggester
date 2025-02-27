@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-27 21:43+0300\n"
+"POT-Creation-Date: 2025-02-27 21:49+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -52,6 +52,16 @@ msgstr "Бикубическая интерполяция"
 #: src/resolution_suggester/config.py:131
 msgid "Mitchell-Netravali filter"
 msgstr "Фильтр Митчелла-Нетравали"
+
+#: src/resolution_suggester/config.py:160
+msgid "File"
+msgstr "Файл"
+
+#: src/resolution_suggester/config.py:160
+#: src/resolution_suggester/utils/reporting.py:87
+#: src/resolution_suggester/utils/reporting.py:165
+msgid "Resolution"
+msgstr "Разрешение"
 
 #: src/resolution_suggester/core/image_analyzer.py:62
 msgid "ML model not found, the actual metrics will be calculated."
@@ -277,6 +287,16 @@ msgstr "Доступные метрики качества"
 #: src/resolution_suggester/utils/cli.py:273
 msgid "Available interpolation methods"
 msgstr "Доступные методы интерполяции"
+
+#: src/resolution_suggester/utils/reporting.py:91
+#: src/resolution_suggester/utils/reporting.py:167
+msgid "Quality"
+msgstr "Качество"
+
+#: src/resolution_suggester/utils/reporting.py:92
+#: src/resolution_suggester/utils/reporting.py:168
+msgid "Quality Indicator"
+msgstr "Индикатор"
 
 #: src/resolution_suggester/utils/visualization.py:48
 msgid "Quality vs Resolution Relationship"

@@ -157,7 +157,7 @@ def get_output_csv_header(analyze_channels: bool, metric_type: QualityMetrics) -
     Returns:
         List of column names for the CSV output.
     """
-    header = ["Файл", "Разрешение"]
+    header = [_("File"), _("Resolution")]
     if analyze_channels:
         # Фиксированные столбцы, не зависящие от реального количества каналов для лучшей читаемости таблицы
         header.extend([
