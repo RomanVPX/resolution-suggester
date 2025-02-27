@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-27 21:49+0300\n"
+"POT-Creation-Date: 2025-02-27 22:03+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -63,9 +63,34 @@ msgstr "File"
 msgid "Resolution"
 msgstr "Resolution"
 
-#: src/resolution_suggester/core/image_analyzer.py:62
+#: src/resolution_suggester/core/image_analyzer.py:63
 msgid "ML model not found, the actual metrics will be calculated."
 msgstr "ML model not found, the actual metrics will be calculated."
+
+#: src/resolution_suggester/core/image_analyzer.py:275
+#: src/resolution_suggester/core/image_analyzer.py:281
+#: src/resolution_suggester/core/image_analyzer.py:346
+msgid "Graph saved"
+msgstr "Graph saved"
+
+#: src/resolution_suggester/core/image_analyzer.py:335
+#: src/resolution_suggester/utils/reporting.py:91
+#: src/resolution_suggester/utils/reporting.py:167
+msgid "Quality"
+msgstr "Quality"
+
+#: src/resolution_suggester/core/image_analyzer.py:335
+msgid "depending on the resolution"
+msgstr "depending on the resolution"
+
+#: src/resolution_suggester/core/image_analyzer.py:349
+msgid "Error when generating chart"
+msgstr "Error when generating chart"
+
+#: src/resolution_suggester/core/image_analyzer.py:368
+#: src/resolution_suggester/main.py:307
+msgid "Error when processing file"
+msgstr "Error when processing file"
 
 #: src/resolution_suggester/core/image_loader.py:54
 msgid "File not found"
@@ -151,10 +176,6 @@ msgstr "Error when selecting interpolation function for"
 #: src/resolution_suggester/main.py:301
 msgid "Creating dataset"
 msgstr "Creating dataset"
-
-#: src/resolution_suggester/main.py:307
-msgid "Error when processing file"
-msgstr "Error when processing file"
 
 #: src/resolution_suggester/main.py:313 src/resolution_suggester/main.py:319
 msgid "No data to save in"
@@ -281,15 +302,14 @@ msgstr "Available quality metrics"
 msgid "Available interpolation methods"
 msgstr "Available interpolation methods"
 
-#: src/resolution_suggester/utils/reporting.py:91
-#: src/resolution_suggester/utils/reporting.py:167
-msgid "Quality"
-msgstr "Quality"
+#: src/resolution_suggester/utils/reporting.py:50
+msgid "Analysis"
+msgstr "Analysis"
 
 #: src/resolution_suggester/utils/reporting.py:92
 #: src/resolution_suggester/utils/reporting.py:168
-msgid "Quality Indicator"
-msgstr "Quality Indicator"
+msgid "Quality Bar"
+msgstr "Quality Bar"
 
 #: src/resolution_suggester/utils/visualization.py:48
 msgid "Quality vs Resolution Relationship"

@@ -47,7 +47,7 @@ class ConsoleReporter:
         Выводит заголовок с именем файла.
         """
         filename = os.path.basename(file_path)
-        full_title = f"Анализ ({metric_type.value.upper()})"
+        full_title = f'{_("Analysis")} ({metric_type.value.upper()})'
         console.print()
         console.print(Panel(
             Text(filename, style=RICH_STYLES['filename']),
@@ -89,7 +89,7 @@ class ConsoleReporter:
             table.add_column(channel)
         table.add_column("Min")
         table.add_column(_("Quality"))
-        table.add_column(_("Quality Indicator"))
+        table.add_column(_("Quality Bar"))
 
         # Определяем максимальное значение для шкалы в зависимости от метрики
         if metric_type == QualityMetrics.PSNR:
@@ -165,7 +165,7 @@ class ConsoleReporter:
         table.add_column((_("Resolution")), style="bold")
         table.add_column(f"{metric_type.value.upper()}")
         table.add_column(_("Quality"))
-        table.add_column(_("Quality Indicator"))
+        table.add_column(_("Quality Bar"))
 
         # Определяем максимальное значение для шкалы в зависимости от метрики
         if metric_type == QualityMetrics.PSNR:

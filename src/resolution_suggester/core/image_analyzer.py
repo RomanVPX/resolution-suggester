@@ -1,5 +1,6 @@
 # core/image_analyzer.py
 import os
+from ..i18n import _
 import argparse
 import concurrent.futures
 from typing import Tuple
@@ -271,13 +272,13 @@ class ImageAnalyzer:
                     from rich.console import Console
                     from rich.text import Text
                     Console().print(
-                        Text("📊 График сохранен: ", style="bold green") +
+                        Text(f"📊 {_("Graph saved")}: ", style="bold green") +
                         Text(f"{chart_path}", style="underline blue")
                     )
                 except ImportError:
                     from rich.console import Console
                     from rich.text import Text
-                    print(f"📊 График сохранен: {chart_path}")
+                    print(f"📊 {_("Graph saved")}: {chart_path}")
 
         # Запись в репортеры
         for rep in self.reporters:
@@ -331,7 +332,7 @@ class ImageAnalyzer:
                 self.args.channels
             )
 
-            title = f"Качество ({self.args.metric.upper()}) в зависимости от разрешения\n{file_basename}"
+            title = f"{_("Quality")} ({self.args.metric.upper()}) {_("depending on the resolution")}\n{file_basename}"
 
             chart_file = generate_quality_chart(
                 results,
@@ -342,11 +343,11 @@ class ImageAnalyzer:
                 channels=meta.get('channels')
             )
 
-            logging.debug(f"График сохранен: {chart_file}")
+            logging.debug(f"{_("Graph saved")}: {chart_file}")
             return chart_file
         except Exception as e:
-            logging.error(f"Ошибка при создании графика: {e}")
-            logging.debug("Детали:", exc_info=True)
+            logging.error(f"{_("Error when generating chart")}: {e}")
+            logging.debug("Details:", exc_info=True)
             return None
 
 
@@ -364,8 +365,8 @@ def process_file_for_analyzer(args_dict, file_path):
         analyzer = ImageAnalyzer(args)
         return analyzer.analyze_file(file_path)
     except Exception as e:
-        logging.error(f"Ошибка обработки файла {file_path}: {e}")
-        logging.debug("Детали:", exc_info=True)
+        logging.error(f"{_("Error when processing file")} {file_path}: {e}")
+        logging.debug("Details:", exc_info=True)
         return None, None
 
 

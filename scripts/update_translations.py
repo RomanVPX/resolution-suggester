@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # scripts/update_translations.py
 """
-Утилита для обновления файлов переводов (PO/MO) в проекте.
-Извлекает строки для перевода из исходного кода, обновляет
-существующие переводы и создаёт новые при необходимости.
+Utility for updating translation files (PO/MO) in the project.
+Extracts strings for translation from the source code, updates
+existing translations, and creates new ones when necessary.
 """
 import argparse
 import logging
@@ -16,7 +16,6 @@ import tempfile
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-# Настройка логгирования
 logging.basicConfig(
     level=logging.INFO,
     format="%(levelname)s: %(message)s"
@@ -25,7 +24,7 @@ logger = logging.getLogger("translation_updater")
 
 
 def check_dependencies() -> bool:
-    """Проверяет наличие необходимых внешних программ."""
+    """Checks for required external programs."""
     dependencies = ["xgettext", "msgmerge", "msgfmt"]
     missing = []
 
@@ -34,22 +33,22 @@ def check_dependencies() -> bool:
             missing.append(cmd)
 
     if missing:
-        logger.error(f"Не найдены необходимые программы: {', '.join(missing)}")
-        logger.error("Установите пакет gettext перед использованием этого скрипта.")
+        logger.error(f"Required programs not found: {', '.join(missing)}")
+        logger.error("Install the gettext package before using this script.")
         return False
 
     return True
 
 
 def run_subprocess(cmd: List[str], error_msg: str) -> Tuple[bool, Optional[str]]:
-    """Запускает внешнюю команду и обрабатывает возможные ошибки.
+    """Runs an external command and handles possible errors.
 
     Args:
-        cmd: Список команды и аргументов для subprocess.run
-        error_msg: Сообщение об ошибке для вывода в случае проблемы
+        cmd: List of command and arguments for subprocess.run
+        error_msg: Error message to display in case of problems
 
     Returns:
-        Tuple[bool, Optional[str]]: (успех, вывод команды)
+        Tuple[bool, Optional[str]]: (success, command output)
     """
     try:
         result = subprocess.run(
@@ -61,31 +60,29 @@ def run_subprocess(cmd: List[str], error_msg: str) -> Tuple[bool, Optional[str]]
 
         if result.returncode != 0:
             logger.error(f"{error_msg}: {result.stderr}")
-            logger.debug(f"Команда: {' '.join(cmd)}")
+            logger.debug(f"Command: {' '.join(cmd)}")
             return False, None
 
         return True, result.stdout
     except Exception as e:
         logger.error(f"{error_msg}: {str(e)}")
-        logger.debug(f"Команда: {' '.join(cmd)}")
+        logger.debug(f"Command: {' '.join(cmd)}")
         return False, None
 
 
 def extract_strings(project_root: Path, source_dir: Path, pot_file: str) -> bool:
-    """Извлекает строки для перевода из исходного кода в POT-файл."""
-    logger.info("Извлечение строк для перевода...")
+    """Extracts strings for translation from source code to a POT file."""
+    logger.info("Extracting strings for translation...")
 
-    # Собираем все Python файлы из исходной директории
     py_files = []
     for py_file in source_dir.glob("**/*.py"):
         rel_path = py_file.relative_to(project_root)
         py_files.append(str(rel_path))
 
     if not py_files:
-        logger.warning(f"Не найдены Python файлы в {source_dir}")
+        logger.warning(f"No Python files found in {source_dir}")
         return False
 
-    # Формируем команду xgettext
     cmd = [
               "xgettext",
               "--language=Python",
@@ -97,7 +94,7 @@ def extract_strings(project_root: Path, source_dir: Path, pot_file: str) -> bool
               f"--directory={project_root}",
           ] + py_files
 
-    success, _ = run_subprocess(cmd, "Ошибка при извлечении строк")
+    success, _ = run_subprocess(cmd, "Error extracting strings")
     if not success:
         return False
 
@@ -112,15 +109,15 @@ def extract_strings(project_root: Path, source_dir: Path, pot_file: str) -> bool
             with open(pot_file, 'w', encoding='utf-8') as f:
                 f.write(pot_content)
     except Exception as e:
-        logger.error(f"Ошибка при обработке POT-файла: {e}")
+        logger.error(f"Error processing POT file: {e}")
         return False
 
     return True
 
 
 def process_english_translations(po_file: Path) -> bool:
-    """Автоматически заполняет английские переводы копированием исходного текста."""
-    logger.info(f"Обработка английских переводов: {po_file}")
+    """Automatically fills English translations by copying the source text."""
+    logger.info(f"Processing English translations: {po_file}")
 
     try:
         with open(po_file, 'r', encoding='utf-8') as f:
@@ -146,26 +143,26 @@ def process_english_translations(po_file: Path) -> bool:
 
         return True
     except Exception as e:
-        logger.error(f"Ошибка при обработке английских переводов: {e}")
+        logger.error(f"Error processing English translations: {e}")
         return False
 
 
 def compile_po_to_mo(po_file: Path, mo_file: Path) -> bool:
-    """Компилирует PO-файл в бинарный MO-файл."""
-    logger.info(f"Компиляция {po_file} в {mo_file}")
+    """Compiles a PO file into a binary MO file."""
+    logger.info(f"Compiling {po_file} to {mo_file}")
 
     cmd = ["msgfmt", "--statistics", "-o", str(mo_file), str(po_file)]
-    success, output = run_subprocess(cmd, f"Ошибка при компиляции {po_file}")
+    success, output = run_subprocess(cmd, f"Error compiling {po_file}")
 
     if success and output:
-        logger.info(f"Статистика для {po_file}: {output.strip()}")
+        logger.info(f"Statistics for {po_file}: {output.strip()}")
 
     return success
 
 
 def update_translation(lang: str, locale_dir: Path, pot_file: str) -> bool:
-    """Обновляет перевод для указанного языка."""
-    logger.info(f"Обновление перевода для языка: {lang}")
+    """Updates the translation for the specified language."""
+    logger.info(f"Updating translation for language: {lang}")
 
     lang_dir = locale_dir / lang / "LC_MESSAGES"
     lang_dir.mkdir(parents=True, exist_ok=True)
@@ -184,7 +181,7 @@ def update_translation(lang: str, locale_dir: Path, pot_file: str) -> bool:
                 with open(po_file, 'w', encoding='utf-8') as f:
                     f.write(po_content)
         except Exception as e:
-            logger.error(f"Ошибка при обработке файла {po_file}: {e}")
+            logger.error(f"Error processing file {po_file}: {e}")
             return False
 
         # Обновляем существующий PO-файл
@@ -202,19 +199,19 @@ def update_translation(lang: str, locale_dir: Path, pot_file: str) -> bool:
 
         success, _ = run_subprocess(
             merge_cmd,
-            f"Ошибка при обновлении {po_file}"
+            f"Error updating {po_file}"
         )
         if not success:
             return False
     else:
         # Создаём новый PO-файл из шаблона POT
-        logger.info(f"Создание нового файла перевода: {po_file}")
+        logger.info(f"Creating new translation file: {po_file}")
         try:
             with open(pot_file, 'r', encoding='utf-8') as src:
                 with open(po_file, 'w', encoding='utf-8') as dst:
                     dst.write(src.read())
         except Exception as e:
-            logger.error(f"Ошибка при создании файла {po_file}: {e}")
+            logger.error(f"Error creating file {po_file}: {e}")
             return False
 
     # Для английского языка автоматически заполняем переводы
@@ -222,25 +219,24 @@ def update_translation(lang: str, locale_dir: Path, pot_file: str) -> bool:
         if not process_english_translations(po_file):
             return False
 
-    # Компилируем PO в MO
     return compile_po_to_mo(po_file, mo_file)
 
 
 def main():
-    """Основная функция скрипта."""
+    """Main function of the script."""
     parser = argparse.ArgumentParser(
-        description="Обновляет файлы переводов проекта."
+        description="Updates project translation files."
     )
     parser.add_argument(
         "--languages", "-l",
         nargs="+",
         default=["en", "ru"],
-        help="Список языков для обновления (по умолчанию: en ru)"
+        help="List of languages to update (default: en ru)"
     )
     parser.add_argument(
         "--verbose", "-v",
         action="store_true",
-        help="Подробный режим вывода"
+        help="Verbose output mode"
     )
 
     args = parser.parse_args()
@@ -248,11 +244,9 @@ def main():
     if args.verbose:
         logger.setLevel(logging.DEBUG)
 
-    # Проверяем наличие необходимых зависимостей
     if not check_dependencies():
         return 1
 
-    # Определяем пути проекта
     project_root = Path(__file__).parent.parent
     source_dir = project_root / "src" / "resolution_suggester"
     locale_dir = source_dir / "locales"
@@ -263,21 +257,18 @@ def main():
         temp_pot = temp_file.name
 
     try:
-        # Извлекаем строки для перевода
         if not extract_strings(project_root, source_dir, temp_pot):
             return 1
 
-        # Обновляем переводы для каждого языка
         for lang in args.languages:
             if not update_translation(lang, locale_dir, temp_pot):
-                logger.error(f"Не удалось обновить переводы для языка: {lang}")
+                logger.error(f"Failed to update translations for language: {lang}")
             else:
-                logger.info(f"Переводы для языка {lang} успешно обновлены")
+                logger.info(f"Translations for language {lang} successfully updated")
 
         return 0
 
     finally:
-        # Удаляем временный файл
         if os.path.exists(temp_pot):
             os.unlink(temp_pot)
 
