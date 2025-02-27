@@ -12,7 +12,7 @@ import logging
 from typing import Optional
 
 from resolution_suggester.config import INTERPOLATION_METHOD_UPSCALE, InterpolationMethods, QualityMetrics, \
-    PSNR_IS_LARGE_AS_INF, INTERMEDIATE_DIR
+    PSNR_IS_LARGE_AS_INF, INTERMEDIATE_DIR, QualityLevelHints, QUALITY_LEVEL_HINTS_DESCRIPTIONS
 from resolution_suggester.core.image_processing import get_resize_function
 from resolution_suggester.ml.predictor import QuickPredictor, extract_features_of_original_img
 from resolution_suggester.utils.reporters import IReporter
@@ -247,9 +247,10 @@ class ImageAnalyzer:
         """Creates an entry for the original image."""
         base_entry = (f"{width}x{height}",)
         channel_value = float('inf') if self.args.metric == QualityMetrics.PSNR else float(1.0)
+        hint_original = QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.ORIGINAL]
         if self.args.channels and channels:
-            return *base_entry, {c: channel_value for c in channels}, channel_value, "Оригинал"
-        return *base_entry, channel_value, "Оригинал"
+            return *base_entry, {c: channel_value for c in channels}, channel_value, hint_original
+        return *base_entry, channel_value, hint_original
 
     def _report_results(self, file_path, results, meta):
         """Outputs and saves analysis results."""

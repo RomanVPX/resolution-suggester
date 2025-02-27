@@ -47,7 +47,7 @@ from .utils.reporters import (
 
 
 def main() -> None:
-    """Основная функция программы."""
+    """Main function of the program."""
     setup_logging()
 
     try:
@@ -68,7 +68,7 @@ def main() -> None:
 
 
 def parse_and_validate_arguments() -> argparse.Namespace:
-    """Разбирает аргументы командной строки."""
+    """Parse command line arguments."""
     try:
         args = parse_arguments()
         return args
@@ -81,7 +81,7 @@ def parse_and_validate_arguments() -> argparse.Namespace:
 
 
 def get_file_list(paths: list[str]) -> list[str]:
-    """Проверяет пути и возвращает список файлов для обработки."""
+    """Validates paths and returns a list of files for processing."""
     try:
         return validate_paths(paths)
     except ValueError as e:
@@ -90,30 +90,28 @@ def get_file_list(paths: list[str]) -> list[str]:
 
 
 def run_dataset_generation(files: list[str], args: argparse.Namespace) -> None:
-    """Запускает генерацию датасета и опционально обучение модели."""
+    """Launches dataset generation and optionally trains the model."""
     features_path, targets_path = generate_dataset(files, args)
-    logging.info(f"Датасет сгенерирован: features={features_path}, targets={targets_path}")
+    logging.info(f"{_("Dataset generated")}: features={features_path}, targets={targets_path}")
 
     if args.train_ml:
         predictor = QuickPredictor()
         predictor.train(features_path, targets_path)
-        logging.info("Модель обучена!")
+        logging.info(_("Model trained!"))
 
 
 def run_image_analysis(files: list[str], args: argparse.Namespace) -> None:
-    """Запускает анализ изображений с настройкой репортеров."""
+    """Launches image analysis with reporter configuration."""
     reporters, output_paths = setup_reporters(args)
 
     if getattr(args, 'chart', False):
         try:
             import matplotlib
             matplotlib.use('Agg')  # Не-интерактивный бэкенд
-            logging.info("Включена генерация графиков")
+            logging.info(_("Chart generation enabled"))
         except ImportError:
-            logging.error(
-                "Не удалось импортировать matplotlib. "
-                "Установите его командой: pip install matplotlib"
-            )
+            import matplotlib
+            logging.error(_("Failed to import matplotlib."))
             args.chart = False
 
     try:
@@ -123,13 +121,13 @@ def run_image_analysis(files: list[str], args: argparse.Namespace) -> None:
         close_reporters(reporters)
 
     if 'csv' in output_paths:
-        print(f"\nМетрики (CSV) сохранены в: {output_paths['csv']}")
+        print(f"\n{_("Metrics(CSV) saved to")}: {output_paths['csv']}")
     if 'json' in output_paths:
-        print(f"\nМетрики (JSON) сохранены в: {output_paths['json']}")
+        print(f"\n{_("Metrics(JSON) saved to")}: {output_paths['json']}")
 
 
 def setup_reporters(args: argparse.Namespace) -> tuple[list[IReporter], dict[str, str]]:
-    """Настраивает репортеры для вывода результатов анализа."""
+    """Configures reporters for analysis results output."""
     reporters = []
     output_paths = {}
 
@@ -140,7 +138,7 @@ def setup_reporters(args: argparse.Namespace) -> tuple[list[IReporter], dict[str
         csv_reporter.write_header(args.channels)
         reporters.append(csv_reporter)
         output_paths['csv'] = csv_path
-        logging.info("CSV output включён, файл: %s", csv_path)
+        logging.info(f"{_("CSV output enabled, file")}: {csv_path}")
 
     if args.json_output:
         json_path = get_json_log_filename(args)
@@ -148,18 +146,18 @@ def setup_reporters(args: argparse.Namespace) -> tuple[list[IReporter], dict[str
         json_reporter.__enter__()
         reporters.append(json_reporter)
         output_paths['json'] = json_path
-        logging.info("JSON output включён, файл: %s", json_path)
+        logging.info(f"{_("JSON output enabled, file")}: {json_path}")
 
     return reporters, output_paths
 
 
 def close_reporters(reporters: list[IReporter]) -> None:
-    """Закрывает все репортеры."""
+    """Closes all reporters."""
     for rep in reporters:
         try:
             rep.__exit__(None, None, None)
         except Exception as e:
-            logging.error(f"Ошибка при закрытии репортера: {e}")
+            logging.error(f"{_("Error when closing reporter")}: {e}")
 
 
 def process_file_for_dataset(
@@ -167,12 +165,23 @@ def process_file_for_dataset(
         interpolations_methods: list[InterpolationMethods],
         args: argparse.Namespace
 ) -> tuple[list[dict], list[dict]]:
+    """
+    Process a single file to extract features and calculate metrics for the dataset.
+
+    Args:
+        file_path: Path to the image file
+        interpolations_methods: List of interpolation methods to test
+        args: Command line arguments
+
+    Returns:
+        Tuple of (features, targets) lists for the processed file
+    """
     features_all = []
     all_targets = []
 
     image_load_result = load_image(file_path)
     if image_load_result.error or image_load_result.data is None:
-        logging.warning(f"Пропуск {file_path}, т.к. не удалось загрузить.")
+        logging.warning(f"{_("Skipping")} {file_path}, {_("because failed to load")}.")
         return features_all, all_targets
 
     img_original = image_load_result.data
@@ -189,7 +198,7 @@ def process_file_for_dataset(
             resize_fn = get_resize_function(method)
             resize_fn_upscale = get_resize_function(INTERPOLATION_METHOD_UPSCALE)
         except ValueError as e:
-            logging.error(f"Ошибка при выборе функции интерполяции для {file_path}: {e}")
+            logging.error(f"{_("Error when selecting interpolation function for")} {file_path}: {e}")
             continue
 
         for (w, h) in resolutions_to_test:
@@ -255,6 +264,16 @@ def process_file_for_dataset(
 
 
 def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, str]:
+    """
+    Generate a dataset from a list of image files.
+
+    Args:
+        files: List of image file paths
+        args: Command line arguments
+
+    Returns:
+        Tuple of (features_csv_path, targets_csv_path) as strings
+    """
     features_all = []
     all_targets = []
 
@@ -279,25 +298,25 @@ def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, s
                             interpolations_methods_to_test, args)
             for file_path in files
         ]
-        for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="Создание датасета"):
+        for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc=_("Creating dataset")):
             try:
                 features, targets = future.result()
                 features_all.extend(features)
                 all_targets.extend(targets)
             except Exception as e:
-                logging.error(f"Ошибка при обработке файла: {e}")
+                logging.error(f"{_("Error when processing file")}: {e}")
 
     if features_all:
         df_features = pd.DataFrame(features_all)
         df_features.to_csv(features_csv, index=False)
     else:
-        logging.warning("Нет данных для сохранения в features.csv")
+        logging.warning(f"{_("No data to save in")} features.csv")
 
     if all_targets:
         df_targets = pd.DataFrame(all_targets)
         df_targets.to_csv(targets_csv, index=False)
     else:
-        logging.warning("Нет данных для сохранения в targets.csv")
+        logging.warning(f"{_("No data to save in")} targets.csv")
 
     return features_csv, targets_csv
 

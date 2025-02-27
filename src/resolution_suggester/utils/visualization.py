@@ -11,7 +11,8 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
-from ..config import QualityMetrics, LOGS_DIR
+from ..config import QualityMetrics, LOGS_DIR, QUALITY_LEVEL_HINTS_DESCRIPTIONS, QualityLevelHints
+
 
 def parse_resolution(res_str: str) -> Tuple[int, int]:
     """
@@ -73,7 +74,7 @@ def generate_quality_chart(
     plt.style.use('ggplot')
 
     # Исключаем оригинал (с бесконечным качеством)
-    filtered_results = [r for r in results if "Оригинал" not in r[-1]]
+    filtered_results = [r for r in results if QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.ORIGINAL] not in r[-1]]
 
     # Извлекаем данные
     resolutions = [r[0] for r in filtered_results]

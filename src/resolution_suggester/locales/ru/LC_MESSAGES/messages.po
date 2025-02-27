@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-27 21:10+0300\n"
+"POT-Creation-Date: 2025-02-27 21:43+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -88,6 +88,68 @@ msgstr "Непредвиденная ошибка"
 #: src/resolution_suggester/main.py:79
 msgid "Error parsing arguments"
 msgstr "Ошибка разбора аргументов"
+
+#: src/resolution_suggester/main.py:95
+msgid "Dataset generated"
+msgstr "Датасет сгенерирован"
+
+#: src/resolution_suggester/main.py:100
+msgid "Model trained!"
+msgstr "Модель обучена!"
+
+#: src/resolution_suggester/main.py:111
+msgid "Chart generation enabled"
+msgstr "Включена генерация графиков"
+
+#: src/resolution_suggester/main.py:114
+msgid "Failed to import matplotlib."
+msgstr ""
+"Не удалось импортировать matplotlib. Установите его командой: pip install "
+"matplotlib"
+
+#: src/resolution_suggester/main.py:124
+msgid "Metrics(CSV) saved to"
+msgstr "Метрики (CSV) сохранены в"
+
+#: src/resolution_suggester/main.py:126
+msgid "Metrics(JSON) saved to"
+msgstr "Метрики (JSON) сохранены в"
+
+#: src/resolution_suggester/main.py:141
+msgid "CSV output enabled, file"
+msgstr "Вывод в CSV включён, файл"
+
+#: src/resolution_suggester/main.py:149
+msgid "JSON output enabled, file"
+msgstr "Вывод в JSON включён, файл"
+
+#: src/resolution_suggester/main.py:160
+msgid "Error when closing reporter"
+msgstr "Ошибка при закрытии репортера"
+
+#: src/resolution_suggester/main.py:184
+msgid "Skipping"
+msgstr "Пропуск"
+
+#: src/resolution_suggester/main.py:184
+msgid "because failed to load"
+msgstr "т.к. не удалось загрузить"
+
+#: src/resolution_suggester/main.py:201
+msgid "Error when selecting interpolation function for"
+msgstr "Ошибка при выборе функции интерполяции для"
+
+#: src/resolution_suggester/main.py:301
+msgid "Creating dataset"
+msgstr "Создание датасета"
+
+#: src/resolution_suggester/main.py:307
+msgid "Error when processing file"
+msgstr "Ошибка при обработке файла"
+
+#: src/resolution_suggester/main.py:313 src/resolution_suggester/main.py:319
+msgid "No data to save in"
+msgstr "Нет данных для сохранения в"
 
 #: src/resolution_suggester/ml/predictor.py:134
 msgid "Preprocessor is not loaded"
@@ -216,6 +278,6 @@ msgstr "Доступные метрики качества"
 msgid "Available interpolation methods"
 msgstr "Доступные методы интерполяции"
 
-#: src/resolution_suggester/utils/visualization.py:47
+#: src/resolution_suggester/utils/visualization.py:48
 msgid "Quality vs Resolution Relationship"
 msgstr "Зависимость качества от разрешения"

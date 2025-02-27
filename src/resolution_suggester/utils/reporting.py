@@ -44,9 +44,6 @@ class ConsoleReporter:
     ) -> None:
         """
         Выводит заголовок с именем файла.
-
-        Args:
-            file_path: Путь к файлу изображения
         """
         filename = os.path.basename(file_path)
         full_title = f"Анализ ({metric_type.value.upper()})"
@@ -102,7 +99,7 @@ class ConsoleReporter:
         # Добавляем данные
         for res, ch_values_dict, min_val, hint in results:
             # Определяем базовый стиль на основе качества
-            if hint == "Оригинал":
+            if hint == QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.ORIGINAL]:
                 base_style = RICH_STYLES['original']
                 indicator_str = ""
             else:
@@ -178,7 +175,7 @@ class ConsoleReporter:
         # Добавляем данные
         for res, metric_value, hint in results:
             # Определяем стиль строки на основе качества
-            if hint == "Оригинал":
+            if hint == QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.ORIGINAL]:
                 row_style = RICH_STYLES['original']
                 indicator = ""
             else:
