@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 
 from resolution_suggester.config import PSNR_IS_LARGE_AS_INF, QualityMetrics
-from resolution_suggester.main import postprocess_metric_value
+from resolution_suggester.core.image_analyzer import postprocess_metric_value
 
 
 @pytest.mark.parametrize("value, metric_type, expected", [
