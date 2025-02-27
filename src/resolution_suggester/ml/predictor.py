@@ -4,6 +4,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Any, Dict
+from functools import lru_cache
 
 import joblib
 import numpy as np
@@ -149,29 +150,90 @@ class QuickPredictor:
             }
 
 
+@lru_cache(maxsize=32)
+def calculate_wavelet_features(img_bytes, height, width):
+    """
+    Кэшированное вычисление вейвлет-признаков.
+
+    Args:
+        img_bytes: Байтовое представление изображения
+        height, width: Размеры изображения
+
+    Returns:
+        Энергия вейвлет-преобразования
+    """
+    # Восстанавливаем массив из байтов
+    img = np.frombuffer(img_bytes, dtype=np.float32).reshape(height, width)
+
+    # Вычисляем вейвлет-коэффициенты
+    coefficients = pywt.dwt2(img, 'haar')
+    c_a, (c_h, c_v, c_d) = coefficients
+    wavelet_energy = np.sum(c_a ** 2 + c_h ** 2 + c_v ** 2 + c_d ** 2) / img.size
+
+    return wavelet_energy
+
+
+@lru_cache(maxsize=32)
+def calculate_glcm_features(img_bytes, height, width):
+    """
+    Кэшированное вычисление GLCM-признаков.
+
+    Args:
+        img_bytes: Байтовое представление изображения
+        height, width: Размеры изображения
+
+    Returns:
+        Кортеж GLCM-признаков (контраст, энергия)
+    """
+    # Восстанавливаем массив из байтов
+    img = np.frombuffer(img_bytes, dtype=np.float32).reshape(height, width)
+
+    # Преобразуем для GLCM (требуется uint8)
+    img_uint8 = (img * 255).astype(np.uint8)
+
+    # Вычисляем GLCM-матрицу и признаки
+    glcm = graycomatrix(img_uint8,
+                        distances=[1],
+                        angles=[0],
+                        symmetric=True,
+                        normed=True)
+    contrast = graycoprops(glcm, 'contrast')[0, 0]
+    energy = graycoprops(glcm, 'energy')[0, 0]
+
+    return contrast, energy
+
+
 def extract_features_of_original_img(img: np.ndarray) -> dict:
-    """Извлекает признаки из 2D-изображения (канала)."""
+    """
+    Извлекает признаки из изображения с использованием кэширования для тяжелых вычислений.
+
+    Args:
+        img: Изображение как numpy массив
+
+    Returns:
+        Словарь признаков
+    """
+    # Приводим к формату 2D-изображения (канала)
     if img.ndim == 3:
         img = np.mean(img, axis=2)
 
     if img.ndim != 2:
         raise ValueError("extract_features_of_original_img: входное изображение должно быть 2D (канал)")
 
-    # Статистические признаки
-    features = {'contrast': float(np.std(img)), 'variance': float(np.var(img)), 'entropy': shannon_entropy(img)}
+    # Убеждаемся, что данные имеют правильный тип для корректной сериализации
+    img = img.astype(np.float32)
 
-    # Вейвлет-признаки (Haar)
-    coefficients = pywt.dwt2(img, 'haar')
-    c_a, (c_h, c_v, c_d) = coefficients
-    features['wavelet_energy'] = np.sum(c_a**2 + c_h**2 + c_v**2 + c_d**2) / img.size
+    # Подготавливаем изображение для кэширования
+    img_bytes = np.ascontiguousarray(img).tobytes()
+    height, width = img.shape
 
-    # GLCM-признаки
-    glcm = graycomatrix((img * 255).astype(np.uint8),
-                        distances=[1],
-                        angles=[0],
-                        symmetric=True,
-                        normed=True)
-    features['glcm_contrast'] = graycoprops(glcm, 'contrast')[0, 0]
-    features['glcm_energy']   = graycoprops(glcm, 'energy')[0, 0]
+    # Статистические признаки (вычисляются быстро, не кэшируем)
+    features = {'contrast': float(np.std(img)), 'variance': float(np.var(img)), 'entropy': shannon_entropy(img),
+                'wavelet_energy': calculate_wavelet_features(img_bytes, height, width)}
+
+    # Кэшированные GLCM-признаки
+    glcm_contrast, glcm_energy = calculate_glcm_features(img_bytes, height, width)
+    features['glcm_contrast'] = glcm_contrast
+    features['glcm_energy'] = glcm_energy
 
     return features
