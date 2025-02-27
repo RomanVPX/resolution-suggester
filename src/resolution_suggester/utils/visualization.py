@@ -87,7 +87,7 @@ def generate_quality_chart(
     markers = ['o', 's', '^', 'D', 'v', '<', '>']
 
     # Настраиваем основную ось X для мегапикселей
-    ax1.set_xlabel('Мегапиксели')
+    ax1.set_xlabel('Megapixels')
     ax1.set_xlim(min(megapixels) * 0.9, max(megapixels) * 1.1)
 
     # Создаем верхнюю ось X для разрешений
@@ -95,7 +95,7 @@ def generate_quality_chart(
     ax2.set_xlim(ax1.get_xlim())
     ax2.set_xticks(megapixels)
     ax2.set_xticklabels(resolutions, rotation=45)
-    ax2.set_xlabel('Разрешение')
+    ax2.set_xlabel(_("Resolution"))
 
     # Начальные значения для оси Y
     min_y, max_y = float('inf'), float('-inf')

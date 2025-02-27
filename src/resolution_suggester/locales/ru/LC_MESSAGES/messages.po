@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-27 22:03+0300\n"
+"POT-Creation-Date: 2025-02-27 22:18+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -60,6 +60,7 @@ msgstr "Файл"
 #: src/resolution_suggester/config.py:160
 #: src/resolution_suggester/utils/reporting.py:87
 #: src/resolution_suggester/utils/reporting.py:165
+#: src/resolution_suggester/utils/visualization.py:98
 msgid "Resolution"
 msgstr "Разрешение"
 
