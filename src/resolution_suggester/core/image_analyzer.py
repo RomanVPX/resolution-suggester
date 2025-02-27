@@ -187,8 +187,7 @@ class ImageAnalyzer:
             self._save_intermediate(img_upscaled, file_path, w, h,
                                     InterpolationMethods(self.args.interpolation), 'upscaled')
 
-        # Вычисляем метрики в зависимости от режима (с каналами или без)
-        if self.args.channels:
+        if self.args.channels: # Поканальный анализ
             channels_metrics = calculate_metrics(
                 QualityMetrics(self.args.metric),
                 img_original, img_upscaled, max_val,
@@ -210,8 +209,7 @@ class ImageAnalyzer:
 
     def _analyze_resize_ml(self, img_original, channels, w, h, orig_width, orig_height):
         """Анализирует изменение размера с использованием ML-предсказания."""
-        if self.args.channels:
-            # Поканальный анализ
+        if self.args.channels: # Поканальный анализ
             channels_metrics = {}
             for c in channels:
                 features = extract_features_of_original_img(img_original[..., channels.index(c)])
@@ -224,7 +222,7 @@ class ImageAnalyzer:
                 })
                 prediction = self.predictor.predict(features)
                 val = prediction.get(self.args.metric.value, 0.0)
-                channels_metrics[c] = float('inf') if val >= PSNR_IS_LARGE_AS_INF else val
+                channels_metrics[c] = postprocess_metric_value(val, self.args.metric)
 
             min_metric = min(channels_metrics.values())
             hint = QualityHelper.get_hint(min_metric, QualityMetrics(self.args.metric))
@@ -241,7 +239,7 @@ class ImageAnalyzer:
             })
             prediction = self.predictor.predict(features)
             metric_value = prediction.get(self.args.metric.value, 0.0)
-            metric_value = float('inf') if metric_value >= PSNR_IS_LARGE_AS_INF else metric_value
+            metric_value = postprocess_metric_value(metric_value, self.args.metric)
             hint = QualityHelper.get_hint(metric_value, QualityMetrics(self.args.metric))
             return f"{w}x{h}", metric_value, hint
 
@@ -275,6 +273,8 @@ class ImageAnalyzer:
                         Text(f"{chart_path}", style="underline blue")
                     )
                 except ImportError:
+                    from rich.console import Console
+                    from rich.text import Text
                     print(f"📊 График сохранен: {chart_path}")
 
         # Запись в репортеры
@@ -357,7 +357,7 @@ def process_file_for_analyzer(args_dict, file_path):
         file_path: Путь к файлу для анализа
     """
     try:
-        # Создаем анализатор из словаря аргументов
+        # Создаём анализатор из словаря аргументов
         args = argparse.Namespace(**args_dict)
         analyzer = ImageAnalyzer(args)
         return analyzer.analyze_file(file_path)
@@ -371,18 +371,25 @@ def postprocess_metric_value(metric_value, metric_type):
     """
     Method for postprocessing metric value.
     """
-    # Обрабатываем только PSNR
-    if QualityMetrics(metric_type) != QualityMetrics.PSNR:
-        return metric_value
-
     # Для словаря (поканальные метрики)
     if isinstance(metric_value, dict):
-        return {channel: float('inf') if value >= PSNR_IS_LARGE_AS_INF else value
-                for channel, value in metric_value.items()}
+        if QualityMetrics(metric_type) == QualityMetrics.PSNR:
+            return {channel: float('inf') if value >= PSNR_IS_LARGE_AS_INF else value
+                    for channel, value in metric_value.items()}
+        else:
+            # Клемпим значения в диапазон [0;1] для не-PSNR метрик
+            return {channel: max(0.0, min(1.0, value))
+                    for channel, value in metric_value.items()}
 
     # Для скалярного значения
     if isinstance(metric_value, (int, float, np.number)):
-        return float('inf') if metric_value >= PSNR_IS_LARGE_AS_INF else metric_value
+        if QualityMetrics(metric_type) == QualityMetrics.PSNR:
+            if metric_value >= PSNR_IS_LARGE_AS_INF:
+                return float('inf')
+            return metric_value
+        else:
+            # Клемпим значения в диапазон [0;1] для не-PSNR метрик
+            return max(0.0, min(1.0, metric_value))
 
     # Неверный тип данных
     raise TypeError(f"Ожидается число или словарь, получено: {type(metric_value).__name__}")
