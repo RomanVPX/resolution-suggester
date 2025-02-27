@@ -255,7 +255,7 @@ class ImageAnalyzer:
     def _report_results(self, file_path, results, meta):
         """Выводит и сохраняет результаты анализа."""
         # Вывод в консоль
-        ConsoleReporter.print_file_header(file_path)
+        ConsoleReporter.print_file_header(file_path, QualityMetrics(self.args.metric))
         if meta['max_val'] < 0.001:
             logging.warning(f"Низкое максимальное значение: {meta['max_val']:.3e}")
         ConsoleReporter.print_quality_table(

@@ -10,7 +10,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Final
 
-from colorama import Back, Fore, Style
 
 SUPPORTED_EXTENSIONS: Final = frozenset({'.exr', '.tga', '.png', '.jpg', '.jpeg'})
 CSV_SEPARATOR: Final = ';'
@@ -130,15 +129,16 @@ INTERPOLATION_METHOD_DEFAULT = InterpolationMethods.MITCHELL
 INTERPOLATION_METHOD_UPSCALE = InterpolationMethods.BICUBIC
 
 # === Styling for console output ===
-STYLES = {
-    'header': f"{Style.BRIGHT}{Fore.LIGHTCYAN_EX}{Back.LIGHTBLACK_EX}",
-    'warning': f"{Style.DIM}{Back.LIGHTYELLOW_EX}",
-    'original': Fore.CYAN,
-    'good': Fore.LIGHTGREEN_EX,
-    'ok': Fore.GREEN,
-    'medium': Fore.YELLOW,
-    'bad': Fore.RED,
+RICH_STYLES = {
+    'header': "bold cyan on grey35",
+    'original': "bold cyan",
+    'excellent': "bright_green",
+    'very_good': "green",
+    'good': "yellow",
+    'poor': "red",
+    'filename': "bold bright_cyan on black",
 }
+
 
 def get_output_csv_header(analyze_channels: bool, metric_type: QualityMetrics) -> list[str]:
     """
