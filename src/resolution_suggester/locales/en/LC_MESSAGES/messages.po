@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-27 00:02+0300\n"
+"POT-Creation-Date: 2025-02-27 04:00+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -49,13 +49,37 @@ msgstr "Bicubic interpolation"
 msgid "Mitchell-Netravali filter"
 msgstr "Mitchell-Netravali filter"
 
+#: src/resolution_suggester/core/image_loader.py:54
+msgid "File not found"
+msgstr "File not found"
+
+#: src/resolution_suggester/core/metrics.py:63
+msgid "MS-SSIM: unsupported images dimensions"
+msgstr "MS-SSIM: unsupported images dimensions"
+
+#: src/resolution_suggester/core/metrics.py:415
+msgid "SSIM: unsupported images dimensions"
+msgstr "SSIM: unsupported images dimensions"
+
+#: src/resolution_suggester/core/metrics.py:463
+msgid "calculate_metrics: The shapes of the images must match!"
+msgstr "calculate_metrics: The shapes of the images must match!"
+
+#: src/resolution_suggester/core/metrics.py:465
+msgid "calculate_metrics: The dimensions of the images must match!"
+msgstr "calculate_metrics: The dimensions of the images must match!"
+
+#: src/resolution_suggester/core/metrics.py:488
+msgid "Unsupported quality metric"
+msgstr "Unsupported quality metric"
+
 #: src/resolution_suggester/main.py:62
 msgid "Unexpected error"
 msgstr "Unexpected error"
 
-#: src/resolution_suggester/core/image_loader.py:54
-msgid "File not found"
-msgstr "File not found"
+#: src/resolution_suggester/ml/predictor.py:135
+msgid "Preprocessor is not loaded"
+msgstr "Preprocessor is not loaded"
 
 #: src/resolution_suggester/utils/cli.py:48
 #: src/resolution_suggester/utils/cli.py:122
@@ -161,7 +185,3 @@ msgstr "Available quality metrics"
 #: src/resolution_suggester/utils/cli.py:267
 msgid "Available interpolation methods"
 msgstr "Available interpolation methods"
-
-#: src/resolution_suggester/ml/predictor.py:135
-msgid "Preprocessor not loaded"
-msgstr "Preprocessor not loaded"

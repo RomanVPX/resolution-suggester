@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-27 00:02+0300\n"
+"POT-Creation-Date: 2025-02-27 04:00+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -49,13 +49,37 @@ msgstr "Бикубическая интерполяция"
 msgid "Mitchell-Netravali filter"
 msgstr "Фильтр Митчелла-Нетравали"
 
+#: src/resolution_suggester/core/image_loader.py:54
+msgid "File not found"
+msgstr "Файл не найден"
+
+#: src/resolution_suggester/core/metrics.py:63
+msgid "MS-SSIM: unsupported images dimensions"
+msgstr "Неподдерживаемая размерность изображения для MS-SSIM"
+
+#: src/resolution_suggester/core/metrics.py:415
+msgid "SSIM: unsupported images dimensions"
+msgstr "Неподдерживаемая размерность изображения для SSIM"
+
+#: src/resolution_suggester/core/metrics.py:463
+msgid "calculate_metrics: The shapes of the images must match!"
+msgstr "calculate_metrics: Размеры изображений должны совпадать!"
+
+#: src/resolution_suggester/core/metrics.py:465
+msgid "calculate_metrics: The dimensions of the images must match!"
+msgstr "calculate_metrics: Размерности изображений должны совпадать!"
+
+#: src/resolution_suggester/core/metrics.py:488
+msgid "Unsupported quality metric"
+msgstr "Метрика не поддерживается"
+
 #: src/resolution_suggester/main.py:62
 msgid "Unexpected error"
 msgstr "Непредвиденная ошибка"
 
-#: src/resolution_suggester/core/image_loader.py:54
-msgid "File not found"
-msgstr "Файл не найден"
+#: src/resolution_suggester/ml/predictor.py:135
+msgid "Preprocessor is not loaded"
+msgstr "Препроцессор не загружен"
 
 #: src/resolution_suggester/utils/cli.py:48
 #: src/resolution_suggester/utils/cli.py:122
@@ -68,7 +92,6 @@ msgstr "Показать эту справку и выйти"
 
 #: src/resolution_suggester/utils/cli.py:65
 #: src/resolution_suggester/utils/cli.py:238
-#, fuzzy
 msgid "Interface language (default: auto)"
 msgstr "Язык интерфейса (по умолчанию: автоопределение)"
 
@@ -90,7 +113,9 @@ msgstr "Экспорт результатов в JSON"
 
 #: src/resolution_suggester/utils/cli.py:171
 msgid "Minimum size (width and height) for analysis (default and minimum: "
-msgstr "Минимальный размер (по ширине и высоте) для анализа (по умолчанию и минимально: "
+msgstr ""
+"Минимальный размер (по ширине и высоте) для анализа (по умолчанию и "
+"минимально: "
 
 #: src/resolution_suggester/utils/cli.py:186
 msgid "Save downscale results produced during analysis\n"
@@ -108,7 +133,9 @@ msgstr "Сохранять результаты апскейла, произве
 
 #: src/resolution_suggester/utils/cli.py:200
 msgid "Save all image scaling results (downscale and upscale)\n"
-msgstr "Сохранять результаты все результаты масштабирования изображений (даунскейл и апскейл)\n"
+msgstr ""
+"Сохранять результаты все результаты масштабирования изображений (даунскейл и "
+"апскейл)\n"
 
 #: src/resolution_suggester/utils/cli.py:207
 msgid "Disable parallel processing and use single-threaded scheme"
@@ -138,8 +165,11 @@ msgstr ""
 
 #: src/resolution_suggester/utils/cli.py:244
 msgid ""
-"Number of parallel processes for file processing. Ignored with --no-parallel,\n"
-msgstr "Число параллельных процессов для обработки файлов. Игнорируется при --no-parallel,\n"
+"Number of parallel processes for file processing. Ignored with --no-"
+"parallel,\n"
+msgstr ""
+"Число параллельных процессов для обработки файлов. Игнорируется при --no-"
+"parallel,\n"
 
 #: src/resolution_suggester/utils/cli.py:245
 msgid "default is "
@@ -161,7 +191,3 @@ msgstr "Доступные метрики качества"
 #: src/resolution_suggester/utils/cli.py:267
 msgid "Available interpolation methods"
 msgstr "Доступные методы интерполяции"
-
-#: src/resolution_suggester/ml/predictor.py:135
-msgid "Preprocessor not loaded"
-msgstr "Препроцессор не загружен"

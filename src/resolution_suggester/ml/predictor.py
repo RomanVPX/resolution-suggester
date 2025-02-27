@@ -132,7 +132,7 @@ class QuickPredictor:
             {'psnr': value, 'ssim': value, 'ms_ssim': value, 'tdpr': value}
         """
         if self.preprocessor is None:
-            raise ValueError(_("Preprocessor not loaded"))
+            raise ValueError(_("Preprocessor is not loaded"))
         df = pd.DataFrame([features])
         processed = self.preprocessor.transform(df)
 

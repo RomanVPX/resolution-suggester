@@ -1,6 +1,7 @@
 # core/metrics.py
 import math
 
+from ..i18n import _
 import numpy as np
 import torch
 from numba import njit, prange
@@ -37,7 +38,7 @@ def calculate_ms_ssim_pytorch(
         no_gpu: bool = False
 ) -> float:
     """
-    Вычисляет MS-SSIM между двумя изображениями с использованием PyTorch.
+    Calculates MS-SSIM between two images using PyTorch.
     """
     # Инициализируем вычислитель для каждого вызова для очистки памяти
     # Нормализация изображения
@@ -59,7 +60,7 @@ def calculate_ms_ssim_pytorch(
         original = original[np.newaxis, :, :, :]  # (1, C, H, W)
         processed = processed[np.newaxis, :, :, :]
     else:
-        raise ValueError("Неподдерживаемая размерность изображений")
+        raise ValueError(_("MS-SSIM: unsupported images dimensions"))
 
     torch_device = device if not no_gpu else torch.device("cpu")
 
@@ -98,7 +99,7 @@ def calculate_ms_ssim_pytorch_channels(
         no_gpu: bool = False
 ) -> dict[str, float]:
     """
-    Вычисляет MS-SSIM для каждого канала отдельно (медленно).
+    Calculates MS-SSIM for each channel separately.
     """
     results = {}
     for i, ch in enumerate(channels):
@@ -141,7 +142,7 @@ def calculate_tdpr(
         dilation_size: int = 1
 ) -> float:
     """
-    Вычисляет коэффициент сохранения текстурных деталей (TDPR).
+    Calculates the texture detail preservation coefficient (TDPR).
     """
     # Обнаруживаем края на оригинальном изображении
     original_edges = detect_texture_edges(original, sigma=edge_sigma)
@@ -180,7 +181,7 @@ def calculate_tdpr_channels(
         edge_sigma: float = 1.0
 ) -> dict[str, float]:
     """
-    Вычисляет TDPR для каждого канала отдельно.
+    Calculates TDPR for each channel separately.
     """
     results = {}
 
@@ -205,14 +206,7 @@ def calculate_tdpr_channels(
 
 def detect_texture_edges(image: np.ndarray, sigma: float = 1.5) -> np.ndarray:
     """
-    Обнаруживает края на изображении, которые представляют текстурные детали.
-
-    Args:
-        image: Входное изображение
-        sigma: Параметр сглаживания для методов обнаружения краёв
-
-    Returns:
-        Бинарная маска краев
+    Detects edges in the image that represent textural details.
     """
     # Нормализуем изображение, если оно не в диапазоне [0, 1]
     if image.max() > 1.0 + TINY_EPSILON:
@@ -282,8 +276,8 @@ def gaussian_kernel_1d(size: int, sigma: float) -> np.ndarray:
 @njit(cache=True)
 def reflect_coordinate(x: int, size: int) -> int:
     """
-    Отражающее переотображение индекса x внутри [0..size-1]
-    (аналог OpenCV BORDER_REFLECT_101).
+    Reflective remapping of index x within [0..size-1]
+    (similar to OpenCV BORDER_REFLECT_101).
     """
     if x < 0:
         return -x - 1
@@ -295,8 +289,8 @@ def reflect_coordinate(x: int, size: int) -> int:
 @njit(parallel=True, cache=True)
 def convolve_1d_horiz(src: np.ndarray, kernel_1d: np.ndarray) -> np.ndarray:
     """
-    Горизонтальная 1D-свёртка изображения src (H,W).
-    Отражающий паддинг по горизонтали.
+    Horizontal 1D convolution of the image src (H,W).
+    Reflective padding horizontally.
     """
     h, w = src.shape
     ksize = kernel_1d.size
@@ -317,8 +311,8 @@ def convolve_1d_horiz(src: np.ndarray, kernel_1d: np.ndarray) -> np.ndarray:
 @njit(parallel=True, cache=True)
 def convolve_1d_vert(src: np.ndarray, kernel_1d: np.ndarray) -> np.ndarray:
     """
-    Вертикальная 1D-свёртка изображения src (H,W).
-    Отражающий паддинг по вертикали.
+    Horizontal 1D convolution of the image src (H,W).
+    Reflective padding vertically.
     """
     h, w = src.shape
     ksize = kernel_1d.size
@@ -338,10 +332,10 @@ def convolve_1d_vert(src: np.ndarray, kernel_1d: np.ndarray) -> np.ndarray:
 
 def filter_2d_separable(img: np.ndarray, size: int, sigma: float) -> np.ndarray:
     """
-    Разделяемая свёртка Гаусса для (H,W) или (H,W,C).
-    1) Генерируем 1D ядро kernel_1d.
-    2) Горизонтальная свёртка.
-    3) Вертикальная свёртка.
+    Separable Gaussian Convolution for (H,W) or (H,W,C).
+    1) Generate a 1D kernel kernel_1d.
+    2) Horizontal convolution.
+    3) Vertical convolution.
     """
     # Создаём 1D ядро Гаусса
     kernel_1d = gaussian_kernel_1d(size, sigma)
@@ -418,7 +412,7 @@ def calculate_ssim_gauss(
             )
         return ssim_sum / c
 
-    raise ValueError("Неподдерживаемая размерность изображения для SSIM")
+    raise ValueError(_("SSIM: unsupported images dimensions"))
 
 
 def calculate_ssim_gauss_channels(
@@ -466,9 +460,9 @@ def calculate_metrics(
 ) -> None | dict[str, float] | float:
 
     if original.shape != processed.shape:
-        raise ValueError("calculate_metrics: размеры изображений должны совпадать!")
+        raise ValueError(_("calculate_metrics: The shapes of the images must match!"))
     if original.ndim != processed.ndim:
-        raise ValueError("calculate_metrics: размерности изображений должны совпадать!")
+        raise ValueError(_("calculate_metrics: The dimensions of the images must match!"))
 
     if channels is None:
         match quality_metric:
@@ -491,7 +485,7 @@ def calculate_metrics(
             case QualityMetrics.TDPR:
                 return calculate_tdpr_channels(original, processed, channels)
 
-    raise ValueError(f"Неподдерживаемая метрика: {quality_metric}")
+    raise ValueError(f"{_('Unsupported quality metric')}: {quality_metric}")
 
 
 def compute_resolutions(
