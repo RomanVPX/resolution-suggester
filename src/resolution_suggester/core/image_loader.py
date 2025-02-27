@@ -1,4 +1,5 @@
 # core/image_loader.py
+from ..i18n import _
 import logging
 import os
 from dataclasses import dataclass
@@ -50,7 +51,7 @@ def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
     try:
         # Existence check
         if not os.path.exists(file_path):
-            return ImageLoadResult(None, None, None, f"Файл не найден: {file_path}")
+            return ImageLoadResult(None, None, None, f"{_('File not found')}: {file_path}")
 
         ext = os.path.splitext(file_path)[1].lower()
 

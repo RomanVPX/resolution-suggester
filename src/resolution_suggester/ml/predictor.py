@@ -1,4 +1,5 @@
 # ml/predictor.py
+from ..i18n import _
 import logging
 import os
 from pathlib import Path
@@ -131,7 +132,7 @@ class QuickPredictor:
             {'psnr': value, 'ssim': value, 'ms_ssim': value, 'tdpr': value}
         """
         if self.preprocessor is None:
-            raise ValueError("Preprocessor не загружен.")
+            raise ValueError(_("Preprocessor not loaded"))
         df = pd.DataFrame([features])
         processed = self.preprocessor.transform(df)
 

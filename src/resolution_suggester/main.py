@@ -19,6 +19,8 @@ from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd
+
+from .i18n import _
 from PIL import Image
 from tqdm import tqdm
 
@@ -49,7 +51,17 @@ from .utils.reporters import (
 
 def main() -> None:
     setup_logging()
-    args = parse_arguments()
+
+    try:
+        args = parse_arguments()
+        # ... остальной код ...
+    except SystemExit:
+        # Перехватываем выход из программы при показе справки
+        sys.exit(0)
+    except Exception as e:
+        logging.error(f"{_('Unexpected error')}: {str(e)}")
+        sys.exit(1)
+
     try:
         files = validate_paths(args.paths)
     except ValueError as e:

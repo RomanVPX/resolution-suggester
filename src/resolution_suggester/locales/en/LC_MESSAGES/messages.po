@@ -1,0 +1,167 @@
+msgid ""
+msgstr ""
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-02-27 00:02+0300\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/resolution_suggester/config.py:52
+msgid "excellent"
+msgstr "Excellent quality"
+
+#: src/resolution_suggester/config.py:53
+msgid "very_good"
+msgstr "Very good quality"
+
+#: src/resolution_suggester/config.py:54
+msgid "good"
+msgstr "Good quality"
+
+#: src/resolution_suggester/config.py:55
+msgid "noticeable_loss"
+msgstr "Noticeable quality loss"
+
+#: src/resolution_suggester/config.py:70
+msgid "Peak Signal-to-Noise Ratio"
+msgstr "Peak Signal-to-Noise Ratio"
+
+#: src/resolution_suggester/config.py:71
+msgid "Structural Similarity Index"
+msgstr "Structural similarity index"
+
+#: src/resolution_suggester/config.py:72
+msgid "Multi-Scale Structural Similarity Index"
+msgstr "Multi-scale structural similarity index"
+
+#: src/resolution_suggester/config.py:73
+msgid "Texture Detail Preservation Ratio"
+msgstr "Texture detail preservation ratio"
+
+#: src/resolution_suggester/config.py:124
+msgid "Bilinear interpolation"
+msgstr "Bilinear interpolation"
+
+#: src/resolution_suggester/config.py:125
+msgid "Bicubic interpolation"
+msgstr "Bicubic interpolation"
+
+#: src/resolution_suggester/config.py:126
+msgid "Mitchell-Netravali filter"
+msgstr "Mitchell-Netravali filter"
+
+#: src/resolution_suggester/main.py:62
+msgid "Unexpected error"
+msgstr "Unexpected error"
+
+#: src/resolution_suggester/core/image_loader.py:54
+msgid "File not found"
+msgstr "File not found"
+
+#: src/resolution_suggester/utils/cli.py:48
+#: src/resolution_suggester/utils/cli.py:122
+msgid "Texture quality analysis tool"
+msgstr "Texture quality analysis tool"
+
+#: src/resolution_suggester/utils/cli.py:57
+msgid "Show this help message and exit"
+msgstr "Show this help message and exit"
+
+#: src/resolution_suggester/utils/cli.py:65
+#: src/resolution_suggester/utils/cli.py:238
+msgid "Interface language (default: auto)"
+msgstr "Interface language (default: auto)"
+
+#: src/resolution_suggester/utils/cli.py:129
+msgid "Paths to files/directories for analysis"
+msgstr "Paths to files/directories for analysis"
+
+#: src/resolution_suggester/utils/cli.py:135
+msgid "Analysis by color channels"
+msgstr "Analysis by color channels"
+
+#: src/resolution_suggester/utils/cli.py:141
+msgid "Export results to CSV"
+msgstr "Export results to CSV"
+
+#: src/resolution_suggester/utils/cli.py:147
+msgid "Export results to JSON"
+msgstr "Export results to JSON"
+
+#: src/resolution_suggester/utils/cli.py:171
+msgid "Minimum size (width and height) for analysis (default and minimum: "
+msgstr "Minimum size (width and height) for analysis (default and minimum: "
+
+#: src/resolution_suggester/utils/cli.py:186
+msgid "Save downscale results produced during analysis\n"
+msgstr "Save downscale results produced during analysis\n"
+
+#: src/resolution_suggester/utils/cli.py:187
+#: src/resolution_suggester/utils/cli.py:194
+#: src/resolution_suggester/utils/cli.py:201
+msgid "(does not work with --ml, --train-ml and --generate-dataset)"
+msgstr "(does not work with --ml, --train-ml and --generate-dataset)"
+
+#: src/resolution_suggester/utils/cli.py:193
+msgid "Save upscale results produced after downscale\n"
+msgstr "Save upscale results produced after downscale\n"
+
+#: src/resolution_suggester/utils/cli.py:200
+msgid "Save all image scaling results (downscale and upscale)\n"
+msgstr "Save all image scaling results (downscale and upscale)\n"
+
+#: src/resolution_suggester/utils/cli.py:207
+msgid "Disable parallel processing and use single-threaded scheme"
+msgstr "Disable parallel processing and use single-threaded scheme"
+
+#: src/resolution_suggester/utils/cli.py:213
+msgid ""
+"Do not use GPU for metrics calculation (in case of problems with CUDA, MPS, "
+"etc. in PyTorch)"
+msgstr ""
+"Do not use GPU for metrics calculation (in case of problems with CUDA, MPS, "
+"etc. in PyTorch)"
+
+#: src/resolution_suggester/utils/cli.py:219
+msgid "Generate dataset (features/targets) for model training"
+msgstr "Generate dataset (features/targets) for model training"
+
+#: src/resolution_suggester/utils/cli.py:225
+msgid "Train ML model after dataset generation"
+msgstr "Train ML model after dataset generation"
+
+#: src/resolution_suggester/utils/cli.py:231
+msgid "Use ML model to predict metrics instead of real calculation (fast)"
+msgstr "Use ML model to predict metrics instead of real calculation (fast)"
+
+#: src/resolution_suggester/utils/cli.py:244
+msgid ""
+"Number of parallel processes for file processing. Ignored with --no-"
+"parallel,\n"
+msgstr ""
+"Number of parallel processes for file processing. Ignored with --no-"
+"parallel,\n"
+
+#: src/resolution_suggester/utils/cli.py:245
+msgid "default is "
+msgstr "default is "
+
+#: src/resolution_suggester/utils/cli.py:246
+msgid "logical processor cores detected: "
+msgstr "logical processor cores detected: "
+
+#: src/resolution_suggester/utils/cli.py:254
+#: src/resolution_suggester/utils/cli.py:264
+msgid "default"
+msgstr "default"
+
+#: src/resolution_suggester/utils/cli.py:257
+msgid "Available quality metrics"
+msgstr "Available quality metrics"
+
+#: src/resolution_suggester/utils/cli.py:267
+msgid "Available interpolation methods"
+msgstr "Available interpolation methods"
+
+#: src/resolution_suggester/ml/predictor.py:135
+msgid "Preprocessor not loaded"
+msgstr "Preprocessor not loaded"
