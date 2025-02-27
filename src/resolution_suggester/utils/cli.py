@@ -142,9 +142,15 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        '--json-output',
+        '-j', '--json-output',
         action='store_true',
         help=_('Export results to JSON')
+    )
+
+    parser.add_argument(
+        '--chart',
+        action='store_true',
+        help=_('Generate quality vs. resolution charts')
     )
 
     parser.add_argument(

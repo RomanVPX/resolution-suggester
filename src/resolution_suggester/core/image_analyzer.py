@@ -263,6 +263,20 @@ class ImageAnalyzer:
             QualityMetrics(self.args.metric)
         )
 
+        # Создаем график, если нужно
+        if hasattr(self.args, 'chart') and self.args.chart:
+            chart_path = self.generate_chart(file_path, results, meta)
+            if chart_path:
+                try:
+                    from rich.console import Console
+                    from rich.text import Text
+                    Console().print(
+                        Text("📊 График сохранен: ", style="bold green") +
+                        Text(f"{chart_path}", style="underline blue")
+                    )
+                except ImportError:
+                    print(f"📊 График сохранен: {chart_path}")
+
         # Запись в репортеры
         for rep in self.reporters:
             rep.write_results(os.path.basename(file_path), results, self.args.channels)
@@ -288,6 +302,50 @@ class ImageAnalyzer:
 
         pil_img = Image.fromarray(arr_uint8)
         pil_img.save(output_path, format="PNG", optimize=True)
+
+
+    def generate_chart(self, file_path: str, results: list, meta: dict) -> Optional[str]:
+        """
+        Генерирует график зависимости качества от разрешения.
+
+        Args:
+            file_path: Путь к файлу изображения
+            results: Результаты анализа качества
+            meta: Метаданные изображения
+
+        Returns:
+            Путь к созданному графику или None
+        """
+        if not self.args.chart:
+            return None
+
+        try:
+            from ..utils.visualization import generate_quality_chart, get_chart_filename
+
+            file_basename = os.path.basename(file_path)
+            chart_path = get_chart_filename(
+                os.path.splitext(file_basename)[0],
+                QualityMetrics(self.args.metric),
+                self.args.channels
+            )
+
+            title = f"Качество ({self.args.metric.upper()}) в зависимости от разрешения\n{file_basename}"
+
+            chart_file = generate_quality_chart(
+                results,
+                chart_path,
+                title=title,
+                metric_type=QualityMetrics(self.args.metric),
+                analyze_channels=self.args.channels,
+                channels=meta.get('channels')
+            )
+
+            logging.debug(f"График сохранен: {chart_file}")
+            return chart_file
+        except Exception as e:
+            logging.error(f"Ошибка при создании графика: {e}")
+            logging.debug("Детали:", exc_info=True)
+            return None
 
 
 def process_file_for_analyzer(args_dict, file_path):

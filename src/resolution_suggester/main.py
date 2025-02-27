@@ -104,6 +104,18 @@ def run_image_analysis(files: list[str], args: argparse.Namespace) -> None:
     """Запускает анализ изображений с настройкой репортеров."""
     reporters, output_paths = setup_reporters(args)
 
+    if getattr(args, 'chart', False):
+        try:
+            import matplotlib
+            matplotlib.use('Agg')  # Не-интерактивный бэкенд
+            logging.info("Включена генерация графиков")
+        except ImportError:
+            logging.error(
+                "Не удалось импортировать matplotlib. "
+                "Установите его командой: pip install matplotlib"
+            )
+            args.chart = False
+
     try:
         analyzer = ImageAnalyzer(args, reporters)
         analyzer.analyze_files(files)
@@ -113,7 +125,7 @@ def run_image_analysis(files: list[str], args: argparse.Namespace) -> None:
     if 'csv' in output_paths:
         print(f"\nМетрики (CSV) сохранены в: {output_paths['csv']}")
     if 'json' in output_paths:
-        print(f"\nМетрики (JSON) сохранены в: {output_paths['json']}\n")
+        print(f"\nМетрики (JSON) сохранены в: {output_paths['json']}")
 
 
 def setup_reporters(args: argparse.Namespace) -> tuple[list[IReporter], dict[str, str]]:
