@@ -379,10 +379,10 @@ def generate_quality_chart(
 
     # Get quality thresholds to display
     quality_levels = [
-        (QualityLevelHints.EXCELLENT, _("Excellent")),
-        (QualityLevelHints.VERY_GOOD, _("Very Good")),
-        (QualityLevelHints.GOOD, _("Good")),
-        (QualityLevelHints.NOTICEABLE_LOSS, _("Noticeable Loss")),
+        (QualityLevelHints.EXCELLENT, _("excellent")),
+        (QualityLevelHints.VERY_GOOD, _("very_good")),
+        (QualityLevelHints.GOOD, _("good")),
+        (QualityLevelHints.NOTICEABLE_LOSS, _("noticeable_loss")),
     ]
 
     # Track which thresholds are visible in the chart
