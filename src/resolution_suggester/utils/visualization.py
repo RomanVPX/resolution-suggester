@@ -43,7 +43,7 @@ THEMES = {
         'marker_edge': 'black'
     },
     'dark': {
-        'figure_bg': '#1e1e1e',
+        'figure_bg': '#1E1E1E66',
         'axes_bg': '#2d2d2d',
         'text': '#e0e0e0',
         'grid': '#555555',
@@ -710,21 +710,7 @@ def _set_labels_and_title(ax: Axes, title: str, metric_type: QualityMetrics, the
 def _save_chart(fig: Figure, output_path: str, theme_settings: Dict) -> str:
     """Save the chart to file with appropriate settings for theme."""
     plt.tight_layout()
-
     # For dark theme, ensure we use the right background color
     plt.savefig(output_path, dpi=96, bbox_inches='tight', facecolor=theme_settings['figure_bg'])
     plt.close(fig)
     return output_path
-
-# def _save_chart(fig: Figure, output_path: str, theme_settings: Dict) -> str:
-#     """Save the chart to file with appropriate settings for theme."""
-#     plt.tight_layout()
-#
-#     # For dark theme, ensure transparent background for png
-#     if output_path.lower().endswith('.png') and theme_settings['figure_bg'].startswith('#1'):
-#         plt.savefig(output_path, dpi=96, bbox_inches='tight', facecolor=theme_settings['figure_bg'], transparent=True)
-#     else:
-#         plt.savefig(output_path, dpi=96, bbox_inches='tight', facecolor=theme_settings['figure_bg'])
-#
-#     plt.close(fig)
-#     return output_path
