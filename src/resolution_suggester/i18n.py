@@ -51,7 +51,7 @@ def setup_localization(force_lang: Optional[str] = None) -> callable:
             lang_code = cmd_lang
         else:
             try:
-                system_locale, encoding = locale.getdefaultlocale()
+                system_locale = locale.getlocale()
                 if system_locale is None:
                     system_locale = 'en_US'
 

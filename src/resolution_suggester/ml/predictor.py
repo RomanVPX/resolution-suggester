@@ -4,6 +4,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Any, Dict
+from functools import lru_cache
 
 import joblib
 import numpy as np
@@ -68,13 +69,12 @@ class QuickPredictor:
         df_targets = pd.read_csv(targets_csv)
 
         # Замена бесконечных значений на большое число (для PSNR)
-        df_targets.replace(np.inf, PSNR_IS_LARGE_AS_INF + 1.0, inplace=True)
+        df_targets.replace(np.inf, PSNR_IS_LARGE_AS_INF, inplace=True)
 
         preprocessor = self._get_preprocessor()
         x_processed = preprocessor.fit_transform(df_features)
 
         # Удаление строк с бесконечными значениями
-        # Удалить? Бесконечности всё равно приводятся к (PSNR_IS_LARGE_AS_INF + 1.0) в calculate_psnr()
         y = df_targets.to_numpy()
         mask = np.isfinite(y).all(axis=1)
         if not mask.all():
@@ -125,58 +125,119 @@ class QuickPredictor:
 
     def predict(self, features: Dict[str, Any]) -> Dict[str, float]:
         """
-        Предсказывает метрики на одном примере (словарь).
-        Если режим установлен в True (анализ по каналам), возвращает:
-            {'psnr_R': value, 'psnr_G': value, ..., 'min_psnr': value, ...}
-        Иначе – возвращает общий результат:
-            {'psnr': value, 'ssim': value, 'ms_ssim': value, 'tdpr': value}
+        Predicts metrics using models.
+        Returns dictionary with keys corresponding to metrics (from config.QualityMetrics)
         """
-        if self.preprocessor is None:
-            raise ValueError(_("Preprocessor not loaded"))
-        df = pd.DataFrame([features])
-        processed = self.preprocessor.transform(df)
+        try:
+            if self.preprocessor is None:
+                raise ValueError(_("Preprocessor is not loaded"))
+            df = pd.DataFrame([features])
+            processed = self.preprocessor.transform(df)
+            if self.mode:  # channels
+                if self.channels_model is None:
+                    raise ValueError(_("Channel model is not loaded"))
+                pred = self.channels_model.predict(processed)[0]
+                return {metric: val for metric, val in zip(QualityMetrics, pred)}
+            else:
+                if self.combined_model is None:
+                    raise ValueError(_("Combined model is not loaded"))
+                pred = self.combined_model.predict(processed)[0]
+                return {
+                    'psnr': pred[0],
+                    'ssim': pred[1],
+                    'ms_ssim': pred[2],
+                    'tdpr': pred[3]
+                }
+        except Exception as e:
+            logging.error(f"Ошибка при предсказании: {e}")
+            logging.debug(f"Размерность входных данных: {processed.shape}, ключи признаков: {list(features.keys())}")
+            return {m.value: 0.0 for m in QualityMetrics}
 
-        if self.mode:  # channels
-            if self.channels_model is None:
-                raise ValueError("Модель для анализа по каналам не загружена.")
-            pred = self.channels_model.predict(processed)[0]
-            # Возвращаем словарь, где ключи - названия метрик, значения - предсказанные значения.
-            return {metric: val for metric, val in zip(QualityMetrics, pred)}
-        else:
-            if self.combined_model is None:
-                raise ValueError("Модель для общего анализа не загружена.")
-            pred = self.combined_model.predict(processed)[0]
-            return {
-                'psnr': pred[0],
-                'ssim': pred[1],
-                'ms_ssim': pred[2],
-                'tdpr': pred[3]
-            }
+
+@lru_cache(maxsize=32)
+def calculate_wavelet_features(img_bytes, height, width):
+    """
+    Кэшированное вычисление вейвлет-признаков.
+
+    Args:
+        img_bytes: Байтовое представление изображения
+        height, width: Размеры изображения
+
+    Returns:
+        Энергия вейвлет-преобразования
+    """
+    # Восстанавливаем массив из байтов
+    img = np.frombuffer(img_bytes, dtype=np.float32).reshape(height, width)
+
+    # Вычисляем вейвлет-коэффициенты
+    coefficients = pywt.dwt2(img, 'haar')
+    c_a, (c_h, c_v, c_d) = coefficients
+    wavelet_energy = np.sum(c_a ** 2 + c_h ** 2 + c_v ** 2 + c_d ** 2) / img.size
+
+    return wavelet_energy
+
+
+@lru_cache(maxsize=32)
+def calculate_glcm_features(img_bytes, height, width):
+    """
+    Кэшированное вычисление GLCM-признаков.
+
+    Args:
+        img_bytes: Байтовое представление изображения
+        height, width: Размеры изображения
+
+    Returns:
+        Кортеж GLCM-признаков (контраст, энергия)
+    """
+    # Восстанавливаем массив из байтов
+    img = np.frombuffer(img_bytes, dtype=np.float32).reshape(height, width)
+
+    # Преобразуем для GLCM (требуется uint8)
+    img_uint8 = (img * 255).astype(np.uint8)
+
+    # Вычисляем GLCM-матрицу и признаки
+    glcm = graycomatrix(img_uint8,
+                        distances=[1],
+                        angles=[0],
+                        symmetric=True,
+                        normed=True)
+    contrast = graycoprops(glcm, 'contrast')[0, 0]
+    energy = graycoprops(glcm, 'energy')[0, 0]
+
+    return contrast, energy
 
 
 def extract_features_of_original_img(img: np.ndarray) -> dict:
-    """Извлекает признаки из 2D-изображения (канала)."""
+    """
+    Извлекает признаки из изображения с использованием кэширования для тяжелых вычислений.
+
+    Args:
+        img: Изображение как numpy массив
+
+    Returns:
+        Словарь признаков
+    """
+    # Приводим к формату 2D-изображения (канала)
     if img.ndim == 3:
         img = np.mean(img, axis=2)
 
     if img.ndim != 2:
         raise ValueError("extract_features_of_original_img: входное изображение должно быть 2D (канал)")
 
-    # Статистические признаки
-    features = {'contrast': float(np.std(img)), 'variance': float(np.var(img)), 'entropy': shannon_entropy(img)}
+    # Убеждаемся, что данные имеют правильный тип для корректной сериализации
+    img = img.astype(np.float32)
 
-    # Вейвлет-признаки (Haar)
-    coefficients = pywt.dwt2(img, 'haar')
-    c_a, (c_h, c_v, c_d) = coefficients
-    features['wavelet_energy'] = np.sum(c_a**2 + c_h**2 + c_v**2 + c_d**2) / img.size
+    # Подготавливаем изображение для кэширования
+    img_bytes = np.ascontiguousarray(img).tobytes()
+    height, width = img.shape
 
-    # GLCM-признаки
-    glcm = graycomatrix((img * 255).astype(np.uint8),
-                        distances=[1],
-                        angles=[0],
-                        symmetric=True,
-                        normed=True)
-    features['glcm_contrast'] = graycoprops(glcm, 'contrast')[0, 0]
-    features['glcm_energy']   = graycoprops(glcm, 'energy')[0, 0]
+    # Статистические признаки (вычисляются быстро, не кэшируем)
+    features = {'contrast': float(np.std(img)), 'variance': float(np.var(img)), 'entropy': shannon_entropy(img),
+                'wavelet_energy': calculate_wavelet_features(img_bytes, height, width)}
+
+    # Кэшированные GLCM-признаки
+    glcm_contrast, glcm_energy = calculate_glcm_features(img_bytes, height, width)
+    features['glcm_contrast'] = glcm_contrast
+    features['glcm_energy'] = glcm_energy
 
     return features

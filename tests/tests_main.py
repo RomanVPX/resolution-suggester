@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 
 from resolution_suggester.config import PSNR_IS_LARGE_AS_INF, QualityMetrics
-from resolution_suggester.main import postprocess_metric_value
+from resolution_suggester.core.image_analyzer import postprocess_metric_value
 
 
 @pytest.mark.parametrize("value, metric_type, expected", [
@@ -19,9 +19,13 @@ from resolution_suggester.main import postprocess_metric_value
     (0.0, QualityMetrics.PSNR, 0.0),
     (-1.0, QualityMetrics.PSNR, -1.0),
 
-    # Testing other metrics (should return input values without changes)
-    (PSNR_IS_LARGE_AS_INF + 1, QualityMetrics.SSIM, PSNR_IS_LARGE_AS_INF + 1),
-    (PSNR_IS_LARGE_AS_INF, QualityMetrics.MS_SSIM, PSNR_IS_LARGE_AS_INF),
+    # Testing other metrics (should clamp to [0;1]])
+    (100, QualityMetrics.SSIM, 1.0),
+    (0.99, QualityMetrics.MS_SSIM, 0.99),
+    (-0.343, QualityMetrics.MS_SSIM, 0.0),
+    (1.0, QualityMetrics.MS_SSIM, 1.0),
+    (0.0, QualityMetrics.MS_SSIM, 0.0),
+    (-0.0, QualityMetrics.MS_SSIM, 0.0),
 ])
 def test_postprocess_metric_value_scalar(value, metric_type, expected):
     """Test postprocess_metric_value with scalar values"""
@@ -57,6 +61,10 @@ def test_postprocess_metric_value_dict():
     result_ssim = postprocess_metric_value(metrics_ssim, QualityMetrics.SSIM)
     assert result_ssim == metrics_ssim  # Должен вернуться без изменений
 
+    # Словарь для SSIM
+    metrics_ssim = {'R': 1.001, 'G': 0.98, 'B': 0.99}
+    result_ssim = postprocess_metric_value(metrics_ssim, QualityMetrics.SSIM)
+    assert result_ssim == {'R': 1.00, 'G': 0.98, 'B': 0.99}  # Должен клемпнуть
 
 def test_postprocess_metric_value_nan():
     """Test handling of NaN values"""

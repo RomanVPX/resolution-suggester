@@ -1,61 +1,206 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-27 00:02+0300\n"
+"POT-Creation-Date: 2025-02-28 04:25+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #: src/resolution_suggester/config.py:52
+msgid "original"
+msgstr "Original"
+
+#: src/resolution_suggester/config.py:53
+#: src/resolution_suggester/utils/visualization.py:537
+#: src/resolution_suggester/utils/visualization.py:589
 msgid "excellent"
 msgstr "Excellent quality"
 
-#: src/resolution_suggester/config.py:53
+#: src/resolution_suggester/config.py:54
+#: src/resolution_suggester/utils/visualization.py:538
+#: src/resolution_suggester/utils/visualization.py:590
 msgid "very_good"
 msgstr "Very good quality"
 
-#: src/resolution_suggester/config.py:54
+#: src/resolution_suggester/config.py:55
+#: src/resolution_suggester/utils/visualization.py:539
+#: src/resolution_suggester/utils/visualization.py:591
 msgid "good"
 msgstr "Good quality"
 
-#: src/resolution_suggester/config.py:55
+#: src/resolution_suggester/config.py:56
+#: src/resolution_suggester/utils/visualization.py:540
+#: src/resolution_suggester/utils/visualization.py:592
 msgid "noticeable_loss"
 msgstr "Noticeable quality loss"
 
-#: src/resolution_suggester/config.py:70
+#: src/resolution_suggester/config.py:71
 msgid "Peak Signal-to-Noise Ratio"
 msgstr "Peak Signal-to-Noise Ratio"
 
-#: src/resolution_suggester/config.py:71
+#: src/resolution_suggester/config.py:72
 msgid "Structural Similarity Index"
 msgstr "Structural similarity index"
 
-#: src/resolution_suggester/config.py:72
+#: src/resolution_suggester/config.py:73
 msgid "Multi-Scale Structural Similarity Index"
 msgstr "Multi-scale structural similarity index"
 
-#: src/resolution_suggester/config.py:73
+#: src/resolution_suggester/config.py:74
 msgid "Texture Detail Preservation Ratio"
 msgstr "Texture detail preservation ratio"
 
-#: src/resolution_suggester/config.py:124
+#: src/resolution_suggester/config.py:129
 msgid "Bilinear interpolation"
 msgstr "Bilinear interpolation"
 
-#: src/resolution_suggester/config.py:125
+#: src/resolution_suggester/config.py:130
 msgid "Bicubic interpolation"
 msgstr "Bicubic interpolation"
 
-#: src/resolution_suggester/config.py:126
+#: src/resolution_suggester/config.py:131
 msgid "Mitchell-Netravali filter"
 msgstr "Mitchell-Netravali filter"
 
-#: src/resolution_suggester/main.py:62
-msgid "Unexpected error"
-msgstr "Unexpected error"
+#: src/resolution_suggester/config.py:160
+msgid "File"
+msgstr "File"
+
+#: src/resolution_suggester/config.py:160
+#: src/resolution_suggester/utils/reporting.py:87
+#: src/resolution_suggester/utils/reporting.py:165
+#: src/resolution_suggester/utils/visualization.py:626
+msgid "Resolution"
+msgstr "Resolution"
+
+#: src/resolution_suggester/core/image_analyzer.py:63
+msgid "ML model not found, the actual metrics will be calculated."
+msgstr "ML model not found, the actual metrics will be calculated."
+
+#: src/resolution_suggester/core/image_analyzer.py:275
+#: src/resolution_suggester/core/image_analyzer.py:281
+#: src/resolution_suggester/core/image_analyzer.py:346
+msgid "Graph saved"
+msgstr "Graph saved"
+
+#: src/resolution_suggester/core/image_analyzer.py:335
+#: src/resolution_suggester/utils/reporting.py:91
+#: src/resolution_suggester/utils/reporting.py:167
+msgid "Quality"
+msgstr "Quality"
+
+#: src/resolution_suggester/core/image_analyzer.py:335
+msgid "depending on the resolution"
+msgstr "depending on the resolution"
+
+#: src/resolution_suggester/core/image_analyzer.py:349
+msgid "Error when generating chart"
+msgstr "Error when generating chart"
+
+#: src/resolution_suggester/core/image_analyzer.py:368
+#: src/resolution_suggester/main.py:307
+msgid "Error when processing file"
+msgstr "Error when processing file"
 
 #: src/resolution_suggester/core/image_loader.py:54
 msgid "File not found"
 msgstr "File not found"
+
+#: src/resolution_suggester/core/metrics.py:98
+msgid "MS-SSIM: unsupported images dimensions"
+msgstr "MS-SSIM: unsupported images dimensions"
+
+#: src/resolution_suggester/core/metrics.py:448
+msgid "SSIM: unsupported images dimensions"
+msgstr "SSIM: unsupported images dimensions"
+
+#: src/resolution_suggester/core/metrics.py:496
+msgid "calculate_metrics: The shapes of the images must match!"
+msgstr "calculate_metrics: The shapes of the images must match!"
+
+#: src/resolution_suggester/core/metrics.py:498
+msgid "calculate_metrics: The dimensions of the images must match!"
+msgstr "calculate_metrics: The dimensions of the images must match!"
+
+#: src/resolution_suggester/core/metrics.py:521
+msgid "Unsupported quality metric"
+msgstr "Unsupported quality metric"
+
+#: src/resolution_suggester/main.py:66
+msgid "Unexpected error"
+msgstr "Unexpected error"
+
+#: src/resolution_suggester/main.py:79
+msgid "Error parsing arguments"
+msgstr "Error parsing arguments"
+
+#: src/resolution_suggester/main.py:95
+msgid "Dataset generated"
+msgstr "Dataset generated"
+
+#: src/resolution_suggester/main.py:100
+msgid "Model trained!"
+msgstr "Model trained!"
+
+#: src/resolution_suggester/main.py:111
+msgid "Chart generation enabled"
+msgstr "Chart generation enabled"
+
+#: src/resolution_suggester/main.py:114
+msgid "Failed to import matplotlib."
+msgstr ""
+"Failed to import matplotlib. Install it with command: pip install matplotlib"
+
+#: src/resolution_suggester/main.py:124
+msgid "Metrics(CSV) saved to"
+msgstr "Metrics(CSV) saved to"
+
+#: src/resolution_suggester/main.py:126
+msgid "Metrics(JSON) saved to"
+msgstr "Metrics(JSON) saved to"
+
+#: src/resolution_suggester/main.py:141
+msgid "CSV output enabled, file"
+msgstr "CSV output enabled, file"
+
+#: src/resolution_suggester/main.py:149
+msgid "JSON output enabled, file"
+msgstr "JSON output enabled, file"
+
+#: src/resolution_suggester/main.py:160
+msgid "Error when closing reporter"
+msgstr "Error when closing reporter"
+
+#: src/resolution_suggester/main.py:184
+msgid "Skipping"
+msgstr "Skipping"
+
+#: src/resolution_suggester/main.py:184
+msgid "because failed to load"
+msgstr "because failed to load"
+
+#: src/resolution_suggester/main.py:201
+msgid "Error when selecting interpolation function for"
+msgstr "Error when selecting interpolation function for"
+
+#: src/resolution_suggester/main.py:301
+msgid "Creating dataset"
+msgstr "Creating dataset"
+
+#: src/resolution_suggester/main.py:313 src/resolution_suggester/main.py:319
+msgid "No data to save in"
+msgstr "No data to save in"
+
+#: src/resolution_suggester/ml/predictor.py:134
+msgid "Preprocessor is not loaded"
+msgstr "Preprocessor is not loaded"
+
+#: src/resolution_suggester/ml/predictor.py:139
+msgid "Channel model is not loaded"
+msgstr "Channel model is not loaded"
+
+#: src/resolution_suggester/ml/predictor.py:144
+msgid "Combined model is not loaded"
+msgstr "Combined model is not loaded"
 
 #: src/resolution_suggester/utils/cli.py:48
 #: src/resolution_suggester/utils/cli.py:122
@@ -67,7 +212,7 @@ msgid "Show this help message and exit"
 msgstr "Show this help message and exit"
 
 #: src/resolution_suggester/utils/cli.py:65
-#: src/resolution_suggester/utils/cli.py:238
+#: src/resolution_suggester/utils/cli.py:136
 msgid "Interface language (default: auto)"
 msgstr "Interface language (default: auto)"
 
@@ -75,45 +220,49 @@ msgstr "Interface language (default: auto)"
 msgid "Paths to files/directories for analysis"
 msgstr "Paths to files/directories for analysis"
 
-#: src/resolution_suggester/utils/cli.py:135
+#: src/resolution_suggester/utils/cli.py:142
 msgid "Analysis by color channels"
 msgstr "Analysis by color channels"
 
-#: src/resolution_suggester/utils/cli.py:141
+#: src/resolution_suggester/utils/cli.py:148
 msgid "Export results to CSV"
 msgstr "Export results to CSV"
 
-#: src/resolution_suggester/utils/cli.py:147
+#: src/resolution_suggester/utils/cli.py:154
 msgid "Export results to JSON"
 msgstr "Export results to JSON"
 
-#: src/resolution_suggester/utils/cli.py:171
+#: src/resolution_suggester/utils/cli.py:160
+msgid "Generate quality vs. resolution charts"
+msgstr "Generate quality vs. resolution charts"
+
+#: src/resolution_suggester/utils/cli.py:184
 msgid "Minimum size (width and height) for analysis (default and minimum: "
 msgstr "Minimum size (width and height) for analysis (default and minimum: "
 
-#: src/resolution_suggester/utils/cli.py:186
+#: src/resolution_suggester/utils/cli.py:199
 msgid "Save downscale results produced during analysis\n"
 msgstr "Save downscale results produced during analysis\n"
 
-#: src/resolution_suggester/utils/cli.py:187
-#: src/resolution_suggester/utils/cli.py:194
-#: src/resolution_suggester/utils/cli.py:201
+#: src/resolution_suggester/utils/cli.py:200
+#: src/resolution_suggester/utils/cli.py:207
+#: src/resolution_suggester/utils/cli.py:214
 msgid "(does not work with --ml, --train-ml and --generate-dataset)"
 msgstr "(does not work with --ml, --train-ml and --generate-dataset)"
 
-#: src/resolution_suggester/utils/cli.py:193
+#: src/resolution_suggester/utils/cli.py:206
 msgid "Save upscale results produced after downscale\n"
 msgstr "Save upscale results produced after downscale\n"
 
-#: src/resolution_suggester/utils/cli.py:200
+#: src/resolution_suggester/utils/cli.py:213
 msgid "Save all image scaling results (downscale and upscale)\n"
 msgstr "Save all image scaling results (downscale and upscale)\n"
 
-#: src/resolution_suggester/utils/cli.py:207
+#: src/resolution_suggester/utils/cli.py:220
 msgid "Disable parallel processing and use single-threaded scheme"
 msgstr "Disable parallel processing and use single-threaded scheme"
 
-#: src/resolution_suggester/utils/cli.py:213
+#: src/resolution_suggester/utils/cli.py:226
 msgid ""
 "Do not use GPU for metrics calculation (in case of problems with CUDA, MPS, "
 "etc. in PyTorch)"
@@ -121,19 +270,19 @@ msgstr ""
 "Do not use GPU for metrics calculation (in case of problems with CUDA, MPS, "
 "etc. in PyTorch)"
 
-#: src/resolution_suggester/utils/cli.py:219
+#: src/resolution_suggester/utils/cli.py:232
 msgid "Generate dataset (features/targets) for model training"
 msgstr "Generate dataset (features/targets) for model training"
 
-#: src/resolution_suggester/utils/cli.py:225
+#: src/resolution_suggester/utils/cli.py:238
 msgid "Train ML model after dataset generation"
 msgstr "Train ML model after dataset generation"
 
-#: src/resolution_suggester/utils/cli.py:231
+#: src/resolution_suggester/utils/cli.py:244
 msgid "Use ML model to predict metrics instead of real calculation (fast)"
 msgstr "Use ML model to predict metrics instead of real calculation (fast)"
 
-#: src/resolution_suggester/utils/cli.py:244
+#: src/resolution_suggester/utils/cli.py:250
 msgid ""
 "Number of parallel processes for file processing. Ignored with --no-"
 "parallel,\n"
@@ -141,27 +290,44 @@ msgstr ""
 "Number of parallel processes for file processing. Ignored with --no-"
 "parallel,\n"
 
-#: src/resolution_suggester/utils/cli.py:245
+#: src/resolution_suggester/utils/cli.py:251
 msgid "default is "
 msgstr "default is "
 
-#: src/resolution_suggester/utils/cli.py:246
+#: src/resolution_suggester/utils/cli.py:252
 msgid "logical processor cores detected: "
 msgstr "logical processor cores detected: "
 
-#: src/resolution_suggester/utils/cli.py:254
-#: src/resolution_suggester/utils/cli.py:264
+#: src/resolution_suggester/utils/cli.py:260
+#: src/resolution_suggester/utils/cli.py:270
 msgid "default"
 msgstr "default"
 
-#: src/resolution_suggester/utils/cli.py:257
+#: src/resolution_suggester/utils/cli.py:263
 msgid "Available quality metrics"
 msgstr "Available quality metrics"
 
-#: src/resolution_suggester/utils/cli.py:267
+#: src/resolution_suggester/utils/cli.py:273
 msgid "Available interpolation methods"
 msgstr "Available interpolation methods"
 
-#: src/resolution_suggester/ml/predictor.py:135
-msgid "Preprocessor not loaded"
-msgstr "Preprocessor not loaded"
+#: src/resolution_suggester/utils/reporting.py:50
+msgid "Analysis"
+msgstr "Analysis"
+
+#: src/resolution_suggester/utils/reporting.py:92
+#: src/resolution_suggester/utils/reporting.py:168
+msgid "Quality Bar"
+msgstr "Quality Bar"
+
+#: src/resolution_suggester/utils/visualization.py:114
+msgid "Quality vs Resolution Relationship"
+msgstr "Quality vs Resolution Relationship"
+
+#: src/resolution_suggester/utils/visualization.py:607
+msgid "Quality Levels"
+msgstr "Quality Levels"
+
+#: src/resolution_suggester/utils/visualization.py:634
+msgid "Total Pixels (log scale)"
+msgstr "Total Pixels (log scale)"

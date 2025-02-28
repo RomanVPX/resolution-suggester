@@ -10,7 +10,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Final
 
-from colorama import Back, Fore, Style
 
 SUPPORTED_EXTENSIONS: Final = frozenset({'.exr', '.tga', '.png', '.jpg', '.jpeg'})
 CSV_SEPARATOR: Final = ';'
@@ -43,12 +42,14 @@ class QualityLevelHints(Enum):
     """
     Enumeration of quality level hints for image analysis output.
     """
+    ORIGINAL = "original"
     EXCELLENT = "excellent"
     VERY_GOOD = "very_good"
     GOOD = "good"
     NOTICEABLE_LOSS = "noticeable_loss"
 
 QUALITY_LEVEL_HINTS_DESCRIPTIONS = {
+    QualityLevelHints.ORIGINAL: _("original"),
     QualityLevelHints.EXCELLENT: _("excellent"),
     QualityLevelHints.VERY_GOOD: _("very_good"),
     QualityLevelHints.GOOD: _("good"),
@@ -80,28 +81,32 @@ QUALITY_METRIC_DEFAULT = QualityMetrics.PSNR
 # --- Quality thresholds for metrics ---
 QUALITY_METRIC_THRESHOLDS = {
     QualityMetrics.PSNR: {
-        QualityLevelHints.EXCELLENT: 50,
-        QualityLevelHints.VERY_GOOD: 40,
-        QualityLevelHints.GOOD: 30,
-        QualityLevelHints.NOTICEABLE_LOSS: 0,
+        QualityLevelHints.ORIGINAL: PSNR_IS_LARGE_AS_INF + 1.0,
+        QualityLevelHints.EXCELLENT: PSNR_IS_LARGE_AS_INF,
+        QualityLevelHints.VERY_GOOD: 50,
+        QualityLevelHints.GOOD: 40,
+        QualityLevelHints.NOTICEABLE_LOSS: 30,
     },
     QualityMetrics.SSIM: {
-        QualityLevelHints.EXCELLENT: 0.92,
-        QualityLevelHints.VERY_GOOD: 0.82,
-        QualityLevelHints.GOOD: 0.75,
-        QualityLevelHints.NOTICEABLE_LOSS: 0.0,
+        QualityLevelHints.ORIGINAL: 1.001,
+        QualityLevelHints.EXCELLENT: 1.00,
+        QualityLevelHints.VERY_GOOD: 0.92,
+        QualityLevelHints.GOOD: 0.82,
+        QualityLevelHints.NOTICEABLE_LOSS: 0.75,
     },
     QualityMetrics.MS_SSIM: {
-        QualityLevelHints.EXCELLENT: 0.97,
-        QualityLevelHints.VERY_GOOD: 0.95,
-        QualityLevelHints.GOOD: 0.90,
-        QualityLevelHints.NOTICEABLE_LOSS: 0.0,
+        QualityLevelHints.ORIGINAL: 1.001,
+        QualityLevelHints.EXCELLENT: 1.00,
+        QualityLevelHints.VERY_GOOD: 0.97,
+        QualityLevelHints.GOOD: 0.95,
+        QualityLevelHints.NOTICEABLE_LOSS: 0.90,
     },
     QualityMetrics.TDPR: {
-        QualityLevelHints.EXCELLENT: 0.90,
-        QualityLevelHints.VERY_GOOD: 0.80,
-        QualityLevelHints.GOOD: 0.70,
-        QualityLevelHints.NOTICEABLE_LOSS: 0.0,
+        QualityLevelHints.ORIGINAL: 1.001,
+        QualityLevelHints.EXCELLENT: 1.00,
+        QualityLevelHints.VERY_GOOD: 0.90,
+        QualityLevelHints.GOOD: 0.80,
+        QualityLevelHints.NOTICEABLE_LOSS: 0.70,
     }
 }
 
@@ -130,15 +135,16 @@ INTERPOLATION_METHOD_DEFAULT = InterpolationMethods.MITCHELL
 INTERPOLATION_METHOD_UPSCALE = InterpolationMethods.BICUBIC
 
 # === Styling for console output ===
-STYLES = {
-    'header': f"{Style.BRIGHT}{Fore.LIGHTCYAN_EX}{Back.LIGHTBLACK_EX}",
-    'warning': f"{Style.DIM}{Back.LIGHTYELLOW_EX}",
-    'original': Fore.CYAN,
-    'good': Fore.LIGHTGREEN_EX,
-    'ok': Fore.GREEN,
-    'medium': Fore.YELLOW,
-    'bad': Fore.RED,
+RICH_STYLES = {
+    'header': "bold cyan on grey35",
+    'original': "bold cyan",
+    'excellent': "bright_green",
+    'very_good': "green",
+    'good': "yellow",
+    'poor': "red",
+    'filename': "bold bright_cyan on black",
 }
+
 
 def get_output_csv_header(analyze_channels: bool, metric_type: QualityMetrics) -> list[str]:
     """
@@ -151,7 +157,7 @@ def get_output_csv_header(analyze_channels: bool, metric_type: QualityMetrics) -
     Returns:
         List of column names for the CSV output.
     """
-    header = ["Файл", "Разрешение"]
+    header = [_("File"), _("Resolution")]
     if analyze_channels:
         # Фиксированные столбцы, не зависящие от реального количества каналов для лучшей читаемости таблицы
         header.extend([

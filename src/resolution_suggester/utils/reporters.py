@@ -2,7 +2,6 @@
 import os
 from abc import ABC, abstractmethod
 import csv
-import json
 from datetime import datetime
 
 from ..config import (
@@ -16,8 +15,8 @@ from .reporting import QualityHelper
 
 class IReporter(ABC):
     """
-    Базовый интерфейс репортёра. Обеспечивает единый метод write_results(),
-    а также (при необходимости) context manager.
+    Basic reporter interface. Provides a unified write_results() method,
+    as well as a context manager (when necessary).
     """
     @abstractmethod
     def write_results(self, filename: str, results: list, analyze_channels: bool) -> None:

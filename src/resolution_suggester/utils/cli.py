@@ -59,7 +59,7 @@ def parse_arguments() -> argparse.Namespace:
 
     # Добавляем аргумент для выбора языка (должен быть обработан рано)
     pre_parser.add_argument(
-        '-l', '--lang',
+        '--lang',
         choices=['en', 'ru', 'auto'],
         default='auto',
         help=_('Interface language (default: auto)')
@@ -130,6 +130,13 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        '--lang',
+        choices=['en', 'ru', 'auto'],
+        default='auto',
+        help=_('Interface language (default: auto)')
+    )
+
+    parser.add_argument(
         '-c', '--channels',
         action='store_true',
         help=_('Analysis by color channels')
@@ -142,9 +149,22 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        '--json-output',
+        '-j', '--json-output',
         action='store_true',
         help=_('Export results to JSON')
+    )
+
+    parser.add_argument(
+        '--chart',
+        action='store_true',
+        help=_('Generate quality vs. resolution charts')
+    )
+
+    parser.add_argument(
+        '--theme',
+        choices=['light', 'dark'],
+        default='dark',
+        help=_('Charts theme (default: dark)')
     )
 
     parser.add_argument(
@@ -229,13 +249,6 @@ def create_parser() -> argparse.ArgumentParser:
         '--ml',
         action='store_true',
         help=_('Use ML model to predict metrics instead of real calculation (fast)')
-    )
-
-    parser.add_argument(
-        '--lang',
-        choices=['en', 'ru', 'auto'],
-        default='auto',
-        help=_('Interface language (default: auto)')
     )
 
     return parser
