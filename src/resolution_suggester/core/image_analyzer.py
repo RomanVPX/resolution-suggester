@@ -1,5 +1,8 @@
 # core/image_analyzer.py
 import os
+
+import pandas as pd
+
 from ..i18n import _
 import argparse
 import concurrent.futures
@@ -172,18 +175,13 @@ class ImageAnalyzer:
 
     def _analyze_resize_real(self, img_original, max_val, channels, w, h, orig_width, orig_height, file_path):
         """Analyzes resize with real metrics calculation."""
-        # Уменьшаем изображение
-        img_downscaled = self.resize_fn(img_original, w, h)
 
-        # Сохраняем промежуточный результат, если нужно
+        img_downscaled = self.resize_fn(img_original, w, h)
         if self.args.save_im_down:
             self._save_intermediate(img_downscaled, file_path, w, h,
                                     InterpolationMethods(self.args.interpolation), '')
 
-        # Увеличиваем обратно для сравнения с оригиналом
         img_upscaled = self.resize_fn_upscale(img_downscaled, orig_width, orig_height)
-
-        # Сохраняем промежуточный результат увеличения, если нужно
         if self.args.save_im_up:
             self._save_intermediate(img_upscaled, file_path, w, h,
                                     InterpolationMethods(self.args.interpolation), 'upscaled')
@@ -208,41 +206,79 @@ class ImageAnalyzer:
             hint = QualityHelper.get_hint(metric_value, QualityMetrics(self.args.metric))
             return f"{w}x{h}", metric_value, hint
 
-    def _analyze_resize_ml(self, img_original, channels, w, h, orig_width, orig_height):
-        """Analyzes resize using ML prediction."""
-        if self.args.channels: # Поканальный анализ
-            channels_metrics = {}
-            for c in channels:
-                features = extract_features_of_original_img(img_original[..., channels.index(c)])
-                features.update({
-                    'scale_factor': (w / orig_width + h / orig_height) / 2,
-                    'original_width': orig_width,
-                    'original_height': orig_height,
-                    'channel': c,
-                    'method': self.args.interpolation,
-                })
-                prediction = self.predictor.predict(features)
-                val = prediction.get(self.args.metric.value, 0.0)
-                channels_metrics[c] = postprocess_metric_value(val, self.args.metric)
 
-            min_metric = min(channels_metrics.values())
-            hint = QualityHelper.get_hint(min_metric, QualityMetrics(self.args.metric))
-            return f"{w}x{h}", channels_metrics, min_metric, hint
+    def _analyze_resize_ml(self, img_original, channels, w, h, orig_width, orig_height):
+        """Analyzes resize using ML prediction with optimized batch processing."""
+        # Common features for all channels
+        common_features = {
+            'scale_factor': (w / orig_width + h / orig_height) / 2,
+            'original_width': orig_width,
+            'original_height': orig_height,
+            'method': self.args.interpolation,
+        }
+
+        if self.args.channels:  # Поканальный анализ
+            # Extract features for all channels
+            features_list = []
+            channel_indices = []
+
+            for c in channels:
+                channel_idx = channels.index(c)
+                channel_indices.append(channel_idx)
+
+                # Extract features for each channel
+                channel_features = extract_features_of_original_img(img_original[..., channel_idx])
+                channel_features.update(common_features)
+                channel_features['channel'] = c
+                features_list.append(channel_features)
+
+            # Batch prediction - create one DataFrame for all channels
+            if not features_list:
+                return f"{w}x{h}", {}, 0.0, ""
+
+            # Create a single DataFrame with all features
+            df = pd.DataFrame(features_list)
+            # Process and predict in a single batch
+            metric_index = list(m.value for m in QualityMetrics).index(self.args.metric.value)
+
+            # Run batch prediction
+            try:
+                predictions = self.predictor.predict_batch(df)
+
+                channels_metrics = {}
+                for i, c in enumerate(channels):
+                    val = predictions[i][metric_index]
+                    channels_metrics[c] = postprocess_metric_value(val, self.args.metric)
+
+                min_metric = min(channels_metrics.values())
+                hint = QualityHelper.get_hint(min_metric, QualityMetrics(self.args.metric))
+                return f"{w}x{h}", channels_metrics, min_metric, hint
+
+            except Exception as e:
+                logging.error(f"Error in batch prediction: {e}")
+                logging.debug("Details:", exc_info=True)
+
+                # Fallback to original method if batch prediction fails
+                channels_metrics = {}
+                for i, c in enumerate(channels):
+                    features = features_list[i]
+                    prediction = self.predictor.predict(features)
+                    val = prediction.get(self.args.metric.value, 0.0)
+                    channels_metrics[c] = postprocess_metric_value(val, self.args.metric)
+
+                min_metric = min(channels_metrics.values()) if channels_metrics else 0.0
+                hint = QualityHelper.get_hint(min_metric, QualityMetrics(self.args.metric))
+                return f"{w}x{h}", channels_metrics, min_metric, hint
         else:
-            # Общий анализ
             features = extract_features_of_original_img(img_original)
-            features.update({
-                'scale_factor': (w / orig_width + h / orig_height) / 2,
-                'original_width': orig_width,
-                'original_height': orig_height,
-                'method': self.args.interpolation,
-                'channel': 'combined'
-            })
+            features.update(common_features)
+            features['channel'] = 'combined'
             prediction = self.predictor.predict(features)
             metric_value = prediction.get(self.args.metric.value, 0.0)
             metric_value = postprocess_metric_value(metric_value, self.args.metric)
             hint = QualityHelper.get_hint(metric_value, QualityMetrics(self.args.metric))
             return f"{w}x{h}", metric_value, hint
+
 
     def _create_original_entry(self, width, height, channels):
         """Creates an entry for the original image."""
@@ -252,6 +288,7 @@ class ImageAnalyzer:
         if self.args.channels and channels:
             return *base_entry, {c: channel_value for c in channels}, channel_value, hint_original
         return *base_entry, channel_value, hint_original
+
 
     def _report_results(self, file_path, results, meta):
         """Outputs and saves analysis results."""
@@ -283,6 +320,7 @@ class ImageAnalyzer:
         # Запись в репортеры
         for rep in self.reporters:
             rep.write_results(os.path.basename(file_path), results, self.args.channels)
+
 
     @staticmethod
     def _save_intermediate(img_array, file_path, width, height, interpolation, suffix):
