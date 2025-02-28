@@ -332,7 +332,7 @@ class ImageAnalyzer:
                 self.args.channels
             )
 
-            title = f"{_("Quality")} ({self.args.metric.upper()}) {_("depending on the resolution")}\n{file_basename}"
+            title = f"{_("Quality")} ({self.args.metric.upper()}) {("depending on the resolution")}\n{file_basename}"
 
             chart_file = generate_quality_chart(
                 results,

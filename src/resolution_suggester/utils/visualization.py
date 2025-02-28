@@ -127,7 +127,7 @@ def generate_quality_chart(
     plt.style.use('ggplot')
 
     # Create the main figure
-    fig, ax = plt.subplots(figsize=(12, 8), dpi=100)
+    fig, ax = plt.subplots(figsize=(12, 8), dpi=96)
     fig.set_facecolor('#f8f9fa')
     ax.set_facecolor('#ffffff')
 
@@ -452,6 +452,7 @@ def generate_quality_chart(
 
     # Add secondary x-axis with resolutions
     sec_ax = ax.twiny()
+    sec_ax.grid(False)
     sec_ax.set_xscale('log')
     sec_ax.set_xlim(ax.get_xlim())
 
