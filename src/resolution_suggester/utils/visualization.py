@@ -18,6 +18,56 @@ from ..config import (
 )
 
 
+THEMES = {
+    'light': {
+        'figure_bg': '#f8f9fa',
+        'axes_bg': '#ffffff',
+        'text': '#333333',
+        'grid': '#cccccc',
+        'quality_colors': {
+            QualityLevelHints.ORIGINAL: "#1a5fb4",    # Strong Blue
+            QualityLevelHints.EXCELLENT: "#26a269",   # Green
+            QualityLevelHints.VERY_GOOD: "#98c379",   # Light Green
+            QualityLevelHints.GOOD: "#e5c07b",        # Yellow
+            QualityLevelHints.NOTICEABLE_LOSS: "#e06c75"  # Red
+        },
+        'channel_colors': {
+            'R': '#e74c3c',  # Red
+            'G': '#2ecc71',  # Green
+            'B': '#3498db',  # Blue
+            'A': '#9b59b6',  # Purple
+            'L': '#34495e'   # Dark Gray (for luminance)
+        },
+        'primary_line': '#2980b9',
+        'section_shading': 'gray',
+        'marker_edge': 'black'
+    },
+    'dark': {
+        'figure_bg': '#1e1e1e',
+        'axes_bg': '#2d2d2d',
+        'text': '#e0e0e0',
+        'grid': '#555555',
+        'quality_colors': {
+            QualityLevelHints.ORIGINAL: "#4c8edb",    # Brighter Blue
+            QualityLevelHints.EXCELLENT: "#57d993",   # Brighter Green
+            QualityLevelHints.VERY_GOOD: "#b5e890",   # Brighter Light Green
+            QualityLevelHints.GOOD: "#f7d087",        # Brighter Yellow
+            QualityLevelHints.NOTICEABLE_LOSS: "#f7919b"  # Brighter Red
+        },
+        'channel_colors': {
+            'R': '#ff6b6b',  # Brighter Red
+            'G': '#5df2a3',  # Brighter Green
+            'B': '#5aafff',  # Brighter Blue
+            'A': '#c495ff',  # Brighter Purple
+            'L': '#a7b8c9'   # Lighter Gray (for luminance)
+        },
+        'primary_line': '#5aafff',
+        'section_shading': '#444444',
+        'marker_edge': '#e0e0e0'
+    }
+}
+
+
 def parse_resolution(res_str: str) -> Tuple[int, int]:
     """
     Parses a resolution string in 'WxH' format and returns a tuple (width, height).
@@ -77,26 +127,22 @@ def get_chart_filename(
     return str(charts_dir / chart_filename)
 
 
-def get_quality_color_map(metric_type: QualityMetrics) -> Tuple[Dict, List]:
+def get_quality_color_map(metric_type: QualityMetrics, theme: str = 'light') -> Tuple[Dict, List]:
     """
-    Creates a colormap for quality levels.
+    Creates a colormap for quality levels with theme support.
 
     Args:
         metric_type: Type of quality metric
+        theme: Chart theme ('light' or 'dark')
 
     Returns:
         Tuple containing a dictionary of colors by quality level and a list of boundaries
     """
     thresholds = QUALITY_METRIC_THRESHOLDS.get(metric_type, {})
 
-    # Define colors for each quality level
-    color_dict = {
-        QualityLevelHints.ORIGINAL: "#1a5fb4",
-        QualityLevelHints.EXCELLENT: "#26a269",
-        QualityLevelHints.VERY_GOOD: "#98c379",
-        QualityLevelHints.GOOD: "#e5c07b",
-        QualityLevelHints.NOTICEABLE_LOSS: "#e06c75"
-    }
+    # Get quality colors from theme
+    theme_settings = THEMES.get(theme, THEMES['light'])
+    color_dict = theme_settings['quality_colors']
 
     # Get threshold values for the colormap boundaries
     boundaries = []
@@ -114,7 +160,8 @@ def generate_quality_chart(
     title: str = _("Quality vs Resolution Relationship"),
     metric_type: QualityMetrics = QualityMetrics.PSNR,
     analyze_channels: bool = False,
-    channels: Optional[List[str]] = None
+    channels: Optional[List[str]] = None,
+    theme: str = 'dark'
 ) -> str:
     """
     Creates a chart showing quality vs resolution relationship.
@@ -126,14 +173,18 @@ def generate_quality_chart(
         metric_type: Type of quality metric
         analyze_channels: Whether to analyze by channels
         channels: List of image channels
+        theme: Chart theme ('light' or 'dark')
 
     Returns:
         Path to the saved chart
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    # Setup figure and axes
-    fig, ax = _setup_figure_and_axes()
+    # Get theme settings
+    theme_settings = THEMES.get(theme, THEMES['light'])
+
+    # Setup figure and axes with theme
+    fig, ax = _setup_figure_and_axes(theme_settings)
 
     # Process data
     filtered_results = _filter_results(results)
@@ -143,16 +194,16 @@ def generate_quality_chart(
 
     pixel_counts, resolutions, metric_values, hints = _prepare_data(filtered_results)
 
-    # Get quality color mapping for this metric
-    quality_colors, boundaries = get_quality_color_map(metric_type)
+    # Get quality color mapping for this metric with theme
+    quality_colors, boundaries = get_quality_color_map(metric_type, theme)
 
     # Setup background shading
-    _setup_background_shading(ax, pixel_counts)
+    _setup_background_shading(ax, pixel_counts, theme_settings)
 
     # Plot data
     min_y, max_y = _plot_data(
         ax, pixel_counts, filtered_results, metric_type,
-        analyze_channels, channels, quality_colors
+        analyze_channels, channels, quality_colors, theme_settings
     )
 
     # Configure axes
@@ -163,27 +214,37 @@ def generate_quality_chart(
 
     # Add legends
     _add_legends(ax, analyze_channels, channels, quality_colors,
-                filtered_results, metric_type, visible_thresholds)
+                filtered_results, visible_thresholds, theme_settings)
 
     # Configure secondary axis (resolution)
     sec_ax = _add_secondary_axis(ax, pixel_counts, resolutions)
-    # Critical fix: prevent secondary axis grid from overlapping
     sec_ax.grid(False)
 
     # Set labels and title
-    _set_labels_and_title(ax, title, metric_type)
+    _set_labels_and_title(ax, title, metric_type, theme_settings)
 
     # Save and cleanup
-    return _save_chart(fig, output_path)
+    return _save_chart(fig, output_path, theme_settings)
 
 
-def _setup_figure_and_axes() -> Tuple[Figure, Axes]:
-    """Create and setup the figure and axes."""
-    plt.style.use('ggplot')
+def _setup_figure_and_axes(theme_settings: Dict) -> Tuple[Figure, Axes]:
+    """Create and setup the figure and axes with theme settings."""
+    if theme_settings['figure_bg'].startswith('#1'):  # Dark theme
+        plt.style.use('dark_background')
+    else:
+        plt.style.use('ggplot')
+
     fig, ax = plt.subplots(figsize=(12, 8), dpi=100)
-    fig.set_facecolor('#f8f9fa')
-    ax.set_facecolor('#ffff')
-    ax.grid(True, linestyle='--', alpha=0.7, zorder=0)  # Add grid with low z-order
+    fig.set_facecolor(theme_settings['figure_bg'])
+    ax.set_facecolor(theme_settings['axes_bg'])
+    ax.grid(True, linestyle='--', alpha=0.7, color=theme_settings['grid'], zorder=0)
+
+    # Update text colors
+    plt.rcParams['text.color'] = theme_settings['text']
+    plt.rcParams['axes.labelcolor'] = theme_settings['text']
+    plt.rcParams['xtick.color'] = theme_settings['text']
+    plt.rcParams['ytick.color'] = theme_settings['text']
+
     return fig, ax
 
 
@@ -213,7 +274,7 @@ def _prepare_data(filtered_results: list) -> Tuple[List[float], List[str], List[
     return pixel_counts, resolutions, metric_values, hints
 
 
-def _setup_background_shading(ax: Axes, pixel_counts: List[float]) -> None:
+def _setup_background_shading(ax: Axes, pixel_counts: List[float], theme_settings: Dict) -> None:
     """Add background shading for resolution sections."""
     if len(pixel_counts) > 1:
         # Create logarithmic midpoints between pixel counts
@@ -228,7 +289,7 @@ def _setup_background_shading(ax: Axes, pixel_counts: List[float]) -> None:
         for i in range(len(section_boundaries) - 1):
             if i % 2 == 0:
                 ax.axvspan(section_boundaries[i], section_boundaries[i+1],
-                          alpha=0.1, color='gray', zorder=0)
+                          alpha=0.1, color=theme_settings['section_shading'], zorder=0)
 
 
 def _format_pixels(x: float, pos) -> str:
@@ -288,7 +349,8 @@ def _highlight_min_values(
     values: List[float],
     is_min_at_point: List[bool],
     marker: str,
-    color: str
+    color: str,
+    theme_settings: Dict
 ) -> None:
     """Highlight minimum values with larger markers and darker color."""
     for j, (x, y, is_min) in enumerate(zip(pixel_counts, values, is_min_at_point)):
@@ -296,9 +358,9 @@ def _highlight_min_values(
             ax.plot(
                 x, y,
                 marker=marker,
-                markersize=12,
+                markersize=8,
                 markerfacecolor=color,
-                markeredgecolor='black',
+                markeredgecolor=theme_settings['marker_edge'],
                 markeredgewidth=1.5,
                 alpha=1.0
             )
@@ -308,7 +370,7 @@ def _add_quality_indicators(
     ax: Axes,
     pixel_counts: List[float],
     filtered_results: list,
-    quality_colors: Dict
+    quality_colors: Dict,
 ) -> None:
     """Add quality level indicators to data points."""
     for j, (x, y, hint) in enumerate(zip(pixel_counts, [r[2] for r in filtered_results], [r[3] for r in filtered_results])):
@@ -340,20 +402,15 @@ def _plot_channel_data(
     pixel_counts: List[float],
     filtered_results: list,
     channels: List[str],
-    quality_colors: Dict
+    quality_colors: Dict,
+    theme_settings: Dict
 ) -> Tuple[float, float]:
     """Plot data for individual channels."""
     markers = ['o', 's', '^', 'D', 'v', '<', '>']
     min_y, max_y = float('inf'), float('-inf')
 
-    # Define channel colors
-    channel_colors = {
-        'R': '#e74c3c',  # Red
-        'G': '#2ecc71',  # Green
-        'B': '#3498db',  # Blue
-        'A': '#9b59b6',  # Purple
-        'L': '#34495e'   # Dark Gray (for luminance)
-    }
+    # Use theme channel colors
+    channel_colors = theme_settings['channel_colors']
 
     # Identify minimum value channels at each resolution
     min_channels = _identify_min_channels(filtered_results, channels)
@@ -380,14 +437,15 @@ def _plot_channel_data(
             label=f"{channel}",
             marker=markers[i % len(markers)],
             color=channel_colors[channel],
-            linewidth=2,
-            markersize=8,
+            linewidth=1,
+            markersize=6,
             alpha=0.8
         )
 
         # Highlight minimum values
         _highlight_min_values(ax, pixel_counts, values, is_min_at_point,
-                             markers[i % len(markers)], channel_colors[channel])
+                             markers[i % len(markers)], channel_colors[channel],
+                             theme_settings)
 
     # Add quality indicators
     _add_quality_indicators(ax, pixel_counts, filtered_results, quality_colors)
@@ -401,7 +459,8 @@ def _plot_metric_data(
     metric_values: List[float],
     hints: List[str],
     metric_type: QualityMetrics,
-    quality_colors: Dict
+    quality_colors: Dict,
+    theme_settings: Dict
 ) -> Tuple[float, float]:
     """Plot single metric data."""
     min_y, max_y = float('inf'), float('-inf')
@@ -418,7 +477,7 @@ def _plot_metric_data(
         metric_values,
         label=f"{metric_type.value.upper()}",
         linewidth=2.5,
-        color='#2980b9',
+        color=theme_settings['primary_line'],
         alpha=0.8
     )
 
@@ -440,7 +499,7 @@ def _plot_metric_data(
                 'o',
                 markersize=12,
                 markerfacecolor=quality_colors[hint_level],
-                markeredgecolor='black',
+                markeredgecolor=theme_settings['marker_edge'],
                 alpha=0.8
             )
 
@@ -454,7 +513,8 @@ def _plot_data(
     metric_type: QualityMetrics,
     analyze_channels: bool,
     channels: Optional[List[str]],
-    quality_colors: Dict
+    quality_colors: Dict,
+    theme_settings: Dict
 ) -> Tuple[float, float]:
     """Plot data points on the chart."""
     # Setup axes
@@ -463,7 +523,7 @@ def _plot_data(
 
     if analyze_channels and channels:
         return _plot_channel_data(
-            ax, pixel_counts, filtered_results, channels, quality_colors
+            ax, pixel_counts, filtered_results, channels, quality_colors, theme_settings
         )
     else:
         metric_values = []
@@ -478,7 +538,8 @@ def _plot_data(
                 val = np.nan
             metric_values.append(val)
 
-        return _plot_metric_data(ax, pixel_counts, metric_values, hints, metric_type, quality_colors)
+        return _plot_metric_data(ax, pixel_counts, metric_values, hints,
+                                metric_type, quality_colors, theme_settings)
 
 
 def _configure_y_axis(ax: Axes, min_y: float, max_y: float, metric_type: QualityMetrics, filtered_results: list) -> None:
@@ -567,8 +628,8 @@ def _add_legends(
     channels: Optional[List[str]],
     quality_colors: Dict,
     filtered_results: list,
-    metric_type: QualityMetrics,
-    visible_thresholds: List
+    visible_thresholds: List,
+    theme_settings: Dict
 ) -> None:
     """Add appropriate legends to the chart."""
     # Add legend for channels if they're plotted
@@ -597,7 +658,7 @@ def _add_legends(
     for level, label in quality_levels:
         if level in quality_colors and (level in visible_thresholds or level in used_quality_levels):
             quality_patches.append(
-                Patch(facecolor=quality_colors[level], edgecolor='black', label=label)
+                Patch(facecolor=quality_colors[level], edgecolor=theme_settings['marker_edge'], label=label)
             )
 
     if quality_patches:
@@ -629,22 +690,41 @@ def _add_secondary_axis(ax: Axes, pixel_counts: List[float], resolutions: List[s
     return sec_ax
 
 
-def _set_labels_and_title(ax: Axes, title: str, metric_type: QualityMetrics) -> None:
+def _set_labels_and_title(ax: Axes, title: str, metric_type: QualityMetrics, theme_settings: Dict) -> None:
     """Set axis labels and chart title."""
-    ax.set_xlabel(_('Total Pixels (log scale)'), fontsize=12, fontweight='bold')
+    ax.set_xlabel(_('Total Pixels (log scale)'), fontsize=12, fontweight='bold', color=theme_settings['text'])
 
     if metric_type == QualityMetrics.PSNR:
         y_label = f"{metric_type.value.upper()} (dB)"
     else:
         y_label = f"{metric_type.value.upper()}"
 
-    ax.set_ylabel(y_label, fontsize=12, fontweight='bold')
-    ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
+    ax.set_ylabel(y_label, fontsize=12, fontweight='bold', color=theme_settings['text'])
+    ax.set_title(title, fontsize=14, fontweight='bold', pad=20, color=theme_settings['text'])
+
+    # Update tick colors
+    ax.tick_params(axis='x', colors=theme_settings['text'])
+    ax.tick_params(axis='y', colors=theme_settings['text'])
 
 
-def _save_chart(fig: Figure, output_path: str) -> str:
-    """Save the chart to file and clean up."""
+def _save_chart(fig: Figure, output_path: str, theme_settings: Dict) -> str:
+    """Save the chart to file with appropriate settings for theme."""
     plt.tight_layout()
-    plt.savefig(output_path, dpi=96, bbox_inches='tight')
+
+    # For dark theme, ensure we use the right background color
+    plt.savefig(output_path, dpi=96, bbox_inches='tight', facecolor=theme_settings['figure_bg'])
     plt.close(fig)
     return output_path
+
+# def _save_chart(fig: Figure, output_path: str, theme_settings: Dict) -> str:
+#     """Save the chart to file with appropriate settings for theme."""
+#     plt.tight_layout()
+#
+#     # For dark theme, ensure transparent background for png
+#     if output_path.lower().endswith('.png') and theme_settings['figure_bg'].startswith('#1'):
+#         plt.savefig(output_path, dpi=96, bbox_inches='tight', facecolor=theme_settings['figure_bg'], transparent=True)
+#     else:
+#         plt.savefig(output_path, dpi=96, bbox_inches='tight', facecolor=theme_settings['figure_bg'])
+#
+#     plt.close(fig)
+#     return output_path

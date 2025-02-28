@@ -333,6 +333,7 @@ class ImageAnalyzer:
             )
 
             title = f"{_("Quality")} ({self.args.metric.upper()}) {_("depending on the resolution")}\n{file_basename}"
+            theme = getattr(self.args, 'theme', 'dark')
 
             chart_file = generate_quality_chart(
                 results,
@@ -340,7 +341,8 @@ class ImageAnalyzer:
                 title=title,
                 metric_type=QualityMetrics(self.args.metric),
                 analyze_channels=self.args.channels,
-                channels=meta.get('channels')
+                channels=meta.get('channels'),
+                theme=theme
             )
 
             logging.debug(f"{_("Graph saved")}: {chart_file}")

@@ -161,6 +161,13 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        '--theme',
+        choices=['light', 'dark'],
+        default='dark',
+        help=_('Charts theme (default: dark)')
+    )
+
+    parser.add_argument(
         '-m', '--metric', type=QualityMetrics,
         default=QUALITY_METRIC_DEFAULT,
         choices=[m.value for m in QualityMetrics],
