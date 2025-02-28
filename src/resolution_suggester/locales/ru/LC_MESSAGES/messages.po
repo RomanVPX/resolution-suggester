@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-28 04:25+0300\n"
+"POT-Creation-Date: 2025-02-28 09:16+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -10,26 +10,22 @@ msgid "original"
 msgstr "Оригинал"
 
 #: src/resolution_suggester/config.py:53
-#: src/resolution_suggester/utils/visualization.py:537
-#: src/resolution_suggester/utils/visualization.py:589
+#: src/resolution_suggester/utils/visualization.py:598
 msgid "excellent"
 msgstr "Практически идентичные изображения"
 
 #: src/resolution_suggester/config.py:54
-#: src/resolution_suggester/utils/visualization.py:538
-#: src/resolution_suggester/utils/visualization.py:590
+#: src/resolution_suggester/utils/visualization.py:599
 msgid "very_good"
 msgstr "Очень хорошее качество"
 
 #: src/resolution_suggester/config.py:55
-#: src/resolution_suggester/utils/visualization.py:539
-#: src/resolution_suggester/utils/visualization.py:591
+#: src/resolution_suggester/utils/visualization.py:600
 msgid "good"
 msgstr "Приемлемое качество"
 
 #: src/resolution_suggester/config.py:56
-#: src/resolution_suggester/utils/visualization.py:540
-#: src/resolution_suggester/utils/visualization.py:592
+#: src/resolution_suggester/utils/visualization.py:601
 msgid "noticeable_loss"
 msgstr "Заметные потери"
 
@@ -68,35 +64,35 @@ msgstr "Файл"
 #: src/resolution_suggester/config.py:160
 #: src/resolution_suggester/utils/reporting.py:87
 #: src/resolution_suggester/utils/reporting.py:165
-#: src/resolution_suggester/utils/visualization.py:626
+#: src/resolution_suggester/utils/visualization.py:687
 msgid "Resolution"
 msgstr "Разрешение"
 
-#: src/resolution_suggester/core/image_analyzer.py:63
+#: src/resolution_suggester/core/image_analyzer.py:66
 msgid "ML model not found, the actual metrics will be calculated."
 msgstr "ML-модель не найдена, будем вычислять реальные метрики."
 
-#: src/resolution_suggester/core/image_analyzer.py:275
-#: src/resolution_suggester/core/image_analyzer.py:281
-#: src/resolution_suggester/core/image_analyzer.py:346
+#: src/resolution_suggester/core/image_analyzer.py:312
+#: src/resolution_suggester/core/image_analyzer.py:318
+#: src/resolution_suggester/core/image_analyzer.py:386
 msgid "Graph saved"
 msgstr "График сохранён"
 
-#: src/resolution_suggester/core/image_analyzer.py:335
+#: src/resolution_suggester/core/image_analyzer.py:373
 #: src/resolution_suggester/utils/reporting.py:91
 #: src/resolution_suggester/utils/reporting.py:167
 msgid "Quality"
 msgstr "Качество"
 
-#: src/resolution_suggester/core/image_analyzer.py:335
+#: src/resolution_suggester/core/image_analyzer.py:373
 msgid "depending on the resolution"
 msgstr "в зависимости от разрешения"
 
-#: src/resolution_suggester/core/image_analyzer.py:349
+#: src/resolution_suggester/core/image_analyzer.py:389
 msgid "Error when generating chart"
 msgstr "Ошибка при создании графика"
 
-#: src/resolution_suggester/core/image_analyzer.py:368
+#: src/resolution_suggester/core/image_analyzer.py:408
 #: src/resolution_suggester/main.py:307
 msgid "Error when processing file"
 msgstr "Ошибка при обработке файла"
@@ -191,17 +187,20 @@ msgstr "Создание датасета"
 msgid "No data to save in"
 msgstr "Нет данных для сохранения в"
 
-#: src/resolution_suggester/ml/predictor.py:134
+#: src/resolution_suggester/ml/predictor.py:138
+#: src/resolution_suggester/ml/predictor.py:166
 msgid "Preprocessor is not loaded"
 msgstr "Препроцессор не загружен"
 
-#: src/resolution_suggester/ml/predictor.py:139
+#: src/resolution_suggester/ml/predictor.py:144
+#: src/resolution_suggester/ml/predictor.py:171
 msgid "Channel model is not loaded"
 msgstr "Поканальная модель не загружена"
 
-#: src/resolution_suggester/ml/predictor.py:144
+#: src/resolution_suggester/ml/predictor.py:148
+#: src/resolution_suggester/ml/predictor.py:176
 msgid "Combined model is not loaded"
-msgstr "Совмешённая модель не загружена"
+msgstr "Совмещённая модель не загружена"
 
 #: src/resolution_suggester/utils/cli.py:48
 #: src/resolution_suggester/utils/cli.py:122
@@ -237,37 +236,41 @@ msgstr "Экспорт результатов в JSON"
 msgid "Generate quality vs. resolution charts"
 msgstr "Генерация графиков качества в зависимости от разрешения"
 
-#: src/resolution_suggester/utils/cli.py:184
+#: src/resolution_suggester/utils/cli.py:167
+msgid "Charts theme (default: dark)"
+msgstr "Выбор темы для графиков (по умолчанию: темная)"
+
+#: src/resolution_suggester/utils/cli.py:191
 msgid "Minimum size (width and height) for analysis (default and minimum: "
 msgstr ""
 "Минимальный размер (по ширине и высоте) для анализа (по умолчанию и "
 "минимально: "
 
-#: src/resolution_suggester/utils/cli.py:199
+#: src/resolution_suggester/utils/cli.py:206
 msgid "Save downscale results produced during analysis\n"
 msgstr "Сохранять результаты даунскейла, производимого во время анализа\n"
 
-#: src/resolution_suggester/utils/cli.py:200
 #: src/resolution_suggester/utils/cli.py:207
 #: src/resolution_suggester/utils/cli.py:214
+#: src/resolution_suggester/utils/cli.py:221
 msgid "(does not work with --ml, --train-ml and --generate-dataset)"
 msgstr "(не работает с --ml, --train-ml и --generate-dataset)"
 
-#: src/resolution_suggester/utils/cli.py:206
+#: src/resolution_suggester/utils/cli.py:213
 msgid "Save upscale results produced after downscale\n"
 msgstr "Сохранять результаты апскейла, произведённого после даунскейла\n"
 
-#: src/resolution_suggester/utils/cli.py:213
+#: src/resolution_suggester/utils/cli.py:220
 msgid "Save all image scaling results (downscale and upscale)\n"
 msgstr ""
 "Сохранять результаты все результаты масштабирования изображений (даунскейл и "
 "апскейл)\n"
 
-#: src/resolution_suggester/utils/cli.py:220
+#: src/resolution_suggester/utils/cli.py:227
 msgid "Disable parallel processing and use single-threaded scheme"
 msgstr "Отключить параллельную обработку и использовать однопоточную схему"
 
-#: src/resolution_suggester/utils/cli.py:226
+#: src/resolution_suggester/utils/cli.py:233
 msgid ""
 "Do not use GPU for metrics calculation (in case of problems with CUDA, MPS, "
 "etc. in PyTorch)"
@@ -275,21 +278,21 @@ msgstr ""
 "Не использовать GPU для расчёта метрик (на случай проблем с CUDA, MPS и т.д. "
 "в PyTorch)"
 
-#: src/resolution_suggester/utils/cli.py:232
+#: src/resolution_suggester/utils/cli.py:239
 msgid "Generate dataset (features/targets) for model training"
 msgstr "Сгенерировать датасет (features/targets) для обучения модели"
 
-#: src/resolution_suggester/utils/cli.py:238
+#: src/resolution_suggester/utils/cli.py:245
 msgid "Train ML model after dataset generation"
 msgstr "После генерации датасета обучить модель ML"
 
-#: src/resolution_suggester/utils/cli.py:244
+#: src/resolution_suggester/utils/cli.py:251
 msgid "Use ML model to predict metrics instead of real calculation (fast)"
 msgstr ""
 "Использовать ML-модель для предсказания метрик вместо реального вычисления "
 "(быстро)"
 
-#: src/resolution_suggester/utils/cli.py:250
+#: src/resolution_suggester/utils/cli.py:257
 msgid ""
 "Number of parallel processes for file processing. Ignored with --no-"
 "parallel,\n"
@@ -297,24 +300,24 @@ msgstr ""
 "Число параллельных процессов для обработки файлов. Игнорируется при --no-"
 "parallel,\n"
 
-#: src/resolution_suggester/utils/cli.py:251
+#: src/resolution_suggester/utils/cli.py:258
 msgid "default is "
 msgstr "по умолчанию равно "
 
-#: src/resolution_suggester/utils/cli.py:252
+#: src/resolution_suggester/utils/cli.py:259
 msgid "logical processor cores detected: "
 msgstr "логических ядер процессора обнаружено "
 
-#: src/resolution_suggester/utils/cli.py:260
-#: src/resolution_suggester/utils/cli.py:270
+#: src/resolution_suggester/utils/cli.py:267
+#: src/resolution_suggester/utils/cli.py:277
 msgid "default"
 msgstr "по умолчанию"
 
-#: src/resolution_suggester/utils/cli.py:263
+#: src/resolution_suggester/utils/cli.py:270
 msgid "Available quality metrics"
 msgstr "Доступные метрики качества"
 
-#: src/resolution_suggester/utils/cli.py:273
+#: src/resolution_suggester/utils/cli.py:280
 msgid "Available interpolation methods"
 msgstr "Доступные методы интерполяции"
 
@@ -327,14 +330,14 @@ msgstr "Анализ"
 msgid "Quality Bar"
 msgstr "Индикатор"
 
-#: src/resolution_suggester/utils/visualization.py:114
+#: src/resolution_suggester/utils/visualization.py:160
 msgid "Quality vs Resolution Relationship"
 msgstr "Зависимость качества от разрешения"
 
-#: src/resolution_suggester/utils/visualization.py:607
+#: src/resolution_suggester/utils/visualization.py:668
 msgid "Quality Levels"
 msgstr "Качество"
 
-#: src/resolution_suggester/utils/visualization.py:634
+#: src/resolution_suggester/utils/visualization.py:695
 msgid "Total Pixels (log scale)"
 msgstr "Общее число пикселей (логарифмическая шкала)"

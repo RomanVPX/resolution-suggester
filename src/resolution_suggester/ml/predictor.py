@@ -123,6 +123,39 @@ class QuickPredictor:
         return preprocessor
 
 
+    def predict_batch(self, features_df: pd.DataFrame) -> np.ndarray:
+        """
+        Predicts metrics for multiple feature sets at once.
+
+        Args:
+            features_df: DataFrame containing features for multiple samples
+
+        Returns:
+            Array of predictions with shape [n_samples, n_metrics]
+        """
+        try:
+            if self.preprocessor is None:
+                raise ValueError(_("Preprocessor is not loaded"))
+
+            processed = self.preprocessor.transform(features_df)
+
+            if self.mode:  # channels
+                if self.channels_model is None:
+                    raise ValueError(_("Channel model is not loaded"))
+                return self.channels_model.predict(processed)
+            else:
+                if self.combined_model is None:
+                    raise ValueError(_("Combined model is not loaded"))
+                return self.combined_model.predict(processed)
+        except Exception as e:
+            logging.error(f"Error in batch prediction: {e}")
+            logging.debug(
+                f"Input dimensions: {processed.shape if 'processed' in locals() else 'N/A'},"
+                f" feature keys: {list(features_df.columns)}")
+            # Return empty array with appropriate shape
+            return np.zeros((features_df.shape[0], len(QualityMetrics)))
+
+
     def predict(self, features: Dict[str, Any]) -> Dict[str, float]:
         """
         Predicts metrics using models.
