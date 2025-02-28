@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-28 03:13+0300\n"
+"POT-Creation-Date: 2025-02-28 04:25+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -10,22 +10,26 @@ msgid "original"
 msgstr "Original"
 
 #: src/resolution_suggester/config.py:53
-#: src/resolution_suggester/utils/visualization.py:382
+#: src/resolution_suggester/utils/visualization.py:537
+#: src/resolution_suggester/utils/visualization.py:589
 msgid "excellent"
 msgstr "Excellent quality"
 
 #: src/resolution_suggester/config.py:54
-#: src/resolution_suggester/utils/visualization.py:383
+#: src/resolution_suggester/utils/visualization.py:538
+#: src/resolution_suggester/utils/visualization.py:590
 msgid "very_good"
 msgstr "Very good quality"
 
 #: src/resolution_suggester/config.py:55
-#: src/resolution_suggester/utils/visualization.py:384
+#: src/resolution_suggester/utils/visualization.py:539
+#: src/resolution_suggester/utils/visualization.py:591
 msgid "good"
 msgstr "Good quality"
 
 #: src/resolution_suggester/config.py:56
-#: src/resolution_suggester/utils/visualization.py:385
+#: src/resolution_suggester/utils/visualization.py:540
+#: src/resolution_suggester/utils/visualization.py:592
 msgid "noticeable_loss"
 msgstr "Noticeable quality loss"
 
@@ -64,7 +68,7 @@ msgstr "File"
 #: src/resolution_suggester/config.py:160
 #: src/resolution_suggester/utils/reporting.py:87
 #: src/resolution_suggester/utils/reporting.py:165
-#: src/resolution_suggester/utils/visualization.py:461
+#: src/resolution_suggester/utils/visualization.py:626
 msgid "Resolution"
 msgstr "Resolution"
 
@@ -316,14 +320,14 @@ msgstr "Analysis"
 msgid "Quality Bar"
 msgstr "Quality Bar"
 
-#: src/resolution_suggester/utils/visualization.py:106
+#: src/resolution_suggester/utils/visualization.py:114
 msgid "Quality vs Resolution Relationship"
 msgstr "Quality vs Resolution Relationship"
 
-#: src/resolution_suggester/utils/visualization.py:431
+#: src/resolution_suggester/utils/visualization.py:607
 msgid "Quality Levels"
 msgstr "Quality Levels"
 
-#: src/resolution_suggester/utils/visualization.py:441
+#: src/resolution_suggester/utils/visualization.py:634
 msgid "Total Pixels (log scale)"
 msgstr "Total Pixels (log scale)"

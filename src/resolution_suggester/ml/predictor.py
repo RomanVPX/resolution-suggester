@@ -69,13 +69,12 @@ class QuickPredictor:
         df_targets = pd.read_csv(targets_csv)
 
         # Замена бесконечных значений на большое число (для PSNR)
-        df_targets.replace(np.inf, PSNR_IS_LARGE_AS_INF + 1.0, inplace=True)
+        df_targets.replace(np.inf, PSNR_IS_LARGE_AS_INF, inplace=True)
 
         preprocessor = self._get_preprocessor()
         x_processed = preprocessor.fit_transform(df_features)
 
         # Удаление строк с бесконечными значениями
-        # Удалить? Бесконечности всё равно приводятся к (PSNR_IS_LARGE_AS_INF + 1.0) в calculate_psnr()
         y = df_targets.to_numpy()
         mask = np.isfinite(y).all(axis=1)
         if not mask.all():

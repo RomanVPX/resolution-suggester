@@ -247,4 +247,7 @@ class QualityHelper:
             if metric_value < thresholds[level]:
                 return QUALITY_LEVEL_HINTS_DESCRIPTIONS[level]
 
-        return QUALITY_LEVEL_HINTS_DESCRIPTIONS[QualityLevelHints.ORIGINAL]
+        return (
+            QUALITY_LEVEL_HINTS_DESCRIPTIONS)[QualityLevelHints.ORIGINAL] if (metric_value >=
+                          thresholds[QualityLevelHints.ORIGINAL]) else (
+            QUALITY_LEVEL_HINTS_DESCRIPTIONS)[QualityLevelHints.EXCELLENT]
