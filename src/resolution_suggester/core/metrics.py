@@ -3,20 +3,21 @@ import logging
 import math
 from functools import lru_cache
 
-from ..i18n import _
 import numpy as np
 import torch
 from numba import njit, prange
-from torchmetrics.image import MultiScaleStructuralSimilarityIndexMeasure
 from skimage.feature import canny
 from skimage.filters import sobel
 from skimage.morphology import dilation, footprint_rectangle
+from torchmetrics.image import MultiScaleStructuralSimilarityIndexMeasure
+
 from ..config import MIN_DOWNSCALE_SIZE, TINY_EPSILON, QualityMetrics
+from ..i18n import _
 
 
 def get_torch_device(no_gpu: bool = False) -> torch.device:
     """
-    Определяет оптимальное устройство PyTorch с учетом доступности и совместимости.
+    Определяет оптимальное устройство PyTorch с учётом доступности и совместимости.
     """
     if no_gpu:
         return torch.device("cpu")
@@ -148,7 +149,7 @@ def calculate_lpips(
     max_val: float,
     net_type: str = 'alex',  # 'alex', 'vgg', or 'squeeze'
     no_gpu: bool = False
-) -> float:
+) -> float | None:
     """
     Calculate LPIPS (Learned Perceptual Image Patch Similarity) between two images.
 
@@ -166,12 +167,6 @@ def calculate_lpips(
     Returns:
         LPIPS similarity score (higher is better, range 0-1)
     """
-    try:
-        import lpips
-    except ImportError:
-        logging.error(_("LPIPS package not found. Install with: pip install lpips"))
-        raise
-
     # Normalize images to [0, 1]
     if max_val > 1.0 + TINY_EPSILON:
         original = original.astype(np.float32) / max_val
@@ -206,7 +201,7 @@ def calculate_lpips(
     torch_device = get_torch_device(no_gpu)
 
     # Create LPIPS model
-    loss_fn = lpips.LPIPS(net=net_type, verbose=False).to(torch_device)
+    loss_fn = get_lpips_model(net_type=net_type, device=torch_device, memory_efficient=True)
 
     # Convert to tensors
     original_tensor = torch.from_numpy(original).to(torch_device)
@@ -240,43 +235,99 @@ def calculate_lpips_channels(
     processed: np.ndarray,
     max_val: float,
     channels: list[str],
+    net_type: str = 'alex',  # 'alex', 'vgg', or 'squeeze'
     no_gpu: bool = False
-) -> dict[str, float]:
+) -> dict[str, float | None] | None:
     """
-    Calculate LPIPS for each channel separately.
-
-    Args:
-        original: Original image
-        processed: Processed image for comparison
-        max_val: Maximum pixel value
-        channels: List of channel names
-        no_gpu: Whether to avoid using GPU even if available
-
-    Returns:
-        Dictionary of LPIPS values by channel
+    Calculate LPIPS for each channel separately with optimized memory usage.
     """
     results = {}
 
     # For grayscale images, just calculate once
     if original.ndim == 2:
-        results[channels[0]] = calculate_lpips(original, processed, max_val, no_gpu=no_gpu)
+        results[channels[0]] = calculate_lpips(original, processed, max_val, net_type, no_gpu=no_gpu)
         return results
 
-    # For RGB/RGBA images, calculate for each channel separately
-    for i, ch in enumerate(channels):
-        if i >= original.shape[2]:
-            continue
+    # Get device
+    torch_device = get_torch_device(no_gpu)
+    # Create LPIPS model ONCE for all channels
+    loss_fn = get_lpips_model(net_type=net_type, device=torch_device, memory_efficient=True)
 
-        orig_ch = original[..., i]
-        proc_ch = processed[..., i]
+    try:
+        # Process each channel with the same model
+        for i, ch in enumerate(channels):
+            if i >= original.shape[2]:
+                continue
 
-        # Convert to 3-channel for LPIPS
-        orig_3ch = np.stack([orig_ch] * 3, axis=2)
-        proc_3ch = np.stack([proc_ch] * 3, axis=2)
+            orig_ch = original[..., i]
+            proc_ch = processed[..., i]
 
-        results[ch] = calculate_lpips(orig_3ch, proc_3ch, max_val, no_gpu=no_gpu)
+            # Normalize to [0, 1]
+            if max_val > 1.0 + TINY_EPSILON:
+                orig_ch = orig_ch.astype(np.float32) / max_val
+                proc_ch = proc_ch.astype(np.float32) / max_val
+            else:
+                orig_ch = orig_ch.astype(np.float32)
+                proc_ch = proc_ch.astype(np.float32)
+
+            # Convert to 3-channel for LPIPS
+            orig_3ch = np.stack([orig_ch] * 3, axis=2)
+            proc_3ch = np.stack([proc_ch] * 3, axis=2)
+
+            # Convert to [-1, 1] range expected by LPIPS
+            orig_3ch = 2 * orig_3ch - 1
+            proc_3ch = 2 * proc_3ch - 1
+
+            # Convert HWC to NCHW format
+            orig_3ch = orig_3ch.transpose(2, 0, 1)[None, ...]
+            proc_3ch = proc_3ch.transpose(2, 0, 1)[None, ...]
+
+            # Convert to tensors
+            orig_tensor = torch.from_numpy(orig_3ch).to(torch_device)
+            proc_tensor = torch.from_numpy(proc_3ch).to(torch_device)
+
+            # Calculate LPIPS
+            with torch.no_grad():
+                with torch.autocast(device_type=torch_device.type, dtype=torch.float16):
+                    lpips_dist = loss_fn(orig_tensor, proc_tensor).item()
+
+            # Convert to similarity score (1 - distance)
+            lpips_similarity = 1.0 - lpips_dist
+            lpips_similarity = max(0.0, min(1.0, lpips_similarity))
+
+            results[ch] = float(lpips_similarity)
+
+            # Clean up tensors but keep the model
+            del orig_tensor, proc_tensor
+    finally:
+        # Clean up model at the end
+        del loss_fn
+        if torch_device.type == 'mps':
+            if hasattr(torch.mps, 'empty_cache'):
+                torch.mps.empty_cache()
+        elif torch_device.type == 'cuda':
+            torch.cuda.empty_cache()
 
     return results
+
+
+def get_lpips_model(net_type='alex', device=None, memory_efficient=False):
+    """Load LPIPS model."""
+    try:
+        import lpips
+    except ImportError:
+        logging.error(_("LPIPS package not found. Install with: pip install lpips"))
+        raise
+
+    model = lpips.LPIPS(net=net_type, verbose=False)
+
+    if device is not None:
+        model = model.to(device)
+
+    if memory_efficient and hasattr(model, 'half'):
+        model = model.half()  # Use half precision
+
+    return model
 
 
 @njit(cache=True)
