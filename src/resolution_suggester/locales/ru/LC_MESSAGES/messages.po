@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-28 09:16+0300\n"
+"POT-Creation-Date: 2025-03-05 14:52+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -58,10 +58,13 @@ msgid "Mitchell-Netravali filter"
 msgstr "Фильтр Митчелла-Нетравали"
 
 #: src/resolution_suggester/config.py:160
+#: src/resolution_suggester/utils/ml_comparator.py:310
 msgid "File"
 msgstr "Файл"
 
 #: src/resolution_suggester/config.py:160
+#: src/resolution_suggester/utils/ml_comparator.py:317
+#: src/resolution_suggester/utils/ml_comparator.py:324
 #: src/resolution_suggester/utils/reporting.py:87
 #: src/resolution_suggester/utils/reporting.py:165
 #: src/resolution_suggester/utils/visualization.py:687
@@ -93,8 +96,9 @@ msgid "Error when generating chart"
 msgstr "Ошибка при создании графика"
 
 #: src/resolution_suggester/core/image_analyzer.py:408
-#: src/resolution_suggester/main.py:307
-msgid "Error when processing file"
+#: src/resolution_suggester/main.py:314
+#: src/resolution_suggester/utils/ml_comparator.py:80
+msgid "Error processing file"
 msgstr "Ошибка при обработке файла"
 
 #: src/resolution_suggester/core/image_loader.py:54
@@ -121,69 +125,69 @@ msgstr "calculate_metrics: Размерности изображений дол�
 msgid "Unsupported quality metric"
 msgstr "Метрика не поддерживается"
 
-#: src/resolution_suggester/main.py:66
+#: src/resolution_suggester/main.py:67
 msgid "Unexpected error"
 msgstr "Непредвиденная ошибка"
 
-#: src/resolution_suggester/main.py:79
+#: src/resolution_suggester/main.py:80
 msgid "Error parsing arguments"
 msgstr "Ошибка разбора аргументов"
 
-#: src/resolution_suggester/main.py:95
+#: src/resolution_suggester/main.py:96
 msgid "Dataset generated"
 msgstr "Датасет сгенерирован"
 
-#: src/resolution_suggester/main.py:100
+#: src/resolution_suggester/main.py:101
 msgid "Model trained!"
 msgstr "Модель обучена!"
 
-#: src/resolution_suggester/main.py:111
+#: src/resolution_suggester/main.py:118
 msgid "Chart generation enabled"
 msgstr "Включена генерация графиков"
 
-#: src/resolution_suggester/main.py:114
+#: src/resolution_suggester/main.py:121
 msgid "Failed to import matplotlib."
 msgstr ""
 "Не удалось импортировать matplotlib. Установите его командой: pip install "
 "matplotlib"
 
-#: src/resolution_suggester/main.py:124
+#: src/resolution_suggester/main.py:131
 msgid "Metrics(CSV) saved to"
 msgstr "Метрики (CSV) сохранены в"
 
-#: src/resolution_suggester/main.py:126
+#: src/resolution_suggester/main.py:133
 msgid "Metrics(JSON) saved to"
 msgstr "Метрики (JSON) сохранены в"
 
-#: src/resolution_suggester/main.py:141
+#: src/resolution_suggester/main.py:148
 msgid "CSV output enabled, file"
 msgstr "Вывод в CSV включён, файл"
 
-#: src/resolution_suggester/main.py:149
+#: src/resolution_suggester/main.py:156
 msgid "JSON output enabled, file"
 msgstr "Вывод в JSON включён, файл"
 
-#: src/resolution_suggester/main.py:160
+#: src/resolution_suggester/main.py:167
 msgid "Error when closing reporter"
 msgstr "Ошибка при закрытии репортера"
 
-#: src/resolution_suggester/main.py:184
+#: src/resolution_suggester/main.py:191
 msgid "Skipping"
 msgstr "Пропуск"
 
-#: src/resolution_suggester/main.py:184
+#: src/resolution_suggester/main.py:191
 msgid "because failed to load"
 msgstr "т.к. не удалось загрузить"
 
-#: src/resolution_suggester/main.py:201
+#: src/resolution_suggester/main.py:208
 msgid "Error when selecting interpolation function for"
 msgstr "Ошибка при выборе функции интерполяции для"
 
-#: src/resolution_suggester/main.py:301
+#: src/resolution_suggester/main.py:308
 msgid "Creating dataset"
 msgstr "Создание датасета"
 
-#: src/resolution_suggester/main.py:313 src/resolution_suggester/main.py:319
+#: src/resolution_suggester/main.py:320 src/resolution_suggester/main.py:326
 msgid "No data to save in"
 msgstr "Нет данных для сохранения в"
 
@@ -293,6 +297,10 @@ msgstr ""
 "(быстро)"
 
 #: src/resolution_suggester/utils/cli.py:257
+msgid "Run comparison of real and ML results"
+msgstr "Выполнить сравнение реальных и ML-результатов"
+
+#: src/resolution_suggester/utils/cli.py:263
 msgid ""
 "Number of parallel processes for file processing. Ignored with --no-"
 "parallel,\n"
@@ -300,26 +308,112 @@ msgstr ""
 "Число параллельных процессов для обработки файлов. Игнорируется при --no-"
 "parallel,\n"
 
-#: src/resolution_suggester/utils/cli.py:258
+#: src/resolution_suggester/utils/cli.py:264
 msgid "default is "
 msgstr "по умолчанию равно "
 
-#: src/resolution_suggester/utils/cli.py:259
+#: src/resolution_suggester/utils/cli.py:265
 msgid "logical processor cores detected: "
 msgstr "логических ядер процессора обнаружено "
 
-#: src/resolution_suggester/utils/cli.py:267
-#: src/resolution_suggester/utils/cli.py:277
+#: src/resolution_suggester/utils/cli.py:273
+#: src/resolution_suggester/utils/cli.py:283
 msgid "default"
 msgstr "по умолчанию"
 
-#: src/resolution_suggester/utils/cli.py:270
+#: src/resolution_suggester/utils/cli.py:276
 msgid "Available quality metrics"
 msgstr "Доступные метрики качества"
 
-#: src/resolution_suggester/utils/cli.py:280
+#: src/resolution_suggester/utils/cli.py:286
 msgid "Available interpolation methods"
 msgstr "Доступные методы интерполяции"
+
+#: src/resolution_suggester/utils/ml_comparator.py:40
+msgid "Enabling JSON output for comparison"
+msgstr "Включение JSON-вывода для сравнения"
+
+#: src/resolution_suggester/utils/ml_comparator.py:298
+msgid "ML vs Real Metrics Comparison"
+msgstr "Сравнение реальных и ML-метрик"
+
+#: src/resolution_suggester/utils/ml_comparator.py:318
+msgid "Channel"
+msgstr "Канал"
+
+#: src/resolution_suggester/utils/ml_comparator.py:319
+#: src/resolution_suggester/utils/ml_comparator.py:325
+msgid "Real"
+msgstr "Реальное"
+
+#: src/resolution_suggester/utils/ml_comparator.py:320
+#: src/resolution_suggester/utils/ml_comparator.py:326
+msgid "ML"
+msgstr "ML"
+
+#: src/resolution_suggester/utils/ml_comparator.py:321
+#: src/resolution_suggester/utils/ml_comparator.py:327
+msgid "Delta"
+msgstr "∆"
+
+#: src/resolution_suggester/utils/ml_comparator.py:322
+#: src/resolution_suggester/utils/ml_comparator.py:328
+msgid "Relative Error (%)"
+msgstr "Относительная ошибка (%)"
+
+#: src/resolution_suggester/utils/ml_comparator.py:352
+#: src/resolution_suggester/utils/ml_comparator.py:384
+#: src/resolution_suggester/utils/ml_comparator.py:428
+#: src/resolution_suggester/utils/ml_comparator.py:430
+msgid "N/A"
+msgstr "Н/Д"
+
+#: src/resolution_suggester/utils/ml_comparator.py:401
+#: src/resolution_suggester/utils/ml_comparator.py:407
+msgid "Statistics"
+msgstr "Статистика"
+
+#: src/resolution_suggester/utils/ml_comparator.py:402
+#: src/resolution_suggester/utils/ml_comparator.py:408
+msgid "Mean"
+msgstr "Среднее"
+
+#: src/resolution_suggester/utils/ml_comparator.py:402
+#: src/resolution_suggester/utils/ml_comparator.py:408
+msgid "Median"
+msgstr "Медиана"
+
+#: src/resolution_suggester/utils/ml_comparator.py:417
+msgid "Overall Statistics"
+msgstr "Общая статистика"
+
+#: src/resolution_suggester/utils/ml_comparator.py:420
+msgid "Statistic"
+msgstr "Параметр"
+
+#: src/resolution_suggester/utils/ml_comparator.py:421
+msgid "Value"
+msgstr "Значение"
+
+#: src/resolution_suggester/utils/ml_comparator.py:426
+msgid "Mean Median Delta"
+msgstr "Среднее медианное отклонение"
+
+#: src/resolution_suggester/utils/ml_comparator.py:427
+msgid "Max Median Delta"
+msgstr "Максимальное медианное отклонение"
+
+#: src/resolution_suggester/utils/ml_comparator.py:428
+msgid "File with Max Median Delta"
+msgstr "Файл с максимальным отклонением медиан"
+
+#: src/resolution_suggester/utils/ml_comparator.py:429
+msgid "Min Median Delta"
+msgstr "Минимальное медианное отклонение"
+
+#: src/resolution_suggester/utils/ml_comparator.py:430
+msgid "File with Min Median Delta"
+msgstr "Файл с минимальным медианным отклонением"
 
 #: src/resolution_suggester/utils/reporting.py:50
 msgid "Analysis"

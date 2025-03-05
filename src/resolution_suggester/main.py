@@ -311,7 +311,7 @@ def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, s
                 features_all.extend(features)
                 all_targets.extend(targets)
             except Exception as e:
-                logging.error(f"{_("Error when processing file")}: {e}")
+                logging.error(f"{_("Error processing file")}: {e}")
 
     if features_all:
         df_features = pd.DataFrame(features_all)

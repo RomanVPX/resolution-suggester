@@ -6,6 +6,7 @@ import logging
 import os
 import numpy as np
 from typing import Dict, Tuple, Optional
+from ..i18n import _
 
 from rich.console import Console
 from rich.table import Table
@@ -36,7 +37,7 @@ class MLComparator:
         """Run the comparison process: two analyses and comparison."""
         # Force JSON output
         if not self.original_args.json_output:
-            logging.info("Enabling JSON output for comparison")
+            logging.info(_("Enabling JSON output for comparison"))
             self.original_args.json_output = True
 
         # Run without ML first
@@ -76,7 +77,7 @@ class MLComparator:
                         for rep in reporters:
                             rep.write_results(os.path.basename(file_path), results, args.channels)
                 except Exception as e:
-                    logging.error(f"Error processing file {file_path}: {e}")
+                    logging.error(f"{_('Error processing file')} {file_path}: {e}")
 
             # Get the output JSON path
             json_path = output_paths.get('json')
@@ -294,7 +295,7 @@ class MLComparator:
     def _report_comparison(self) -> None:
         """Generate and display comparison report."""
         console.print()
-        console.print(Text("ML vs Real Metrics Comparison", style="bold cyan"))
+        console.print(Text(_("ML vs Real Metrics Comparison"), style="bold cyan"))
         console.print()
 
         # Print per-file comparisons
@@ -306,25 +307,25 @@ class MLComparator:
 
     def _print_file_comparison(self, file_name: str, comparison: Dict) -> None:
         """Print comparison results for a single file."""
-        console.print(Text(f"File: {file_name} ({QualityMetrics(self.original_args.metric).upper()})", style="bold cyan"))
+        console.print(Text(f"{_('File')}: {file_name} ({QualityMetrics(self.original_args.metric).upper()})", style="bold cyan"))
 
         # Create table
         table = Table(show_header=True, header_style="bold")
 
         # Add columns based on analysis type
         if self.original_args.channels:
-            table.add_column("Resolution", style="bold")
-            table.add_column("Channel")
-            table.add_column("Real")
-            table.add_column("ML")
-            table.add_column("Delta")
-            table.add_column("Relative Error (%)")
+            table.add_column(_("Resolution"), style="bold")
+            table.add_column(_("Channel"))
+            table.add_column(_("Real"))
+            table.add_column(_("ML"))
+            table.add_column(_("Delta"))
+            table.add_column(_("Relative Error (%)"))
         else:
-            table.add_column("Resolution", style="bold")
-            table.add_column("Real")
-            table.add_column("ML")
-            table.add_column("Delta")
-            table.add_column("Relative Error (%)")
+            table.add_column(_("Resolution"), style="bold")
+            table.add_column(_("Real"))
+            table.add_column(_("ML"))
+            table.add_column(_("Delta"))
+            table.add_column(_("Relative Error (%)"))
 
         # Add rows for each resolution
         for resolution, res_data in comparison['resolutions'].items():
@@ -348,7 +349,7 @@ class MLComparator:
                         rel_error = (delta / real_val) * 100
                         rel_error_str = f"{rel_error:.2f}%"
                     else:
-                        rel_error_str = "N/A"
+                        rel_error_str = _("N/A")
 
                     # Determine row style based on delta
                     row_style = self._get_delta_style(delta)
@@ -380,7 +381,7 @@ class MLComparator:
                     rel_error = (delta / real_val) * 100
                     rel_error_str = f"{rel_error:.2f}%"
                 else:
-                    rel_error_str = "N/A"
+                    rel_error_str = _("N/A")
 
                 # Determine row style based on delta
                 row_style = self._get_delta_style(delta)
@@ -397,14 +398,14 @@ class MLComparator:
 
         if self.original_args.channels:
             table.add_row(
-                "Statistics", "", "", "",
-                f"Median: {median:.3f}\nMean: {mean:.3f}", "",
+                _("Statistics"), "", "", "",
+                f"{_('Median')}: {median:.3f}\n{_('Mean')}: {mean:.3f}", "",
                 style="bold"
             )
         else:
             table.add_row(
-                "Statistics", "", "",
-                f"Median: {median:.3f}\nMean: {mean:.3f}", "",
+                _("Statistics"), "", "",
+                f"{_('Median')}: {median:.3f}\n{_('Mean')}: {mean:.3f}", "",
                 style="bold"
             )
 
@@ -413,20 +414,20 @@ class MLComparator:
 
     def _print_overall_statistics(self) -> None:
         """Print overall statistics for all files."""
-        console.print(Text("Overall Statistics", style="bold cyan"))
+        console.print(Text(_("Overall Statistics"), style="bold cyan"))
 
         table = Table(show_header=True, header_style="bold")
-        table.add_column("Statistic", style="bold")
-        table.add_column("Value")
+        table.add_column(_("Statistic"), style="bold")
+        table.add_column(_("Value"))
 
         max_file = self.overall_stats['max_median_delta_file']
         min_file = self.overall_stats['min_median_delta_file']
 
-        table.add_row("Mean Median Delta", f"{self.overall_stats['mean_median_delta']:.3f}")
-        table.add_row("Max Median Delta", f"{self.overall_stats['max_median_delta']:.3f}")
-        table.add_row("File with Max Median Delta", max_file if max_file else "N/A")
-        table.add_row("Min Median Delta", f"{self.overall_stats['min_median_delta']:.3f}")
-        table.add_row("File with Min Median Delta", min_file if min_file else "N/A")
+        table.add_row(_("Mean Median Delta"), f"{self.overall_stats['mean_median_delta']:.3f}")
+        table.add_row(_("Max Median Delta"), f"{self.overall_stats['max_median_delta']:.3f}")
+        table.add_row(_("File with Max Median Delta"), max_file if max_file else _("N/A"))
+        table.add_row(_("Min Median Delta"), f"{self.overall_stats['min_median_delta']:.3f}")
+        table.add_row(_("File with Min Median Delta"), min_file if min_file else _("N/A"))
 
         console.print(table)
         console.print()
