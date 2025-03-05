@@ -190,7 +190,8 @@ class ImageAnalyzer:
             channels_metrics = calculate_metrics(
                 QualityMetrics(self.args.metric),
                 img_original, img_upscaled, max_val,
-                channels, no_gpu=self.args.no_gpu
+                channels, no_gpu=self.args.no_gpu,
+                lpips_net_type=self.args.lpips_net
             )
             channels_metrics = postprocess_metric_value(channels_metrics, self.args.metric)
             min_metric = min(channels_metrics.values())
@@ -200,7 +201,8 @@ class ImageAnalyzer:
             metric_value = calculate_metrics(
                 QualityMetrics(self.args.metric),
                 img_original, img_upscaled, max_val,
-                no_gpu=self.args.no_gpu
+                no_gpu=self.args.no_gpu,
+                lpips_net_type=self.args.lpips_net
             )
             metric_value = postprocess_metric_value(metric_value, self.args.metric)
             hint = QualityHelper.get_hint(metric_value, QualityMetrics(self.args.metric))

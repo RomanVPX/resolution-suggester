@@ -176,6 +176,14 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        '--lpips-net',
+        choices=['alex', 'vgg', 'squeeze'],
+        default='alex',
+        help=_(
+            'Neural network backbone for LPIPS: alex (balanced), vgg (accurate but slow), squeeze (fast but less accurate)')
+    )
+
+    parser.add_argument(
         '-i', '--interpolation', type=InterpolationMethods,
         default=INTERPOLATION_METHOD_DEFAULT,
         choices=[m.value for m in InterpolationMethods],

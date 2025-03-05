@@ -147,7 +147,7 @@ def calculate_lpips(
     original: np.ndarray,
     processed: np.ndarray,
     max_val: float,
-    net_type: str = 'alex',  # 'alex', 'vgg', or 'squeeze'
+    net_type: str,
     no_gpu: bool = False
 ) -> float | None:
     """
@@ -235,7 +235,7 @@ def calculate_lpips_channels(
     processed: np.ndarray,
     max_val: float,
     channels: list[str],
-    net_type: str = 'alex',  # 'alex', 'vgg', or 'squeeze'
+    net_type: str,
     no_gpu: bool = False
 ) -> dict[str, float | None] | None:
     """
@@ -677,7 +677,8 @@ def calculate_metrics(
         processed: np.ndarray,
         max_val: float,
         channels: list[str] = None,
-        no_gpu: bool = False
+        no_gpu: bool = False,
+        lpips_net_type: str = 'alex'  # 'alex', 'vgg', or 'squeeze'; for LPIPS only
 ) -> None | dict[str, float] | float:
 
     if original.shape != processed.shape:
@@ -696,7 +697,7 @@ def calculate_metrics(
             case QualityMetrics.TDPR:
                 return calculate_tdpr(original, processed)
             case QualityMetrics.LPIPS:
-                return calculate_lpips(original, processed, max_val, no_gpu=no_gpu)
+                return calculate_lpips(original, processed, max_val, net_type=lpips_net_type, no_gpu=no_gpu)
     else:
         match quality_metric:
             case QualityMetrics.PSNR:
@@ -708,7 +709,8 @@ def calculate_metrics(
             case QualityMetrics.TDPR:
                 return calculate_tdpr_channels(original, processed, channels)
             case QualityMetrics.LPIPS:
-                return calculate_lpips_channels(original, processed, max_val, channels, no_gpu=no_gpu)
+                return calculate_lpips_channels(original, processed, max_val, channels, net_type=lpips_net_type,
+                                                no_gpu=no_gpu)
 
     raise ValueError(f"{_('Unsupported quality metric')}: {quality_metric}")
 

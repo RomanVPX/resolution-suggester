@@ -256,7 +256,8 @@ def process_file_for_dataset(
 
                         targets_entry = {}
                         for metric in QualityMetrics:
-                            channel_metric_value = calculate_metrics(metric, img_channel, img_upscaled_channel, max_val, no_gpu=args.no_gpu)
+                            channel_metric_value = calculate_metrics(metric, img_channel, img_upscaled_channel, max_val,
+                                                                     no_gpu=args.no_gpu, lpips_net_type=args.lpips_net)
                             targets_entry[metric.value] = channel_metric_value
 
                         features_all.append(features_entry)
@@ -273,7 +274,8 @@ def process_file_for_dataset(
                         'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
                         'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
                         'tdpr': calculate_metrics(QualityMetrics.TDPR, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
-                        'lpips': calculate_metrics(QualityMetrics.LPIPS, img_original, img_upscaled, max_val, no_gpu=args.no_gpu)
+                        'lpips': calculate_metrics(QualityMetrics.LPIPS, img_original, img_upscaled, max_val,
+                                                   no_gpu=args.no_gpu, lpips_net_type=args.lpips_net),
                     }
                     targets_entry = metrics_combined.copy()
 
