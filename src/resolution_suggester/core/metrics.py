@@ -142,6 +142,143 @@ def calculate_ms_ssim_pytorch_channels(
     return results
 
 
+def calculate_lpips(
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float,
+    net_type: str = 'alex',  # 'alex', 'vgg', or 'squeeze'
+    no_gpu: bool = False
+) -> float:
+    """
+    Calculate LPIPS (Learned Perceptual Image Patch Similarity) between two images.
+
+    Lower LPIPS distances indicate higher perceptual similarity. We convert to a
+    similarity score (1 - distance) so higher values are better, consistent with
+    other metrics like SSIM.
+
+    Args:
+        original: Original image
+        processed: Processed image for comparison
+        max_val: Maximum pixel value
+        net_type: Neural network backbone ('alex', 'vgg', or 'squeeze')
+        no_gpu: Whether to avoid using GPU even if available
+
+    Returns:
+        LPIPS similarity score (higher is better, range 0-1)
+    """
+    try:
+        import lpips
+    except ImportError:
+        logging.error(_("LPIPS package not found. Install with: pip install lpips"))
+        raise
+
+    # Normalize images to [0, 1]
+    if max_val > 1.0 + TINY_EPSILON:
+        original = original.astype(np.float32) / max_val
+        processed = processed.astype(np.float32) / max_val
+    else:
+        original = original.astype(np.float32)
+        processed = processed.astype(np.float32)
+
+    # Convert to RGB if needed (LPIPS expects 3-channel images)
+    if original.ndim == 2:
+        # For grayscale images, replicate to 3 channels
+        original = np.stack([original] * 3, axis=2)
+        processed = np.stack([processed] * 3, axis=2)
+    elif original.ndim == 3 and original.shape[2] == 1:
+        # For single-channel images, replicate to 3 channels
+        original = np.concatenate([original] * 3, axis=2)
+        processed = np.concatenate([processed] * 3, axis=2)
+    elif original.ndim == 3 and original.shape[2] == 4:
+        # For RGBA images, drop the alpha channel
+        original = original[..., :3]
+        processed = processed[..., :3]
+
+    # Convert from [0,1] to [-1,1] range as expected by LPIPS
+    original = 2 * original - 1
+    processed = 2 * processed - 1
+
+    # Convert HWC to NCHW format (batch, channels, height, width)
+    original = original.transpose(2, 0, 1)[None, ...]
+    processed = processed.transpose(2, 0, 1)[None, ...]
+
+    # Get device
+    torch_device = get_torch_device(no_gpu)
+
+    # Create LPIPS model
+    loss_fn = lpips.LPIPS(net=net_type, verbose=False).to(torch_device)
+
+    # Convert to tensors
+    original_tensor = torch.from_numpy(original).to(torch_device)
+    processed_tensor = torch.from_numpy(processed).to(torch_device)
+
+    # Calculate LPIPS
+    try:
+        with torch.no_grad():
+            with torch.autocast(device_type=torch_device.type, dtype=torch.float16):
+                lpips_dist = loss_fn(original_tensor, processed_tensor).item()
+    finally:
+        # Clean up
+        del original_tensor, processed_tensor, loss_fn
+        if torch_device.type == 'mps':
+            if hasattr(torch.mps, 'empty_cache'):
+                torch.mps.empty_cache()
+        elif torch_device.type == 'cuda':
+            torch.cuda.empty_cache()
+
+    # Invert the similarity score (1 - distance) for consistency with other metrics
+    lpips_similarity = 1.0 - lpips_dist
+
+    # Ensure value is within [0, 1]
+    lpips_similarity = max(0.0, min(1.0, lpips_similarity))
+
+    return float(lpips_similarity)
+
+
+def calculate_lpips_channels(
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float,
+    channels: list[str],
+    no_gpu: bool = False
+) -> dict[str, float]:
+    """
+    Calculate LPIPS for each channel separately.
+
+    Args:
+        original: Original image
+        processed: Processed image for comparison
+        max_val: Maximum pixel value
+        channels: List of channel names
+        no_gpu: Whether to avoid using GPU even if available
+
+    Returns:
+        Dictionary of LPIPS values by channel
+    """
+    results = {}
+
+    # For grayscale images, just calculate once
+    if original.ndim == 2:
+        results[channels[0]] = calculate_lpips(original, processed, max_val, no_gpu=no_gpu)
+        return results
+
+    # For RGB/RGBA images, calculate for each channel separately
+    for i, ch in enumerate(channels):
+        if i >= original.shape[2]:
+            continue
+
+        orig_ch = original[..., i]
+        proc_ch = processed[..., i]
+
+        # Convert to 3-channel for LPIPS
+        orig_3ch = np.stack([orig_ch] * 3, axis=2)
+        proc_3ch = np.stack([proc_ch] * 3, axis=2)
+
+        results[ch] = calculate_lpips(orig_3ch, proc_3ch, max_val, no_gpu=no_gpu)
+
+    return results
+
+
 @njit(cache=True)
 def calculate_psnr(
         original: np.ndarray,
@@ -507,6 +644,8 @@ def calculate_metrics(
                 return calculate_ms_ssim_pytorch(original, processed, max_val, no_gpu=no_gpu)
             case QualityMetrics.TDPR:
                 return calculate_tdpr(original, processed)
+            case QualityMetrics.LPIPS:
+                return calculate_lpips(original, processed, max_val, no_gpu=no_gpu)
     else:
         match quality_metric:
             case QualityMetrics.PSNR:
@@ -517,6 +656,8 @@ def calculate_metrics(
                 return calculate_ms_ssim_pytorch_channels(original, processed, max_val, channels, no_gpu=no_gpu)
             case QualityMetrics.TDPR:
                 return calculate_tdpr_channels(original, processed, channels)
+            case QualityMetrics.LPIPS:
+                return calculate_lpips_channels(original, processed, max_val, channels, no_gpu=no_gpu)
 
     raise ValueError(f"{_('Unsupported quality metric')}: {quality_metric}")
 

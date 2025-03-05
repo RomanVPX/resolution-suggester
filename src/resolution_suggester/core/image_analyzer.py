@@ -101,7 +101,6 @@ class ImageAnalyzer:
                 executor.submit(process_file_for_analyzer, args_dict, file_path): file_path
                 for file_path in files
             }
-
             # Используем tqdm для отображения прогресса
             from tqdm import tqdm
             for future in tqdm(concurrent.futures.as_completed(future_to_file),
@@ -113,6 +112,7 @@ class ImageAnalyzer:
                         self._report_results(file_path, results, meta)
                 except Exception as e:
                     logging.error(f"Ошибка получения результата для {file_path}: {e}")
+
 
     def analyze_file(self, file_path: str) -> Tuple[Optional[list], Optional[dict]]:
         """

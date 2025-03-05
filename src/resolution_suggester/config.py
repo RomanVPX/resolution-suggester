@@ -65,6 +65,7 @@ class QualityMetrics(str, Enum):
     SSIM = 'ssim'
     MS_SSIM = 'ms_ssim'
     TDPR = 'tdpr'
+    LPIPS = 'lpips'
 
 # Описания метрик для справки
 QUALITY_METRICS_INFO = {
@@ -72,6 +73,7 @@ QUALITY_METRICS_INFO = {
     QualityMetrics.SSIM: _("Structural Similarity Index"),
     QualityMetrics.MS_SSIM: _("Multi-Scale Structural Similarity Index"),
     QualityMetrics.TDPR: _("Texture Detail Preservation Ratio"),
+    QualityMetrics.LPIPS: _("Learned Perceptual Image Patch Similarity"),
 }
 
 ML_TARGET_COLUMNS: Final = [m.value for m in QualityMetrics]
@@ -85,28 +87,35 @@ QUALITY_METRIC_THRESHOLDS = {
         QualityLevelHints.EXCELLENT: PSNR_IS_LARGE_AS_INF,
         QualityLevelHints.VERY_GOOD: 50,
         QualityLevelHints.GOOD: 40,
-        QualityLevelHints.NOTICEABLE_LOSS: 30,
+        QualityLevelHints.NOTICEABLE_LOSS: 30
     },
     QualityMetrics.SSIM: {
         QualityLevelHints.ORIGINAL: 1.001,
         QualityLevelHints.EXCELLENT: 1.00,
         QualityLevelHints.VERY_GOOD: 0.92,
         QualityLevelHints.GOOD: 0.82,
-        QualityLevelHints.NOTICEABLE_LOSS: 0.75,
+        QualityLevelHints.NOTICEABLE_LOSS: 0.75
     },
     QualityMetrics.MS_SSIM: {
         QualityLevelHints.ORIGINAL: 1.001,
         QualityLevelHints.EXCELLENT: 1.00,
         QualityLevelHints.VERY_GOOD: 0.97,
         QualityLevelHints.GOOD: 0.95,
-        QualityLevelHints.NOTICEABLE_LOSS: 0.90,
+        QualityLevelHints.NOTICEABLE_LOSS: 0.90
     },
     QualityMetrics.TDPR: {
         QualityLevelHints.ORIGINAL: 1.001,
         QualityLevelHints.EXCELLENT: 1.00,
         QualityLevelHints.VERY_GOOD: 0.90,
         QualityLevelHints.GOOD: 0.80,
-        QualityLevelHints.NOTICEABLE_LOSS: 0.70,
+        QualityLevelHints.NOTICEABLE_LOSS: 0.70
+    },
+    QualityMetrics.LPIPS: {
+        QualityLevelHints.ORIGINAL: 1.001,
+        QualityLevelHints.EXCELLENT: 1.00,
+        QualityLevelHints.VERY_GOOD: 0.96,
+        QualityLevelHints.GOOD: 0.92,
+        QualityLevelHints.NOTICEABLE_LOSS: 0.85
     }
 }
 

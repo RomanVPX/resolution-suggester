@@ -1,9 +1,23 @@
 # main.py
 import os
+import warnings
 
-# отключаем предупреждение omp_set_nested routine deprecated от PyTorch
+# Отключаем предупреждение omp_set_nested routine deprecated от PyTorch
 os.environ["KMP_WARNINGS"] = "off"
 os.environ["OMP_MAX_ACTIVE_LEVELS"] = "1"
+
+# Отключаем предупреждение из PyTorch (для LPIPS)
+warnings.filterwarnings(
+    "ignore",
+    message="The parameter 'pretrained' is deprecated",
+    category=UserWarning
+)
+warnings.filterwarnings(
+    "ignore",
+    message="Arguments other than a weight enum or `None` for 'weights' are deprecated",
+    category=UserWarning
+)
+
 
 import sys
 
@@ -258,7 +272,8 @@ def process_file_for_dataset(
                         'psnr': calculate_metrics(QualityMetrics.PSNR, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
                         'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
                         'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
-                        'tdpr': calculate_metrics(QualityMetrics.TDPR, img_original, img_upscaled, max_val, no_gpu=args.no_gpu)
+                        'tdpr': calculate_metrics(QualityMetrics.TDPR, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
+                        'lpips': calculate_metrics(QualityMetrics.LPIPS, img_original, img_upscaled, max_val, no_gpu=args.no_gpu)
                     }
                     targets_entry = metrics_combined.copy()
 

@@ -1,4 +1,5 @@
 # ml/predictor.py
+from ..core.metrics import detect_texture_edges
 from ..i18n import _
 import logging
 import os
@@ -79,9 +80,11 @@ class QuickPredictor:
         mask = np.isfinite(y).all(axis=1)
         if not mask.all():
             logging.info("Будут удалены строки с бесконечными значениями в таргетах.")
+        # Данные для общего анализа
         mask_combined = (df_features['analyze_channels'] == 0) & mask
         x_combined = x_processed[mask_combined]
-        y_combined = df_targets[['psnr', 'ssim', 'ms_ssim', 'tdpr']].to_numpy()[mask_combined]
+        y_combined = df_targets[['psnr', 'ssim', 'ms_ssim', 'tdpr', 'lpips']].to_numpy()[mask_combined]
+        # Данные для анализа по каналам
         mask_channels = (df_features['analyze_channels'] != 0) & mask
         x_channels = x_processed[mask_channels]
         y_channels = df_targets[
@@ -110,13 +113,18 @@ class QuickPredictor:
             'contrast', 'variance', 'entropy',
             'wavelet_energy', 'glcm_contrast',
             'glcm_energy', 'scale_factor',
-            'original_width', 'original_height'
+            'original_width', 'original_height',
+            # LPIPS-related
+            'edge_density', 'gradient_mean', 'gradient_std',
+            'fft_low_energy', 'fft_mid_energy', 'fft_high_energy',
+            'edge_value_mean', 'edge_value_std'
         ]
-        categorical_features = ['method', 'channel'] # <- добавляем 'channel' в категориальные фичи
+        categorical_features = ['method', 'channel']
         preprocessor = ColumnTransformer(
             transformers=[
                 ('num', StandardScaler(), numeric_features),
-                ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
+                ('cat', OneHotEncoder(handle_unknown='ignore'),
+                 categorical_features)
             ],
             remainder='drop'
         )
@@ -265,12 +273,84 @@ def extract_features_of_original_img(img: np.ndarray) -> dict:
     height, width = img.shape
 
     # Статистические признаки (вычисляются быстро, не кэшируем)
-    features = {'contrast': float(np.std(img)), 'variance': float(np.var(img)), 'entropy': shannon_entropy(img),
-                'wavelet_energy': calculate_wavelet_features(img_bytes, height, width)}
+    features = {
+        'contrast': float(np.std(img)),
+        'variance': float(np.var(img)),
+        'entropy': shannon_entropy(img),
+        'wavelet_energy': calculate_wavelet_features(img_bytes, height, width)
+    }
 
     # Кэшированные GLCM-признаки
     glcm_contrast, glcm_energy = calculate_glcm_features(img_bytes, height, width)
     features['glcm_contrast'] = glcm_contrast
     features['glcm_energy'] = glcm_energy
+
+    # Признаки для LPIPS
+    perceptual_features = extract_perceptual_features(img)
+    features.update(perceptual_features)
+
+    return features
+
+
+def extract_perceptual_features(img: np.ndarray) -> dict:
+    """
+    Extract perceptual features relevant to LPIPS prediction.
+
+    LPIPS relies on neural network representations, so we extract features
+    that correlate with how neural networks process images: edge statistics,
+    gradient information, and frequency characteristics.
+
+    Args:
+        img: 2D image array (single channel)
+
+    Returns:
+        Dictionary of perceptual features
+    """
+    features = {}
+
+    # Edge statistics - using existing detect_texture_edges from metrics.py
+    edges = detect_texture_edges(img, sigma=1.5)
+    features['edge_density'] = float(np.mean(edges))
+
+    # Gradient statistics
+    dy, dx = np.gradient(img.astype(np.float32))
+    gradient_magnitude = np.sqrt(dx**2 + dy**2)
+    features['gradient_mean'] = float(np.mean(gradient_magnitude))
+    features['gradient_std'] = float(np.std(gradient_magnitude))
+
+    # Frequency domain features (FFT)
+    from scipy import fftpack
+    fft = fftpack.fft2(img)
+    fft_magnitude = np.abs(fftpack.fftshift(fft))
+
+    # Division into frequency bands (low, mid, high)
+    h, w = fft_magnitude.shape
+    center_y, center_x = h // 2, w // 2
+
+    # Create distance matrix from center
+    y, x = np.ogrid[-center_y:h-center_y, -center_x:w-center_x]
+    distance = np.sqrt(x*x + y*y)
+
+    # Define radii for low/mid/high frequencies
+    low_radius = min(h, w) // 6
+    mid_radius = min(h, w) // 3
+
+    # Calculate energy in each frequency band
+    low_freq_mask = distance <= low_radius
+    mid_freq_mask = (distance > low_radius) & (distance <= mid_radius)
+    high_freq_mask = distance > mid_radius
+
+    features['fft_low_energy'] = float(np.sum(fft_magnitude[low_freq_mask]**2))
+    features['fft_mid_energy'] = float(np.sum(fft_magnitude[mid_freq_mask]**2))
+    features['fft_high_energy'] = float(np.sum(fft_magnitude[high_freq_mask]**2))
+
+    # Add statistical features on edges
+    if np.any(edges):
+        edge_values = img[edges]
+        features['edge_value_mean'] = float(np.mean(edge_values))
+        features['edge_value_std'] = float(np.std(edge_values))
+    else:
+        features['edge_value_mean'] = 0.0
+        features['edge_value_std'] = 0.0
 
     return features
