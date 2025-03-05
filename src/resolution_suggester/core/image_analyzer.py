@@ -15,11 +15,11 @@ from PIL import Image
 import logging
 from typing import Optional
 
-from resolution_suggester.config import INTERPOLATION_METHOD_UPSCALE, InterpolationMethods, QualityMetrics, \
+from ..config import INTERPOLATION_METHOD_UPSCALE, InterpolationMethods, QualityMetrics, \
     PSNR_IS_LARGE_AS_INF, INTERMEDIATE_DIR, QualityLevelHints, QUALITY_LEVEL_HINTS_DESCRIPTIONS
-from resolution_suggester.core.image_processing import get_resize_function
-from resolution_suggester.ml.predictor import QuickPredictor, extract_features_of_original_img
-from resolution_suggester.utils.reporters import IReporter
+from ..core.image_processing import get_resize_function
+from ..ml.predictor import QuickPredictor, extract_features_of_original_img
+from ..utils.reporters import IReporter
 from .image_loader import load_image
 from .metrics import compute_resolutions, calculate_metrics
 from ..utils.reporting import QualityHelper, ConsoleReporter

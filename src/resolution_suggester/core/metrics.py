@@ -57,7 +57,7 @@ def _get_adaptive_ms_ssim_params(h: int, w: int) -> tuple[tuple[float, ...], int
         return (0.5, 0.5), 3   # минимальные параметры для мелочи
 
 @lru_cache(maxsize=8)
-def get_msssim_calculator(weights_tuple, kernel_size, device_str):
+def get_ms_ssim_calculator(weights_tuple, kernel_size, device_str):
     """Кэшированный создатель MS-SSIM калькуляторов"""
     device = torch.device(device_str)
     return MultiScaleStructuralSimilarityIndexMeasure(
@@ -101,7 +101,7 @@ def calculate_ms_ssim_pytorch(
 
     weights, kernel_size = _get_adaptive_ms_ssim_params(original.shape[-2], original.shape[-1])
     weights_tuple = tuple(weights)  # преобразуем в хэшируемый тип
-    msssim_calc = get_msssim_calculator(weights_tuple, kernel_size, str(torch_device))
+    ms_ssim_calc = get_ms_ssim_calculator(weights_tuple, kernel_size, str(torch_device))
     # Переводим в тензоры и переносим на устройство
     original_tensor = torch.from_numpy(original).to(torch_device)
     processed_tensor = torch.from_numpy(processed).to(torch_device)
@@ -109,7 +109,7 @@ def calculate_ms_ssim_pytorch(
     # Вычисление MS-SSIM
     with torch.no_grad():
         with torch.autocast(device_type=torch_device.type, dtype=torch.float16):
-            ms_ssim_val = msssim_calc(original_tensor, processed_tensor).item()
+            ms_ssim_val = ms_ssim_calc(original_tensor, processed_tensor).item()
 
     # Явное освобождение ресурсов
     del original_tensor, processed_tensor
