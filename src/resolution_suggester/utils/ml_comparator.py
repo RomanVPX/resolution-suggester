@@ -58,15 +58,18 @@ class MLComparator:
 
     def _run_analysis(self, args: argparse.Namespace, run_type: str) -> Optional[str]:
         """Run analysis with given arguments and return the path to the results file."""
-        logging.info(f"Starting {run_type} analysis run...")
+        logging.info(f"{_('Starting analysis run')}: {run_type}...")
 
-        # Modify output path to make it unique
-        # The original json path will be determined by the reporter
+        # Initialize json_path outside the try block
+        json_path = None
         original_paths = validate_paths(args.paths)
 
         # Create the analyzer and run it
         analyzer = ImageAnalyzer(args)
         reporters, output_paths = self._setup_reporters(args, run_type)
+
+        # Get the output JSON path early
+        json_path = output_paths.get('json')
 
         try:
             # Process files
@@ -79,19 +82,20 @@ class MLComparator:
                 except Exception as e:
                     logging.error(f"{_('Error processing file')} {file_path}: {e}")
 
-            # Get the output JSON path
-            json_path = output_paths.get('json')
             logging.info(f"{run_type.capitalize()} analysis complete. Results saved to: {json_path}")
-            return json_path
         finally:
             # Close reporters
             for rep in reporters:
                 try:
                     rep.__exit__(None, None, None)
                 except Exception as e:
-                    logging.error(f"Error closing reporter: {e}")
+                    logging.error(f"{_('Error closing reporter')}: {e}")
 
-    def _setup_reporters(self, args: argparse.Namespace, run_type: str) -> Tuple[list, dict]:
+        # Return json_path after the finally block
+        return json_path
+
+    @staticmethod
+    def _setup_reporters(args: argparse.Namespace, run_type: str) -> Tuple[list, dict]:
         """Configure reporters with unique filenames for each run."""
         from ..utils.reporters import JSONReporter, get_json_log_filename
 
@@ -135,7 +139,7 @@ class MLComparator:
                 ml_file_entry = next((item for item in ml_data if item.get('file') == file_name), None)
 
                 if not ml_file_entry:
-                    logging.warning(f"No matching ML results for file: {file_name}")
+                    logging.warning(f"{_('No matching ML results for file')}: {file_name}")
                     continue
 
                 # Compare results for this file
@@ -146,7 +150,7 @@ class MLComparator:
             self._calculate_overall_statistics()
 
         except Exception as e:
-            logging.error(f"Error comparing results: {e}")
+            logging.error(f"{_('Error comparing results')}: {e}")
             logging.debug("Details:", exc_info=True)
 
     def _compare_file_results(self, real_entry: Dict, ml_entry: Dict) -> Dict:

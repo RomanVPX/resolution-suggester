@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-05 14:52+0300\n"
+"POT-Creation-Date: 2025-03-05 14:55+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -58,13 +58,13 @@ msgid "Mitchell-Netravali filter"
 msgstr "Фильтр Митчелла-Нетравали"
 
 #: src/resolution_suggester/config.py:160
-#: src/resolution_suggester/utils/ml_comparator.py:310
+#: src/resolution_suggester/utils/ml_comparator.py:314
 msgid "File"
 msgstr "Файл"
 
 #: src/resolution_suggester/config.py:160
-#: src/resolution_suggester/utils/ml_comparator.py:317
-#: src/resolution_suggester/utils/ml_comparator.py:324
+#: src/resolution_suggester/utils/ml_comparator.py:321
+#: src/resolution_suggester/utils/ml_comparator.py:328
 #: src/resolution_suggester/utils/reporting.py:87
 #: src/resolution_suggester/utils/reporting.py:165
 #: src/resolution_suggester/utils/visualization.py:687
@@ -97,7 +97,7 @@ msgstr "Ошибка при создании графика"
 
 #: src/resolution_suggester/core/image_analyzer.py:408
 #: src/resolution_suggester/main.py:314
-#: src/resolution_suggester/utils/ml_comparator.py:80
+#: src/resolution_suggester/utils/ml_comparator.py:83
 msgid "Error processing file"
 msgstr "Ошибка при обработке файла"
 
@@ -168,7 +168,8 @@ msgid "JSON output enabled, file"
 msgstr "Вывод в JSON включён, файл"
 
 #: src/resolution_suggester/main.py:167
-msgid "Error when closing reporter"
+#: src/resolution_suggester/utils/ml_comparator.py:92
+msgid "Error closing reporter"
 msgstr "Ошибка при закрытии репортера"
 
 #: src/resolution_suggester/main.py:191
@@ -333,85 +334,97 @@ msgstr "Доступные методы интерполяции"
 msgid "Enabling JSON output for comparison"
 msgstr "Включение JSON-вывода для сравнения"
 
-#: src/resolution_suggester/utils/ml_comparator.py:298
-msgid "ML vs Real Metrics Comparison"
-msgstr "Сравнение реальных и ML-метрик"
+#: src/resolution_suggester/utils/ml_comparator.py:61
+msgid "Starting analysis run"
+msgstr "Начинается анализ"
 
-#: src/resolution_suggester/utils/ml_comparator.py:318
+#: src/resolution_suggester/utils/ml_comparator.py:142
+msgid "No matching ML results for file"
+msgstr "Нет совпадающих результатов ML-анализа для этого файла"
+
+#: src/resolution_suggester/utils/ml_comparator.py:153
+msgid "Error comparing results"
+msgstr "Ошибка сравнения результатов"
+
+#: src/resolution_suggester/utils/ml_comparator.py:302
+msgid "ML vs Real Metrics Comparison"
+msgstr "Сравнение вычисленных и ML-метрик"
+
+#: src/resolution_suggester/utils/ml_comparator.py:322
 msgid "Channel"
 msgstr "Канал"
 
-#: src/resolution_suggester/utils/ml_comparator.py:319
-#: src/resolution_suggester/utils/ml_comparator.py:325
+#: src/resolution_suggester/utils/ml_comparator.py:323
+#: src/resolution_suggester/utils/ml_comparator.py:329
 msgid "Real"
-msgstr "Реальное"
+msgstr "Вычислено"
 
-#: src/resolution_suggester/utils/ml_comparator.py:320
-#: src/resolution_suggester/utils/ml_comparator.py:326
+#: src/resolution_suggester/utils/ml_comparator.py:324
+#: src/resolution_suggester/utils/ml_comparator.py:330
 msgid "ML"
 msgstr "ML"
 
-#: src/resolution_suggester/utils/ml_comparator.py:321
-#: src/resolution_suggester/utils/ml_comparator.py:327
+#: src/resolution_suggester/utils/ml_comparator.py:325
+#: src/resolution_suggester/utils/ml_comparator.py:331
 msgid "Delta"
 msgstr "∆"
 
-#: src/resolution_suggester/utils/ml_comparator.py:322
-#: src/resolution_suggester/utils/ml_comparator.py:328
+#: src/resolution_suggester/utils/ml_comparator.py:326
+#: src/resolution_suggester/utils/ml_comparator.py:332
 msgid "Relative Error (%)"
 msgstr "Относительная ошибка (%)"
 
-#: src/resolution_suggester/utils/ml_comparator.py:352
-#: src/resolution_suggester/utils/ml_comparator.py:384
-#: src/resolution_suggester/utils/ml_comparator.py:428
-#: src/resolution_suggester/utils/ml_comparator.py:430
+#: src/resolution_suggester/utils/ml_comparator.py:356
+#: src/resolution_suggester/utils/ml_comparator.py:388
+#: src/resolution_suggester/utils/ml_comparator.py:432
+#: src/resolution_suggester/utils/ml_comparator.py:434
 msgid "N/A"
 msgstr "Н/Д"
 
-#: src/resolution_suggester/utils/ml_comparator.py:401
-#: src/resolution_suggester/utils/ml_comparator.py:407
+#: src/resolution_suggester/utils/ml_comparator.py:405
+#: src/resolution_suggester/utils/ml_comparator.py:411
 msgid "Statistics"
 msgstr "Статистика"
 
-#: src/resolution_suggester/utils/ml_comparator.py:402
-#: src/resolution_suggester/utils/ml_comparator.py:408
+#: src/resolution_suggester/utils/ml_comparator.py:406
+#: src/resolution_suggester/utils/ml_comparator.py:412
 msgid "Mean"
 msgstr "Среднее"
 
-#: src/resolution_suggester/utils/ml_comparator.py:402
-#: src/resolution_suggester/utils/ml_comparator.py:408
+#: src/resolution_suggester/utils/ml_comparator.py:406
+#: src/resolution_suggester/utils/ml_comparator.py:412
 msgid "Median"
 msgstr "Медиана"
 
-#: src/resolution_suggester/utils/ml_comparator.py:417
+#: src/resolution_suggester/utils/ml_comparator.py:421
 msgid "Overall Statistics"
 msgstr "Общая статистика"
 
-#: src/resolution_suggester/utils/ml_comparator.py:420
+#: src/resolution_suggester/utils/ml_comparator.py:424
 msgid "Statistic"
 msgstr "Параметр"
 
-#: src/resolution_suggester/utils/ml_comparator.py:421
+#: src/resolution_suggester/utils/ml_comparator.py:425
 msgid "Value"
 msgstr "Значение"
 
-#: src/resolution_suggester/utils/ml_comparator.py:426
+#: src/resolution_suggester/utils/ml_comparator.py:430
 msgid "Mean Median Delta"
 msgstr "Среднее медианное отклонение"
 
-#: src/resolution_suggester/utils/ml_comparator.py:427
+#: src/resolution_suggester/utils/ml_comparator.py:431
 msgid "Max Median Delta"
 msgstr "Максимальное медианное отклонение"
 
-#: src/resolution_suggester/utils/ml_comparator.py:428
+#: src/resolution_suggester/utils/ml_comparator.py:432
 msgid "File with Max Median Delta"
 msgstr "Файл с максимальным отклонением медиан"
 
-#: src/resolution_suggester/utils/ml_comparator.py:429
+#: src/resolution_suggester/utils/ml_comparator.py:433
 msgid "Min Median Delta"
 msgstr "Минимальное медианное отклонение"
 
-#: src/resolution_suggester/utils/ml_comparator.py:430
+#: src/resolution_suggester/utils/ml_comparator.py:434
 msgid "File with Min Median Delta"
 msgstr "Файл с минимальным медианным отклонением"
 

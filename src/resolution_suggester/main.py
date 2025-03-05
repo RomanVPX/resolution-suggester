@@ -164,7 +164,7 @@ def close_reporters(reporters: list[IReporter]) -> None:
         try:
             rep.__exit__(None, None, None)
         except Exception as e:
-            logging.error(f"{_("Error when closing reporter")}: {e}")
+            logging.error(f"{_("Error closing reporter")}: {e}")
 
 
 def process_file_for_dataset(
