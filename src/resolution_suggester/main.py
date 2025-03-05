@@ -72,8 +72,8 @@ def main() -> None:
         # Получение списка файлов
         files = get_file_list(args.paths)
 
-        # Загрузка LPIPS моделей при необходимости
-        if args.metric == QualityMetrics.LPIPS and not args.no_parallel:
+        # Пробуем заранее загрузить LPIPS модель при необходимости
+        if args.metric == QualityMetrics.LPIPS and not args.no_parallel and not args.ml:
             preload_lpips_models(args.lpips_net)
 
         # Запуск нужного режима работы
