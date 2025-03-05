@@ -47,7 +47,7 @@ from .config import (
 from .core.image_analyzer import ImageAnalyzer
 from .core.image_loader import load_image
 from .core.image_processing import get_resize_function
-from .core.metrics import calculate_metrics, compute_resolutions
+from .core.metrics import calculate_metrics, compute_resolutions, preload_lpips_models
 from .ml.predictor import QuickPredictor, extract_features_of_original_img
 from .utils.cli import parse_arguments, setup_logging, validate_paths
 from .utils.ml_comparator import MLComparator
@@ -71,6 +71,10 @@ def main() -> None:
 
         # Получение списка файлов
         files = get_file_list(args.paths)
+
+        # Загрузка LPIPS моделей при необходимости
+        if args.metric == QualityMetrics.LPIPS and not args.no_parallel:
+            preload_lpips_models(args.lpips_net)
 
         # Запуск нужного режима работы
         if args.generate_dataset:

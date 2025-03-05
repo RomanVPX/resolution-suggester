@@ -5,6 +5,7 @@ from functools import lru_cache
 
 import numpy as np
 import torch
+from rich.console import Console
 from numba import njit, prange
 from skimage.feature import canny
 from skimage.filters import sobel
@@ -313,12 +314,8 @@ def calculate_lpips_channels(
 
 def get_lpips_model(net_type='alex', device=None, memory_efficient=False):
     """Load LPIPS model."""
-    try:
-        import lpips
-    except ImportError:
-        logging.error(_("LPIPS package not found. Install with: pip install lpips"))
-        raise
 
+    import lpips
     model = lpips.LPIPS(net=net_type, verbose=False)
 
     if device is not None:
@@ -328,6 +325,28 @@ def get_lpips_model(net_type='alex', device=None, memory_efficient=False):
         model = model.half()  # Use half precision
 
     return model
+
+
+def preload_lpips_models(net_type: str):
+    """
+    Preload LPIPS models to avoid concurrent downloads during parallel processing.
+    """
+    console = Console()
+
+    try:
+        import lpips
+
+        console.print(f"[bold cyan]Preloading LPIPS model ({net_type})...[/]")
+        # Триггерим загрузку модели из Интернетов, если она ещё не:
+        lpips.LPIPS(net=net_type, verbose=False)
+        console.print("[bold green]LPIPS model loaded successfully![/]")
+
+    except ImportError:
+        logging.error(_("LPIPS package not found. Install with: pip install lpips"))
+
+    except Exception as e:
+        logging.error(f"Error preloading LPIPS model: {e}")
+        logging.debug("Details:", exc_info=True)
 
 
 @njit(cache=True)
