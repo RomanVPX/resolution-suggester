@@ -251,6 +251,12 @@ def create_parser() -> argparse.ArgumentParser:
         help=_('Use ML model to predict metrics instead of real calculation (fast)')
     )
 
+    parser.add_argument(
+        '--compare-ml',
+        action='store_true',
+        help=_('Run comparison of real and ML results')
+    )
+
     return parser
 
 def format_threads_help() -> str:

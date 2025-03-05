@@ -1,8 +1,6 @@
 # main.py
 import os
 
-from resolution_suggester.core.image_analyzer import ImageAnalyzer
-
 # отключаем предупреждение omp_set_nested routine deprecated от PyTorch
 os.environ["KMP_WARNINGS"] = "off"
 os.environ["OMP_MAX_ACTIVE_LEVELS"] = "1"
@@ -31,11 +29,14 @@ from .config import (
     InterpolationMethods,
     QualityMetrics,
 )
+
+from .core.image_analyzer import ImageAnalyzer
 from .core.image_loader import load_image
 from .core.image_processing import get_resize_function
 from .core.metrics import calculate_metrics, compute_resolutions
 from .ml.predictor import QuickPredictor, extract_features_of_original_img
 from .utils.cli import parse_arguments, setup_logging, validate_paths
+from .utils.ml_comparator import MLComparator
 
 from .utils.reporters import (
     IReporter,
@@ -102,6 +103,12 @@ def run_dataset_generation(files: list[str], args: argparse.Namespace) -> None:
 
 def run_image_analysis(files: list[str], args: argparse.Namespace) -> None:
     """Launches image analysis with reporter configuration."""
+
+    if hasattr(args, 'compare_ml') and args.compare_ml:
+        comparator = MLComparator(args)
+        comparator.run_comparison()
+        return
+
     reporters, output_paths = setup_reporters(args)
 
     if getattr(args, 'chart', False):
@@ -157,7 +164,7 @@ def close_reporters(reporters: list[IReporter]) -> None:
         try:
             rep.__exit__(None, None, None)
         except Exception as e:
-            logging.error(f"{_("Error when closing reporter")}: {e}")
+            logging.error(f"{_("Error closing reporter")}: {e}")
 
 
 def process_file_for_dataset(
@@ -304,7 +311,7 @@ def generate_dataset(files: list[str], args: argparse.Namespace) -> tuple[str, s
                 features_all.extend(features)
                 all_targets.extend(targets)
             except Exception as e:
-                logging.error(f"{_("Error when processing file")}: {e}")
+                logging.error(f"{_("Error processing file")}: {e}")
 
     if features_all:
         df_features = pd.DataFrame(features_all)

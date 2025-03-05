@@ -405,7 +405,7 @@ def process_file_for_analyzer(args_dict, file_path):
         analyzer = ImageAnalyzer(args)
         return analyzer.analyze_file(file_path)
     except Exception as e:
-        logging.error(f"{_("Error when processing file")} {file_path}: {e}")
+        logging.error(f"{_("Error processing file")} {file_path}: {e}")
         logging.debug("Details:", exc_info=True)
         return None, None
 
