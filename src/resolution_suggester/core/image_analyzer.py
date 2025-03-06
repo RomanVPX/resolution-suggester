@@ -127,7 +127,7 @@ class ImageAnalyzer:
             # Загрузка изображения
             image_load_result = load_image(file_path)
             if image_load_result.error or image_load_result.data is None:
-                logging.error(f"Ошибка загрузки изображения {file_path}: {image_load_result.error}")
+                logging.error(f"{_('Error when loading image')} {file_path}: {image_load_result.error}")
                 return None, None
 
             img_original = image_load_result.data

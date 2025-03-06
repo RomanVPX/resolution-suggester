@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-06 11:41+0300\n"
+"POT-Creation-Date: 2025-03-06 12:08+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -78,6 +78,10 @@ msgstr "Разрешение"
 #: src/resolution_suggester/core/image_analyzer.py:65
 msgid "ML model not found, the actual metrics will be calculated."
 msgstr "ML-модель не найдена, будем вычислять реальные метрики."
+
+#: src/resolution_suggester/core/image_analyzer.py:130
+msgid "Error when loading image"
+msgstr "Ошибка при загрузке изображения"
 
 #: src/resolution_suggester/core/image_analyzer.py:324
 #: src/resolution_suggester/core/image_analyzer.py:330
@@ -241,6 +245,10 @@ msgstr "Создание датасета"
 msgid "No data to save in"
 msgstr "Нет данных для сохранения в"
 
+#: src/resolution_suggester/ml/predictor.py:107
+msgid "Models are trained and saved."
+msgstr "Модели обучены и сохранены."
+
 #: src/resolution_suggester/ml/predictor.py:146
 #: src/resolution_suggester/ml/predictor.py:174
 msgid "Preprocessor is not loaded"
@@ -255,6 +263,26 @@ msgstr "Поканальная модель не загружена"
 #: src/resolution_suggester/ml/predictor.py:184
 msgid "Combined model is not loaded"
 msgstr "Совмещённая модель не загружена"
+
+#: src/resolution_suggester/ml/predictor.py:159
+msgid "Error in batch prediction"
+msgstr "Ошибка в пакетном предсказании"
+
+#: src/resolution_suggester/ml/predictor.py:161
+msgid "Input dimensions"
+msgstr "Входные размерности"
+
+#: src/resolution_suggester/ml/predictor.py:161
+#: src/resolution_suggester/utils/ml_comparator.py:356
+#: src/resolution_suggester/utils/ml_comparator.py:388
+#: src/resolution_suggester/utils/ml_comparator.py:432
+#: src/resolution_suggester/utils/ml_comparator.py:434
+msgid "N/A"
+msgstr "Н/Д"
+
+#: src/resolution_suggester/ml/predictor.py:162
+msgid "feature keys"
+msgstr "ключи признаков"
 
 #: src/resolution_suggester/utils/cli.py:48
 #: src/resolution_suggester/utils/cli.py:153
@@ -554,13 +582,6 @@ msgstr "∆"
 #: src/resolution_suggester/utils/ml_comparator.py:332
 msgid "Relative Error (%)"
 msgstr "Относительная ошибка (%)"
-
-#: src/resolution_suggester/utils/ml_comparator.py:356
-#: src/resolution_suggester/utils/ml_comparator.py:388
-#: src/resolution_suggester/utils/ml_comparator.py:432
-#: src/resolution_suggester/utils/ml_comparator.py:434
-msgid "N/A"
-msgstr "Н/Д"
 
 #: src/resolution_suggester/utils/ml_comparator.py:405
 #: src/resolution_suggester/utils/ml_comparator.py:411

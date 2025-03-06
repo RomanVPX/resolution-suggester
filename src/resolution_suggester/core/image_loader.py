@@ -77,7 +77,7 @@ def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
         logging.error(f"{_('Error reading')} {file_path}, {str(e)}")
         return ImageLoadResult(None, None, None, str(e))
 
-def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
+def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult | None:
     """Loads an EXR file with channel processing (optionally normalizing to [0, 1])."""
     try:
         exr_file = pyexr.open(file_path)

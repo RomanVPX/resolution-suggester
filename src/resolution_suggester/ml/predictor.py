@@ -104,7 +104,7 @@ class QuickPredictor:
         joblib.dump(preprocessor, self.model_dir / "preprocessor.joblib")
         joblib.dump(combined_model, self.model_dir / "model_combined.joblib")
         joblib.dump(channels_model, self.model_dir / "model_channels.joblib")
-        logging.info("Модели обучены и сохранены.")
+        logging.info(_('Models are trained and saved.'))
 
     @staticmethod
     def _get_preprocessor() -> ColumnTransformer:
@@ -114,7 +114,7 @@ class QuickPredictor:
             'wavelet_energy', 'glcm_contrast',
             'glcm_energy', 'scale_factor',
             'original_width', 'original_height',
-            # LPIPS-related
+            # LPIPS-related:
             'edge_density', 'gradient_mean', 'gradient_std',
             'fft_low_energy', 'fft_mid_energy', 'fft_high_energy',
             'edge_value_mean', 'edge_value_std'
@@ -156,10 +156,10 @@ class QuickPredictor:
                     raise ValueError(_("Combined model is not loaded"))
                 return self.combined_model.predict(processed)
         except Exception as e:
-            logging.error(f"Error in batch prediction: {e}")
+            logging.error(f"{_('Error in batch prediction')}: {e}")
             logging.debug(
-                f"Input dimensions: {processed.shape if 'processed' in locals() else 'N/A'},"
-                f" feature keys: {list(features_df.columns)}")
+                f"{_('Input dimensions')}: {_('N/A') if 'processed' not in locals() else processed.shape},"
+                f" {_('feature keys')}: {list(features_df.columns)}")
             # Return empty array with appropriate shape
             return np.zeros((features_df.shape[0], len(QualityMetrics)))
 

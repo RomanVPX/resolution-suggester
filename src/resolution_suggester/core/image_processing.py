@@ -70,7 +70,7 @@ def _resize_mitchell_single_channel(
     y_weights = np.zeros((target_height, 4), dtype=np.float32)
     y_indices = np.zeros((target_height, 4), dtype=np.int32)
 
-    # Предварительный расчет весов и индексов
+    # Предварительный расчёт весов и индексов
     for j in range(target_width):
         x = j * x_ratio
         x_floor = int(np.floor(x))
