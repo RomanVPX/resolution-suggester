@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-06 10:52+0300\n"
+"POT-Creation-Date: 2025-03-06 13:56+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -79,6 +79,15 @@ msgstr "Resolution"
 msgid "ML model not found, the actual metrics will be calculated."
 msgstr "ML model not found, the actual metrics will be calculated."
 
+#: src/resolution_suggester/core/image_analyzer.py:84
+#: src/resolution_suggester/core/image_analyzer.py:106
+msgid "Processing images..."
+msgstr "Processing images..."
+
+#: src/resolution_suggester/core/image_analyzer.py:130
+msgid "Error when loading image"
+msgstr "Error when loading image"
+
 #: src/resolution_suggester/core/image_analyzer.py:324
 #: src/resolution_suggester/core/image_analyzer.py:330
 #: src/resolution_suggester/core/image_analyzer.py:399
@@ -106,6 +115,7 @@ msgid "Error processing file"
 msgstr "Error processing file"
 
 #: src/resolution_suggester/core/image_loader.py:54
+#: src/resolution_suggester/core/image_loader.py:134
 #: src/resolution_suggester/core/image_loader.py:135
 msgid "File not found"
 msgstr "File not found"
@@ -123,42 +133,27 @@ msgid "Unsupported file format: {}"
 msgstr "Unsupported file format: {}"
 
 #: src/resolution_suggester/core/image_loader.py:74
-#, python-format
-msgid "Not enough memory to load image %s"
-msgstr "Not enough memory to load image %s"
-
 #: src/resolution_suggester/core/image_loader.py:75
 msgid "Not enough memory to load image"
 msgstr "Not enough memory to load image"
 
 #: src/resolution_suggester/core/image_loader.py:77
-#, python-format
-msgid "Error reading %s: %s"
-msgstr "Error reading %s: %s"
+msgid "Error reading"
+msgstr "Error reading"
 
 #: src/resolution_suggester/core/image_loader.py:111
 #, python-format
 msgid "Error processing EXR %s: %s"
 msgstr "Error processing EXR %s: %s"
 
-#: src/resolution_suggester/core/image_loader.py:134
-#, python-format
-msgid "File not found: %s"
-msgstr "File not found: %s"
-
 #: src/resolution_suggester/core/image_loader.py:137
-#, python-format
-msgid "Unable to decode image: %s"
-msgstr "Unable to decode image: %s"
-
 #: src/resolution_suggester/core/image_loader.py:138
 msgid "Unable to decode image"
 msgstr "Unable to decode image"
 
 #: src/resolution_suggester/core/image_loader.py:140
-#, python-format
-msgid "Error processing raster image %s: %s"
-msgstr "Error processing raster image %s: %s"
+msgid "Error processing raster image"
+msgstr "Error processing raster image"
 
 #: src/resolution_suggester/core/metrics.py:104
 msgid "MS-SSIM: unsupported images dimensions"
@@ -254,6 +249,10 @@ msgstr "Creating dataset"
 msgid "No data to save in"
 msgstr "No data to save in"
 
+#: src/resolution_suggester/ml/predictor.py:107
+msgid "Models are trained and saved."
+msgstr "Models are trained and saved."
+
 #: src/resolution_suggester/ml/predictor.py:146
 #: src/resolution_suggester/ml/predictor.py:174
 msgid "Preprocessor is not loaded"
@@ -268,6 +267,26 @@ msgstr "Channel model is not loaded"
 #: src/resolution_suggester/ml/predictor.py:184
 msgid "Combined model is not loaded"
 msgstr "Combined model is not loaded"
+
+#: src/resolution_suggester/ml/predictor.py:159
+msgid "Error in batch prediction"
+msgstr "Error in batch prediction"
+
+#: src/resolution_suggester/ml/predictor.py:161
+msgid "Input dimensions"
+msgstr "Input dimensions"
+
+#: src/resolution_suggester/ml/predictor.py:161
+#: src/resolution_suggester/utils/ml_comparator.py:356
+#: src/resolution_suggester/utils/ml_comparator.py:388
+#: src/resolution_suggester/utils/ml_comparator.py:432
+#: src/resolution_suggester/utils/ml_comparator.py:434
+msgid "N/A"
+msgstr "N/A"
+
+#: src/resolution_suggester/ml/predictor.py:162
+msgid "feature keys"
+msgstr "feature keys"
 
 #: src/resolution_suggester/utils/cli.py:48
 #: src/resolution_suggester/utils/cli.py:153
@@ -507,14 +526,12 @@ msgid " Check the following paths: "
 msgstr " Check the following paths: "
 
 #: src/resolution_suggester/utils/cli.py:378
-#, python-format
-msgid "Permission error accessing directory %s: %s"
-msgstr "Permission error accessing directory %s: %s"
+msgid "Permission error accessing directory"
+msgstr "Permission error accessing directory"
 
 #: src/resolution_suggester/utils/cli.py:380
-#, python-format
-msgid "Unexpected error walking directory %s: %s"
-msgstr "Unexpected error walking directory %s: %s"
+msgid "Unexpected error walking directory"
+msgstr "Unexpected error walking directory"
 
 #: src/resolution_suggester/utils/ml_comparator.py:40
 msgid "Enabling JSON output for comparison"
@@ -559,13 +576,6 @@ msgstr "∆"
 #: src/resolution_suggester/utils/ml_comparator.py:332
 msgid "Relative Error (%)"
 msgstr "Relative Error (%)"
-
-#: src/resolution_suggester/utils/ml_comparator.py:356
-#: src/resolution_suggester/utils/ml_comparator.py:388
-#: src/resolution_suggester/utils/ml_comparator.py:432
-#: src/resolution_suggester/utils/ml_comparator.py:434
-msgid "N/A"
-msgstr "N/A"
 
 #: src/resolution_suggester/utils/ml_comparator.py:405
 #: src/resolution_suggester/utils/ml_comparator.py:411

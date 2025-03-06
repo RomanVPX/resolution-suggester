@@ -71,13 +71,13 @@ def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
             return ImageLoadResult(None, None, None, msg)
 
     except MemoryError:
-        logging.error(_("Not enough memory to load image %s"), file_path)
+        logging.error(f"{_('Not enough memory to load image')}: {file_path}")
         return ImageLoadResult(None, None, None, _("Not enough memory to load image"))
     except Exception as e:
-        logging.error(_("Error reading %s: %s"), file_path, str(e))
+        logging.error(f"{_('Error reading')} {file_path}, {str(e)}")
         return ImageLoadResult(None, None, None, str(e))
 
-def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
+def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult | None:
     """Loads an EXR file with channel processing (optionally normalizing to [0, 1])."""
     try:
         exr_file = pyexr.open(file_path)
@@ -131,11 +131,11 @@ def load_raster(image_path: str) -> ImageLoadResult:
             return ImageLoadResult(img_array, 1.0, channels)
 
     except FileNotFoundError:
-        logging.error(_("File not found: %s"), image_path)
+        logging.error(f"{_('File not found')}: {image_path}")
         return ImageLoadResult(None, None, None, f"{_('File not found')}: {image_path}")
     except UnidentifiedImageError:
-        logging.error(_("Unable to decode image: %s"), image_path)
+        logging.error(f"{_('Unable to decode image')}: {image_path}")
         return ImageLoadResult(None, None, None, f"{_('Unable to decode image')}: {image_path}")
     except Exception as e:
-        logging.error(_("Error processing raster image %s: %s"), image_path, e)
+        logging.error(f"{_('Error processing raster image')}: {image_path}, {e}")
         return ImageLoadResult(None, None, None, str(e))

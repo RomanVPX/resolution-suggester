@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-06 10:52+0300\n"
+"POT-Creation-Date: 2025-03-06 13:56+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -79,6 +79,15 @@ msgstr "Разрешение"
 msgid "ML model not found, the actual metrics will be calculated."
 msgstr "ML-модель не найдена, будем вычислять реальные метрики."
 
+#: src/resolution_suggester/core/image_analyzer.py:84
+#: src/resolution_suggester/core/image_analyzer.py:106
+msgid "Processing images..."
+msgstr "Обработка и анализ изображений..."
+
+#: src/resolution_suggester/core/image_analyzer.py:130
+msgid "Error when loading image"
+msgstr "Ошибка при загрузке изображения"
+
 #: src/resolution_suggester/core/image_analyzer.py:324
 #: src/resolution_suggester/core/image_analyzer.py:330
 #: src/resolution_suggester/core/image_analyzer.py:399
@@ -106,6 +115,7 @@ msgid "Error processing file"
 msgstr "Ошибка при обработке файла"
 
 #: src/resolution_suggester/core/image_loader.py:54
+#: src/resolution_suggester/core/image_loader.py:134
 #: src/resolution_suggester/core/image_loader.py:135
 msgid "File not found"
 msgstr "Файл не найден"
@@ -123,42 +133,27 @@ msgid "Unsupported file format: {}"
 msgstr "Неподдерживаемый формат файла: {}"
 
 #: src/resolution_suggester/core/image_loader.py:74
-#, python-format
-msgid "Not enough memory to load image %s"
-msgstr "Недостаточно памяти для загрузки изображения %s"
-
 #: src/resolution_suggester/core/image_loader.py:75
 msgid "Not enough memory to load image"
 msgstr "Недостаточно памяти для загрузки изображения"
 
 #: src/resolution_suggester/core/image_loader.py:77
-#, python-format
-msgid "Error reading %s: %s"
-msgstr "Ошибка при чтении %s: %s"
+msgid "Error reading"
+msgstr "Ошибка при чтении"
 
 #: src/resolution_suggester/core/image_loader.py:111
 #, python-format
 msgid "Error processing EXR %s: %s"
 msgstr "Ошибка обработки EXR %s: %s"
 
-#: src/resolution_suggester/core/image_loader.py:134
-#, python-format
-msgid "File not found: %s"
-msgstr "Файл не найден: %s"
-
 #: src/resolution_suggester/core/image_loader.py:137
-#, python-format
-msgid "Unable to decode image: %s"
-msgstr "Невозможно декодировать изображение: %s"
-
 #: src/resolution_suggester/core/image_loader.py:138
 msgid "Unable to decode image"
 msgstr "Невозможно декодировать изображение"
 
 #: src/resolution_suggester/core/image_loader.py:140
-#, python-format
-msgid "Error processing raster image %s: %s"
-msgstr "Ошибка обработки растрового изображения %s: %s"
+msgid "Error processing raster image"
+msgstr "Ошибка обработки растрового изображения"
 
 #: src/resolution_suggester/core/metrics.py:104
 msgid "MS-SSIM: unsupported images dimensions"
@@ -255,6 +250,10 @@ msgstr "Создание датасета"
 msgid "No data to save in"
 msgstr "Нет данных для сохранения в"
 
+#: src/resolution_suggester/ml/predictor.py:107
+msgid "Models are trained and saved."
+msgstr "Модели обучены и сохранены."
+
 #: src/resolution_suggester/ml/predictor.py:146
 #: src/resolution_suggester/ml/predictor.py:174
 msgid "Preprocessor is not loaded"
@@ -269,6 +268,26 @@ msgstr "Поканальная модель не загружена"
 #: src/resolution_suggester/ml/predictor.py:184
 msgid "Combined model is not loaded"
 msgstr "Совмещённая модель не загружена"
+
+#: src/resolution_suggester/ml/predictor.py:159
+msgid "Error in batch prediction"
+msgstr "Ошибка в пакетном предсказании"
+
+#: src/resolution_suggester/ml/predictor.py:161
+msgid "Input dimensions"
+msgstr "Входные размерности"
+
+#: src/resolution_suggester/ml/predictor.py:161
+#: src/resolution_suggester/utils/ml_comparator.py:356
+#: src/resolution_suggester/utils/ml_comparator.py:388
+#: src/resolution_suggester/utils/ml_comparator.py:432
+#: src/resolution_suggester/utils/ml_comparator.py:434
+msgid "N/A"
+msgstr "Н/Д"
+
+#: src/resolution_suggester/ml/predictor.py:162
+msgid "feature keys"
+msgstr "ключи признаков"
 
 #: src/resolution_suggester/utils/cli.py:48
 #: src/resolution_suggester/utils/cli.py:153
@@ -299,7 +318,8 @@ msgid ""
 "1."
 msgstr ""
 "Использованы параметры --generate-dataset и --no-parallel одновременно.\n"
-"Параметр --no-parallel будет проигнорирован, а параметр --threads будет принудительно установлен в 1."
+"Параметр --no-parallel будет проигнорирован, а параметр --threads будет "
+"принудительно установлен в 1."
 
 #: src/resolution_suggester/utils/cli.py:104
 msgid ""
@@ -352,7 +372,9 @@ msgstr ""
 
 #: src/resolution_suggester/utils/cli.py:141
 msgid "Number of parallel processes must be >= 1. Set to minimum value: 1"
-msgstr "Число параллельных процессов должно быть >= 1. Установлено минимальное значение: 1"
+msgstr ""
+"Число параллельных процессов должно быть >= 1. Установлено минимальное "
+"значение: 1"
 
 #: src/resolution_suggester/utils/cli.py:160
 msgid "Paths to files/directories for analysis"
@@ -515,14 +537,12 @@ msgid " Check the following paths: "
 msgstr " Проверьте следующие пути: "
 
 #: src/resolution_suggester/utils/cli.py:378
-#, python-format
-msgid "Permission error accessing directory %s: %s"
-msgstr "Ошибка доступа к директории %s: %s"
+msgid "Permission error accessing directory"
+msgstr "Ошибка доступа к директории"
 
 #: src/resolution_suggester/utils/cli.py:380
-#, python-format
-msgid "Unexpected error walking directory %s: %s"
-msgstr "Неожиданная ошибка при обходе директории %s: %s"
+msgid "Unexpected error walking directory"
+msgstr "Неожиданная ошибка при обходе директории"
 
 #: src/resolution_suggester/utils/ml_comparator.py:40
 msgid "Enabling JSON output for comparison"
@@ -567,13 +587,6 @@ msgstr "∆"
 #: src/resolution_suggester/utils/ml_comparator.py:332
 msgid "Relative Error (%)"
 msgstr "Относительная ошибка (%)"
-
-#: src/resolution_suggester/utils/ml_comparator.py:356
-#: src/resolution_suggester/utils/ml_comparator.py:388
-#: src/resolution_suggester/utils/ml_comparator.py:432
-#: src/resolution_suggester/utils/ml_comparator.py:434
-msgid "N/A"
-msgstr "Н/Д"
 
 #: src/resolution_suggester/utils/ml_comparator.py:405
 #: src/resolution_suggester/utils/ml_comparator.py:411
