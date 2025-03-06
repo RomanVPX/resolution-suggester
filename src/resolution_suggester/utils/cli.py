@@ -90,9 +90,40 @@ def parse_arguments() -> argparse.Namespace:
         args.save_im_down = True
         args.save_im_up = True
 
-    if args.generate_dataset or args.train_ml or args.ml:
+    if args.generate_dataset:
+        if args.compare_ml:
+            logging.warning("Нельзя использовать --compare-ml вместе с --generate-dataset!\n"
+                            "параметр --compare-ml будет проигнорирован.")
+            args.compare_ml = False
+        if args.no_parallel:
+            logging.info("Использованы параметры --generate-dataset и --no-parallel одновременно.\n"
+                         "Параметр --no-parallel будет проигнорирован, а параметр --threads будет принудительно установлен в 1.")
+            args.no_parallel = False
+            args.threads = 1
+        if args.ml:
+            logging.warning("Нельзя использовать --ml вместе с --generate-dataset!\n"
+                            "параметр --ml будет проигнорирован.")
+            args.ml = False
         if args.save_im_down or args.save_im_up or args.save_im_all:
-            logging.warning("Нельзя использовать --save-im-* и --generate-dataset, --train-ml, --ml с одновременно!\n"
+            logging.warning("Нельзя использовать --save-im-* вместе с --generate-dataset!\n"
+                            "параметры --save-im-* будут проигнорированы.")
+            args.save_im_down = False
+            args.save_im_up = False
+
+    if args.compare_ml:
+        if args.ml:
+            logging.warning("Нельзя использовать --ml вместе с --compare-ml!\n"
+                            "параметр --ml будет проигнорирован.")
+            args.ml = False
+
+    if args.train_ml and not args.generate_dataset:
+        logging.warning("Параметр --train-ml работает только в сочетании с --generate-dataset!\n"
+                        "параметр --train-ml будет проигнорирован.")
+        args.train_ml = False
+
+    if args.ml:
+        if args.save_im_down or args.save_im_up or args.save_im_all:
+            logging.warning("Нельзя использовать --save-im-* вместе с --ml!\n"
                             "параметры --save-im-* будут проигнорированы.")
             args.save_im_down = False
             args.save_im_up = False
@@ -171,8 +202,16 @@ def create_parser() -> argparse.ArgumentParser:
         '-m', '--metric', type=QualityMetrics,
         default=QUALITY_METRIC_DEFAULT,
         choices=[m.value for m in QualityMetrics],
-        metavar='METRIC',
+        metavar='QUALITY_METRIC',
         help=format_metric_help()
+    )
+
+    parser.add_argument(
+        '--lpips-net',
+        choices=['alex', 'vgg', 'squeeze'],
+        default='alex',
+        metavar='NEURAL_NETWORK',
+        help=_('LPIPS neural network backbone:\nalex (balanced)\nvgg (memory-hungry)\nsqueeze (fast but less accurate)')
     )
 
     parser.add_argument(
@@ -204,33 +243,41 @@ def create_parser() -> argparse.ArgumentParser:
         '--save-im-down',
         action='store_true',
         help=_('Save downscale results produced during analysis\n') +
-             _('(does not work with --ml, --train-ml and --generate-dataset)')
+             _('(ignored if --ml or --generate-dataset is used)')
     )
 
     parser.add_argument(
         '--save-im-up',
         action='store_true',
         help=_('Save upscale results produced after downscale\n') +
-             _('(does not work with --ml, --train-ml and --generate-dataset)')
+             _('(ignored if --ml or --generate-dataset is used)')
     )
 
     parser.add_argument(
         '-s', '--save-im-all',
         action='store_true',
         help=_('Save all image scaling results (downscale and upscale)\n') +
-             _('(does not work with --ml, --train-ml and --generate-dataset)')
+             _('(ignored if --ml or --generate-dataset is used)')
     )
 
     parser.add_argument(
         '--no-parallel',
         action='store_true',
-        help=_('Disable parallel processing and use single-threaded scheme')
+        help=_('Disable parallel processing and use a single-threaded scheme\n') +
+             _('(ignored and forces --threads 1 instead, if used with --generate-dataset)')
     )
 
     parser.add_argument(
         '--no-gpu',
         action='store_true',
         help=_('Do not use GPU for metrics calculation (in case of problems with CUDA, MPS, etc. in PyTorch)')
+    )
+
+    parser.add_argument(
+        '--ml',
+        action='store_true',
+        help=_('Use ML model to predict metrics instead of real calculation (fast)\n') +
+             _('(ignored if --generate-dataset or --compare-ml is used)')
     )
 
     parser.add_argument(
@@ -246,15 +293,9 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        '--ml',
-        action='store_true',
-        help=_('Use ML model to predict metrics instead of real calculation (fast)')
-    )
-
-    parser.add_argument(
         '--compare-ml',
         action='store_true',
-        help=_('Run comparison of real and ML results')
+        help=_('Run comparison of real and ML results, ignored if --generate-dataset is used')
     )
 
     return parser

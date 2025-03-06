@@ -1,9 +1,23 @@
 # main.py
 import os
+import warnings
 
-# отключаем предупреждение omp_set_nested routine deprecated от PyTorch
+# Отключаем предупреждение omp_set_nested routine deprecated от PyTorch
 os.environ["KMP_WARNINGS"] = "off"
 os.environ["OMP_MAX_ACTIVE_LEVELS"] = "1"
+
+# Отключаем предупреждение из PyTorch (для LPIPS)
+warnings.filterwarnings(
+    "ignore",
+    message="The parameter 'pretrained' is deprecated",
+    category=UserWarning
+)
+warnings.filterwarnings(
+    "ignore",
+    message="Arguments other than a weight enum or `None` for 'weights' are deprecated",
+    category=UserWarning
+)
+
 
 import sys
 
@@ -33,7 +47,7 @@ from .config import (
 from .core.image_analyzer import ImageAnalyzer
 from .core.image_loader import load_image
 from .core.image_processing import get_resize_function
-from .core.metrics import calculate_metrics, compute_resolutions
+from .core.metrics import calculate_metrics, compute_resolutions, preload_lpips_models
 from .ml.predictor import QuickPredictor, extract_features_of_original_img
 from .utils.cli import parse_arguments, setup_logging, validate_paths
 from .utils.ml_comparator import MLComparator
@@ -57,6 +71,10 @@ def main() -> None:
 
         # Получение списка файлов
         files = get_file_list(args.paths)
+
+        # Пробуем заранее загрузить LPIPS модель при необходимости
+        if args.metric == QualityMetrics.LPIPS and not args.no_parallel and not args.ml:
+            preload_lpips_models(args.lpips_net)
 
         # Запуск нужного режима работы
         if args.generate_dataset:
@@ -242,7 +260,8 @@ def process_file_for_dataset(
 
                         targets_entry = {}
                         for metric in QualityMetrics:
-                            channel_metric_value = calculate_metrics(metric, img_channel, img_upscaled_channel, max_val, no_gpu=args.no_gpu)
+                            channel_metric_value = calculate_metrics(metric, img_channel, img_upscaled_channel, max_val,
+                                                                     no_gpu=args.no_gpu, lpips_net_type=args.lpips_net)
                             targets_entry[metric.value] = channel_metric_value
 
                         features_all.append(features_entry)
@@ -258,7 +277,9 @@ def process_file_for_dataset(
                         'psnr': calculate_metrics(QualityMetrics.PSNR, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
                         'ssim': calculate_metrics(QualityMetrics.SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
                         'ms_ssim': calculate_metrics(QualityMetrics.MS_SSIM, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
-                        'tdpr': calculate_metrics(QualityMetrics.TDPR, img_original, img_upscaled, max_val, no_gpu=args.no_gpu)
+                        'tdpr': calculate_metrics(QualityMetrics.TDPR, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
+                        'lpips': calculate_metrics(QualityMetrics.LPIPS, img_original, img_upscaled, max_val,
+                                                   no_gpu=args.no_gpu, lpips_net_type=args.lpips_net),
                     }
                     targets_entry = metrics_combined.copy()
 

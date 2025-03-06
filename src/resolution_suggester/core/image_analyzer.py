@@ -15,11 +15,11 @@ from PIL import Image
 import logging
 from typing import Optional
 
-from resolution_suggester.config import INTERPOLATION_METHOD_UPSCALE, InterpolationMethods, QualityMetrics, \
+from ..config import INTERPOLATION_METHOD_UPSCALE, InterpolationMethods, QualityMetrics, \
     PSNR_IS_LARGE_AS_INF, INTERMEDIATE_DIR, QualityLevelHints, QUALITY_LEVEL_HINTS_DESCRIPTIONS
-from resolution_suggester.core.image_processing import get_resize_function
-from resolution_suggester.ml.predictor import QuickPredictor, extract_features_of_original_img
-from resolution_suggester.utils.reporters import IReporter
+from ..core.image_processing import get_resize_function
+from ..ml.predictor import QuickPredictor, extract_features_of_original_img
+from ..utils.reporters import IReporter
 from .image_loader import load_image
 from .metrics import compute_resolutions, calculate_metrics
 from ..utils.reporting import QualityHelper, ConsoleReporter
@@ -101,7 +101,6 @@ class ImageAnalyzer:
                 executor.submit(process_file_for_analyzer, args_dict, file_path): file_path
                 for file_path in files
             }
-
             # Используем tqdm для отображения прогресса
             from tqdm import tqdm
             for future in tqdm(concurrent.futures.as_completed(future_to_file),
@@ -113,6 +112,7 @@ class ImageAnalyzer:
                         self._report_results(file_path, results, meta)
                 except Exception as e:
                     logging.error(f"Ошибка получения результата для {file_path}: {e}")
+
 
     def analyze_file(self, file_path: str) -> Tuple[Optional[list], Optional[dict]]:
         """
@@ -190,7 +190,8 @@ class ImageAnalyzer:
             channels_metrics = calculate_metrics(
                 QualityMetrics(self.args.metric),
                 img_original, img_upscaled, max_val,
-                channels, no_gpu=self.args.no_gpu
+                channels, no_gpu=self.args.no_gpu,
+                lpips_net_type=self.args.lpips_net
             )
             channels_metrics = postprocess_metric_value(channels_metrics, self.args.metric)
             min_metric = min(channels_metrics.values())
@@ -200,7 +201,8 @@ class ImageAnalyzer:
             metric_value = calculate_metrics(
                 QualityMetrics(self.args.metric),
                 img_original, img_upscaled, max_val,
-                no_gpu=self.args.no_gpu
+                no_gpu=self.args.no_gpu,
+                lpips_net_type=self.args.lpips_net
             )
             metric_value = postprocess_metric_value(metric_value, self.args.metric)
             hint = QualityHelper.get_hint(metric_value, QualityMetrics(self.args.metric))

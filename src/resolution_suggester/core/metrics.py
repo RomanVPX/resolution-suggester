@@ -3,20 +3,22 @@ import logging
 import math
 from functools import lru_cache
 
-from ..i18n import _
 import numpy as np
 import torch
+from rich.console import Console
 from numba import njit, prange
-from torchmetrics.image import MultiScaleStructuralSimilarityIndexMeasure
 from skimage.feature import canny
 from skimage.filters import sobel
 from skimage.morphology import dilation, footprint_rectangle
+from torchmetrics.image import MultiScaleStructuralSimilarityIndexMeasure
+
 from ..config import MIN_DOWNSCALE_SIZE, TINY_EPSILON, QualityMetrics
+from ..i18n import _
 
 
 def get_torch_device(no_gpu: bool = False) -> torch.device:
     """
-    Определяет оптимальное устройство PyTorch с учетом доступности и совместимости.
+    Определяет оптимальное устройство PyTorch с учётом доступности и совместимости.
     """
     if no_gpu:
         return torch.device("cpu")
@@ -57,7 +59,7 @@ def _get_adaptive_ms_ssim_params(h: int, w: int) -> tuple[tuple[float, ...], int
         return (0.5, 0.5), 3   # минимальные параметры для мелочи
 
 @lru_cache(maxsize=8)
-def get_msssim_calculator(weights_tuple, kernel_size, device_str):
+def get_ms_ssim_calculator(weights_tuple, kernel_size, device_str):
     """Кэшированный создатель MS-SSIM калькуляторов"""
     device = torch.device(device_str)
     return MultiScaleStructuralSimilarityIndexMeasure(
@@ -101,7 +103,7 @@ def calculate_ms_ssim_pytorch(
 
     weights, kernel_size = _get_adaptive_ms_ssim_params(original.shape[-2], original.shape[-1])
     weights_tuple = tuple(weights)  # преобразуем в хэшируемый тип
-    msssim_calc = get_msssim_calculator(weights_tuple, kernel_size, str(torch_device))
+    ms_ssim_calc = get_ms_ssim_calculator(weights_tuple, kernel_size, str(torch_device))
     # Переводим в тензоры и переносим на устройство
     original_tensor = torch.from_numpy(original).to(torch_device)
     processed_tensor = torch.from_numpy(processed).to(torch_device)
@@ -109,7 +111,7 @@ def calculate_ms_ssim_pytorch(
     # Вычисление MS-SSIM
     with torch.no_grad():
         with torch.autocast(device_type=torch_device.type, dtype=torch.float16):
-            ms_ssim_val = msssim_calc(original_tensor, processed_tensor).item()
+            ms_ssim_val = ms_ssim_calc(original_tensor, processed_tensor).item()
 
     # Явное освобождение ресурсов
     del original_tensor, processed_tensor
@@ -140,6 +142,211 @@ def calculate_ms_ssim_pytorch_channels(
         proc_ch = processed[..., i] if processed.ndim == 3 else processed
         results[ch] = calculate_ms_ssim_pytorch(orig_ch, proc_ch, max_val, no_gpu)
     return results
+
+
+def calculate_lpips(
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float,
+    net_type: str,
+    no_gpu: bool = False
+) -> float | None:
+    """
+    Calculate LPIPS (Learned Perceptual Image Patch Similarity) between two images.
+
+    Lower LPIPS distances indicate higher perceptual similarity. We convert to a
+    similarity score (1 - distance) so higher values are better, consistent with
+    other metrics like SSIM.
+
+    Args:
+        original: Original image
+        processed: Processed image for comparison
+        max_val: Maximum pixel value
+        net_type: Neural network backbone ('alex', 'vgg', or 'squeeze')
+        no_gpu: Whether to avoid using GPU even if available
+
+    Returns:
+        LPIPS similarity score (higher is better, range 0-1)
+    """
+    # Normalize images to [0, 1]
+    if max_val > 1.0 + TINY_EPSILON:
+        original = original.astype(np.float32) / max_val
+        processed = processed.astype(np.float32) / max_val
+    else:
+        original = original.astype(np.float32)
+        processed = processed.astype(np.float32)
+
+    # Convert to RGB if needed (LPIPS expects 3-channel images)
+    if original.ndim == 2:
+        # For grayscale images, replicate to 3 channels
+        original = np.stack([original] * 3, axis=2)
+        processed = np.stack([processed] * 3, axis=2)
+    elif original.ndim == 3 and original.shape[2] == 1:
+        # For single-channel images, replicate to 3 channels
+        original = np.concatenate([original] * 3, axis=2)
+        processed = np.concatenate([processed] * 3, axis=2)
+    elif original.ndim == 3 and original.shape[2] == 4:
+        # For RGBA images, drop the alpha channel
+        original = original[..., :3]
+        processed = processed[..., :3]
+
+    # Convert from [0,1] to [-1,1] range as expected by LPIPS
+    original = 2 * original - 1
+    processed = 2 * processed - 1
+
+    # Convert HWC to NCHW format (batch, channels, height, width)
+    original = original.transpose(2, 0, 1)[None, ...]
+    processed = processed.transpose(2, 0, 1)[None, ...]
+
+    # Get device
+    torch_device = get_torch_device(no_gpu)
+
+    # Create LPIPS model
+    loss_fn = get_lpips_model(net_type=net_type, device=torch_device, memory_efficient=True)
+
+    # Convert to tensors
+    original_tensor = torch.from_numpy(original).to(torch_device)
+    processed_tensor = torch.from_numpy(processed).to(torch_device)
+
+    # Calculate LPIPS
+    try:
+        with torch.no_grad():
+            with torch.autocast(device_type=torch_device.type, dtype=torch.float16):
+                lpips_dist = loss_fn(original_tensor, processed_tensor).item()
+    finally:
+        # Clean up
+        del original_tensor, processed_tensor, loss_fn
+        if torch_device.type == 'mps':
+            if hasattr(torch.mps, 'empty_cache'):
+                torch.mps.empty_cache()
+        elif torch_device.type == 'cuda':
+            torch.cuda.empty_cache()
+
+    # Invert the similarity score (1 - distance) for consistency with other metrics
+    lpips_similarity = 1.0 - lpips_dist
+
+    # Ensure value is within [0, 1]
+    lpips_similarity = max(0.0, min(1.0, lpips_similarity))
+
+    return float(lpips_similarity)
+
+
+def calculate_lpips_channels(
+    original: np.ndarray,
+    processed: np.ndarray,
+    max_val: float,
+    channels: list[str],
+    net_type: str,
+    no_gpu: bool = False
+) -> dict[str, float | None] | None:
+    """
+    Calculate LPIPS for each channel separately with optimized memory usage.
+    """
+    results = {}
+
+    # For grayscale images, just calculate once
+    if original.ndim == 2:
+        results[channels[0]] = calculate_lpips(original, processed, max_val, net_type, no_gpu=no_gpu)
+        return results
+
+    # Get device
+    torch_device = get_torch_device(no_gpu)
+    # Create LPIPS model ONCE for all channels
+    loss_fn = get_lpips_model(net_type=net_type, device=torch_device, memory_efficient=True)
+
+    try:
+        # Process each channel with the same model
+        for i, ch in enumerate(channels):
+            if i >= original.shape[2]:
+                continue
+
+            orig_ch = original[..., i]
+            proc_ch = processed[..., i]
+
+            # Normalize to [0, 1]
+            if max_val > 1.0 + TINY_EPSILON:
+                orig_ch = orig_ch.astype(np.float32) / max_val
+                proc_ch = proc_ch.astype(np.float32) / max_val
+            else:
+                orig_ch = orig_ch.astype(np.float32)
+                proc_ch = proc_ch.astype(np.float32)
+
+            # Convert to 3-channel for LPIPS
+            orig_3ch = np.stack([orig_ch] * 3, axis=2)
+            proc_3ch = np.stack([proc_ch] * 3, axis=2)
+
+            # Convert to [-1, 1] range expected by LPIPS
+            orig_3ch = 2 * orig_3ch - 1
+            proc_3ch = 2 * proc_3ch - 1
+
+            # Convert HWC to NCHW format
+            orig_3ch = orig_3ch.transpose(2, 0, 1)[None, ...]
+            proc_3ch = proc_3ch.transpose(2, 0, 1)[None, ...]
+
+            # Convert to tensors
+            orig_tensor = torch.from_numpy(orig_3ch).to(torch_device)
+            proc_tensor = torch.from_numpy(proc_3ch).to(torch_device)
+
+            # Calculate LPIPS
+            with torch.no_grad():
+                with torch.autocast(device_type=torch_device.type, dtype=torch.float16):
+                    lpips_dist = loss_fn(orig_tensor, proc_tensor).item()
+
+            # Convert to similarity score (1 - distance)
+            lpips_similarity = 1.0 - lpips_dist
+            lpips_similarity = max(0.0, min(1.0, lpips_similarity))
+
+            results[ch] = float(lpips_similarity)
+
+            # Clean up tensors but keep the model
+            del orig_tensor, proc_tensor
+    finally:
+        # Clean up model at the end
+        del loss_fn
+        if torch_device.type == 'mps':
+            if hasattr(torch.mps, 'empty_cache'):
+                torch.mps.empty_cache()
+        elif torch_device.type == 'cuda':
+            torch.cuda.empty_cache()
+
+    return results
+
+
+def get_lpips_model(net_type='alex', device=None, memory_efficient=False):
+    """Load LPIPS model."""
+
+    import lpips
+    model = lpips.LPIPS(net=net_type, verbose=False)
+
+    if device is not None:
+        model = model.to(device)
+
+    if memory_efficient and hasattr(model, 'half'):
+        model = model.half()  # Use half precision
+
+    return model
+
+
+def preload_lpips_models(net_type: str):
+    """
+    Preload LPIPS models to avoid concurrent downloads during parallel processing.
+    """
+    console = Console()
+
+    try:
+        import lpips
+
+        console.print(f"[bold cyan]Preloading LPIPS model ({net_type})...[/]")
+        # Триггерим загрузку модели из Интернетов, если она ещё не:
+        lpips.LPIPS(net=net_type, verbose=False)
+        console.print("[bold green]LPIPS model loaded successfully![/]")
+
+    except ImportError:
+        logging.error(_("LPIPS package not found. Install with: pip install lpips"))
+
+    except Exception as e:
+        logging.error(f"Error preloading LPIPS model: {e}")
+        logging.debug("Details:", exc_info=True)
 
 
 @njit(cache=True)
@@ -489,7 +696,8 @@ def calculate_metrics(
         processed: np.ndarray,
         max_val: float,
         channels: list[str] = None,
-        no_gpu: bool = False
+        no_gpu: bool = False,
+        lpips_net_type: str = 'alex'  # 'alex', 'vgg', or 'squeeze'; for LPIPS only
 ) -> None | dict[str, float] | float:
 
     if original.shape != processed.shape:
@@ -507,6 +715,8 @@ def calculate_metrics(
                 return calculate_ms_ssim_pytorch(original, processed, max_val, no_gpu=no_gpu)
             case QualityMetrics.TDPR:
                 return calculate_tdpr(original, processed)
+            case QualityMetrics.LPIPS:
+                return calculate_lpips(original, processed, max_val, net_type=lpips_net_type, no_gpu=no_gpu)
     else:
         match quality_metric:
             case QualityMetrics.PSNR:
@@ -517,6 +727,9 @@ def calculate_metrics(
                 return calculate_ms_ssim_pytorch_channels(original, processed, max_val, channels, no_gpu=no_gpu)
             case QualityMetrics.TDPR:
                 return calculate_tdpr_channels(original, processed, channels)
+            case QualityMetrics.LPIPS:
+                return calculate_lpips_channels(original, processed, max_val, channels, net_type=lpips_net_type,
+                                                no_gpu=no_gpu)
 
     raise ValueError(f"{_('Unsupported quality metric')}: {quality_metric}")
 
