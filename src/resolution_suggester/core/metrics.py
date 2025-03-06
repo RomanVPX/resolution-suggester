@@ -312,8 +312,18 @@ def calculate_lpips_channels(
     return results
 
 
-def get_lpips_model(net_type='alex', device=None, memory_efficient=False):
-    """Load LPIPS model."""
+def get_lpips_model(net_type: str = 'alex', device: torch.device = None, memory_efficient: bool = False) -> 'lpips.LPIPS':
+    """
+    Load LPIPS model.
+    
+    Args:
+        net_type: Neural network backbone ('alex', 'vgg', or 'squeeze')
+        device: Torch device to use for computation
+        memory_efficient: Whether to use half-precision to save memory
+        
+    Returns:
+        LPIPS model instance
+    """
 
     import lpips
     model = lpips.LPIPS(net=net_type, verbose=False)
@@ -327,9 +337,12 @@ def get_lpips_model(net_type='alex', device=None, memory_efficient=False):
     return model
 
 
-def preload_lpips_models(net_type: str):
+def preload_lpips_models(net_type: str) -> None:
     """
     Preload LPIPS models to avoid concurrent downloads during parallel processing.
+    
+    Args:
+        net_type: Neural network backbone ('alex', 'vgg', or 'squeeze') to preload
     """
     console = Console()
 
@@ -576,6 +589,14 @@ def filter_2d_separable(img: np.ndarray, size: int, sigma: float) -> np.ndarray:
     1) Generate a 1D kernel kernel_1d.
     2) Horizontal convolution.
     3) Vertical convolution.
+    
+    Args:
+        img: Input image array
+        size: Size of the filter kernel
+        sigma: Standard deviation of the Gaussian kernel
+        
+    Returns:
+        Filtered image array
     """
     # Создаём 1D ядро Гаусса
     kernel_1d = gaussian_kernel_1d(size, sigma)
@@ -740,6 +761,18 @@ def compute_resolutions(
         min_size: int = MIN_DOWNSCALE_SIZE,
         divider: int = 2
 ) -> list[tuple[int, int]]:
+    """
+    Compute a list of resolutions for analysis by successively dividing dimensions.
+    
+    Args:
+        original_width: Width of the original image
+        original_height: Height of the original image
+        min_size: Minimum size for the smallest dimension
+        divider: Factor to divide dimensions by at each step
+        
+    Returns:
+        List of (width, height) tuples representing analyzed resolutions
+    """
     min_size = max(MIN_DOWNSCALE_SIZE, min_size)
     resolutions = []
     w, h = original_width, original_height

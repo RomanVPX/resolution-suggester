@@ -145,7 +145,7 @@ def resize_mitchell(
     target_height: int,
     cf_b: float = MITCHELL_B,
     cf_c: float = MITCHELL_C,
-) -> np.ndarray:
+) -> npt.NDArray[np.float32]:
     """
     Public interface for Mitchell resizing.
     """

@@ -1,4 +1,10 @@
+# NOTE: This file is kept for backward compatibility.
+# Dev dependencies are now managed in pyproject.toml
+# For modern development installation, use: pip install -e ".[dev]"
+
 pytest
 pytest-cov
 pylint
 isort
+mypy
+build

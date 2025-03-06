@@ -1,6 +1,7 @@
 #*.csv
 
 data/test_images/private_tex_*
+CLAUDE.md
 
 # Python
 __pycache__/
