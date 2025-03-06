@@ -81,7 +81,7 @@ class ImageAnalyzer:
     def _analyze_files_sequential(self, files: list[str]) -> None:
         """Sequential file analysis."""
         from tqdm import tqdm
-        for file_path in tqdm(files, desc="Обработка файлов", leave=False):
+        for file_path in tqdm(files, desc=_('Processing images...'), leave=False):
             try:
                 results, meta = self.analyze_file(file_path)
                 if results:
@@ -103,7 +103,7 @@ class ImageAnalyzer:
             # Используем tqdm для отображения прогресса
             from tqdm import tqdm
             for future in tqdm(concurrent.futures.as_completed(future_to_file),
-                               total=len(files), desc="Обработка файлов", leave=False):
+                               total=len(files), desc=_('Processing images...'), leave=False):
                 file_path = future_to_file[future]
                 try:
                     results, meta = future.result()

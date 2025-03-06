@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-06 12:08+0300\n"
+"POT-Creation-Date: 2025-03-06 13:56+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -78,6 +78,11 @@ msgstr "Resolution"
 #: src/resolution_suggester/core/image_analyzer.py:65
 msgid "ML model not found, the actual metrics will be calculated."
 msgstr "ML model not found, the actual metrics will be calculated."
+
+#: src/resolution_suggester/core/image_analyzer.py:84
+#: src/resolution_suggester/core/image_analyzer.py:106
+msgid "Processing images..."
+msgstr "Processing images..."
 
 #: src/resolution_suggester/core/image_analyzer.py:130
 msgid "Error when loading image"
