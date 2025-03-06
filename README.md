@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
 
-A powerful tool for analyzing texture quality at different resolutions and suggesting optimal downsizing parameters based on perceptual metrics.
+A powerful tool for evaluating texture quality loss during scaling. Essentially, it analyzes images by reducing their resolution and then increasing them back to the original size, after which it measures the difference between the original and processed images using various perceptual metrics.
 
 ## 🚀 Features
 
