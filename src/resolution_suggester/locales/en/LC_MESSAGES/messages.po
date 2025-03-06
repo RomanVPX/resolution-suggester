@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-06 09:42+0300\n"
+"POT-Creation-Date: 2025-03-06 10:52+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -106,8 +106,59 @@ msgid "Error processing file"
 msgstr "Error processing file"
 
 #: src/resolution_suggester/core/image_loader.py:54
+#: src/resolution_suggester/core/image_loader.py:135
 msgid "File not found"
 msgstr "File not found"
+
+#: src/resolution_suggester/core/image_loader.py:62
+msgid "(file size: {} bytes)"
+msgstr "(file size: {} bytes)"
+
+#: src/resolution_suggester/core/image_loader.py:62
+msgid "File may be corrupted or is not an image: {}"
+msgstr "File may be corrupted or is not an image: {}"
+
+#: src/resolution_suggester/core/image_loader.py:69
+msgid "Unsupported file format: {}"
+msgstr "Unsupported file format: {}"
+
+#: src/resolution_suggester/core/image_loader.py:74
+#, python-format
+msgid "Not enough memory to load image %s"
+msgstr "Not enough memory to load image %s"
+
+#: src/resolution_suggester/core/image_loader.py:75
+msgid "Not enough memory to load image"
+msgstr "Not enough memory to load image"
+
+#: src/resolution_suggester/core/image_loader.py:77
+#, python-format
+msgid "Error reading %s: %s"
+msgstr "Error reading %s: %s"
+
+#: src/resolution_suggester/core/image_loader.py:111
+#, python-format
+msgid "Error processing EXR %s: %s"
+msgstr "Error processing EXR %s: %s"
+
+#: src/resolution_suggester/core/image_loader.py:134
+#, python-format
+msgid "File not found: %s"
+msgstr "File not found: %s"
+
+#: src/resolution_suggester/core/image_loader.py:137
+#, python-format
+msgid "Unable to decode image: %s"
+msgstr "Unable to decode image: %s"
+
+#: src/resolution_suggester/core/image_loader.py:138
+msgid "Unable to decode image"
+msgstr "Unable to decode image"
+
+#: src/resolution_suggester/core/image_loader.py:140
+#, python-format
+msgid "Error processing raster image %s: %s"
+msgstr "Error processing raster image %s: %s"
 
 #: src/resolution_suggester/core/metrics.py:104
 msgid "MS-SSIM: unsupported images dimensions"
@@ -140,6 +191,10 @@ msgstr "Unexpected error"
 #: src/resolution_suggester/main.py:98
 msgid "Error parsing arguments"
 msgstr "Error parsing arguments"
+
+#: src/resolution_suggester/main.py:107
+msgid "Program terminated."
+msgstr "Program terminated."
 
 #: src/resolution_suggester/main.py:114
 msgid "Dataset generated"
@@ -227,6 +282,77 @@ msgstr "Show this help message and exit"
 #: src/resolution_suggester/utils/cli.py:167
 msgid "Interface language (default: auto)"
 msgstr "Interface language (default: auto)"
+
+#: src/resolution_suggester/utils/cli.py:95
+msgid ""
+"Cannot use --compare-ml together with --generate-dataset!\n"
+"The --compare-ml parameter will be ignored."
+msgstr ""
+"Cannot use --compare-ml together with --generate-dataset!\n"
+"The --compare-ml parameter will be ignored."
+
+#: src/resolution_suggester/utils/cli.py:99
+msgid ""
+"Parameters --generate-dataset and --no-parallel are used simultaneously.\n"
+"The --no-parallel parameter will be ignored, and --threads will be forced to "
+"1."
+msgstr ""
+"Parameters --generate-dataset and --no-parallel are used simultaneously.\n"
+"The --no-parallel parameter will be ignored, and --threads will be forced to "
+"1."
+
+#: src/resolution_suggester/utils/cli.py:104
+msgid ""
+"Cannot use --ml together with --generate-dataset!\n"
+"The --ml parameter will be ignored."
+msgstr ""
+"Cannot use --ml together with --generate-dataset!\n"
+"The --ml parameter will be ignored."
+
+#: src/resolution_suggester/utils/cli.py:108
+msgid ""
+"Cannot use --save-im-* together with --generate-dataset!\n"
+"The --save-im-* parameters will be ignored."
+msgstr ""
+"Cannot use --save-im-* together with --generate-dataset!\n"
+"The --save-im-* parameters will be ignored."
+
+#: src/resolution_suggester/utils/cli.py:115
+msgid ""
+"Cannot use --ml together with --compare-ml!\n"
+"The --ml parameter will be ignored."
+msgstr ""
+"Cannot use --ml together with --compare-ml!\n"
+"The --ml parameter will be ignored."
+
+#: src/resolution_suggester/utils/cli.py:120
+msgid ""
+"The --train-ml parameter only works in combination with --generate-dataset!\n"
+"The --train-ml parameter will be ignored."
+msgstr ""
+"The --train-ml parameter only works in combination with --generate-dataset!\n"
+"The --train-ml parameter will be ignored."
+
+#: src/resolution_suggester/utils/cli.py:126
+msgid ""
+"Cannot use --save-im-* together with --ml!\n"
+"The --save-im-* parameters will be ignored."
+msgstr ""
+"Cannot use --save-im-* together with --ml!\n"
+"The --save-im-* parameters will be ignored."
+
+#: src/resolution_suggester/utils/cli.py:133
+#, python-format
+msgid ""
+"Minimum size (width and height) for analysis must be >= %s. Set to default "
+"value: %s"
+msgstr ""
+"Minimum size (width and height) for analysis must be >= %s. Set to default "
+"value: %s"
+
+#: src/resolution_suggester/utils/cli.py:141
+msgid "Number of parallel processes must be >= 1. Set to minimum value: 1"
+msgstr "Number of parallel processes must be >= 1. Set to minimum value: 1"
 
 #: src/resolution_suggester/utils/cli.py:160
 msgid "Paths to files/directories for analysis"
@@ -356,6 +482,39 @@ msgstr "Available quality metrics"
 #: src/resolution_suggester/utils/cli.py:327
 msgid "Available interpolation methods"
 msgstr "Available interpolation methods"
+
+#: src/resolution_suggester/utils/cli.py:343
+#, python-format
+msgid "Unsupported file extension: %s"
+msgstr "Unsupported file extension: %s"
+
+#: src/resolution_suggester/utils/cli.py:349
+#, python-format
+msgid "No files with supported extensions found in directory %s"
+msgstr "No files with supported extensions found in directory %s"
+
+#: src/resolution_suggester/utils/cli.py:353
+#, python-format
+msgid "Invalid path: %s"
+msgstr "Invalid path: %s"
+
+#: src/resolution_suggester/utils/cli.py:357
+msgid "No valid files with supported extensions found."
+msgstr "No valid files with supported extensions found."
+
+#: src/resolution_suggester/utils/cli.py:359
+msgid " Check the following paths: "
+msgstr " Check the following paths: "
+
+#: src/resolution_suggester/utils/cli.py:378
+#, python-format
+msgid "Permission error accessing directory %s: %s"
+msgstr "Permission error accessing directory %s: %s"
+
+#: src/resolution_suggester/utils/cli.py:380
+#, python-format
+msgid "Unexpected error walking directory %s: %s"
+msgstr "Unexpected error walking directory %s: %s"
 
 #: src/resolution_suggester/utils/ml_comparator.py:40
 msgid "Enabling JSON output for comparison"

@@ -59,22 +59,22 @@ def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
         file_size = os.path.getsize(file_path)
         if file_size < 16:
             return ImageLoadResult(None, None, None,
-               f"Файл может быть поврежден или не является изображением: {file_path} (размер файла: {file_size} байт)")
+               _("File may be corrupted or is not an image: {}") + f" {file_path} " + _("(file size: {} bytes)").format(file_size))
 
         if ext == '.exr':
             return load_exr(file_path, normalize_exr)
         elif ext in {'.png', '.tga', '.jpg', '.jpeg'}:
             return load_raster(file_path)
         else:
-            msg = f"Неподдерживаемый формат файла: {file_path}"
+            msg = _("Unsupported file format: {}").format(file_path)
             logging.warning(msg)
             return ImageLoadResult(None, None, None, msg)
 
     except MemoryError:
-        logging.error("Недостаточно памяти для загрузки изображения %s", file_path)
-        return ImageLoadResult(None, None, None, "Недостаточно памяти для загрузки изображения")
+        logging.error(_("Not enough memory to load image %s"), file_path)
+        return ImageLoadResult(None, None, None, _("Not enough memory to load image"))
     except Exception as e:
-        logging.error("Ошибка при чтении %s: %s", file_path, str(e))
+        logging.error(_("Error reading %s: %s"), file_path, str(e))
         return ImageLoadResult(None, None, None, str(e))
 
 def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
@@ -108,7 +108,7 @@ def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult:
         finally:
             exr_file.close()  # Ensure EXR file is closed
     except Exception as e:
-        logging.error("Ошибка обработки EXR %s: %s", file_path, str(e))
+        logging.error(_("Error processing EXR %s: %s"), file_path, str(e))
         return ImageLoadResult(None, None, None, str(e))
 
 def load_raster(image_path: str) -> ImageLoadResult:
@@ -131,11 +131,11 @@ def load_raster(image_path: str) -> ImageLoadResult:
             return ImageLoadResult(img_array, 1.0, channels)
 
     except FileNotFoundError:
-        logging.error("Файл не найден: %s", image_path)
-        return ImageLoadResult(None, None, None, f"Файл не найден: {image_path}")
+        logging.error(_("File not found: %s"), image_path)
+        return ImageLoadResult(None, None, None, f"{_('File not found')}: {image_path}")
     except UnidentifiedImageError:
-        logging.error("Невозможно декодировать изображение: %s", image_path)
-        return ImageLoadResult(None, None, None, f"Невозможно декодировать изображение: {image_path}")
+        logging.error(_("Unable to decode image: %s"), image_path)
+        return ImageLoadResult(None, None, None, f"{_('Unable to decode image')}: {image_path}")
     except Exception as e:
-        logging.error("Ошибка обработки растрового изображения %s: %s", image_path, e)
+        logging.error(_("Error processing raster image %s: %s"), image_path, e)
         return ImageLoadResult(None, None, None, str(e))

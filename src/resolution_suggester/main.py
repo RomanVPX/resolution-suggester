@@ -104,7 +104,7 @@ def get_file_list(paths: list[str]) -> list[str]:
     try:
         return validate_paths(paths)
     except ValueError as e:
-        logging.error(f"{str(e)} Завершение работы.")
+        logging.error(f"{str(e)} {_('Program terminated.')}")
         sys.exit(1)
 
 

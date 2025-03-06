@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-06 09:42+0300\n"
+"POT-Creation-Date: 2025-03-06 10:52+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -106,8 +106,59 @@ msgid "Error processing file"
 msgstr "Ошибка при обработке файла"
 
 #: src/resolution_suggester/core/image_loader.py:54
+#: src/resolution_suggester/core/image_loader.py:135
 msgid "File not found"
 msgstr "Файл не найден"
+
+#: src/resolution_suggester/core/image_loader.py:62
+msgid "(file size: {} bytes)"
+msgstr "(размер файла: {} байт)"
+
+#: src/resolution_suggester/core/image_loader.py:62
+msgid "File may be corrupted or is not an image: {}"
+msgstr "Файл может быть поврежден или не является изображением: {}"
+
+#: src/resolution_suggester/core/image_loader.py:69
+msgid "Unsupported file format: {}"
+msgstr "Неподдерживаемый формат файла: {}"
+
+#: src/resolution_suggester/core/image_loader.py:74
+#, python-format
+msgid "Not enough memory to load image %s"
+msgstr "Недостаточно памяти для загрузки изображения %s"
+
+#: src/resolution_suggester/core/image_loader.py:75
+msgid "Not enough memory to load image"
+msgstr "Недостаточно памяти для загрузки изображения"
+
+#: src/resolution_suggester/core/image_loader.py:77
+#, python-format
+msgid "Error reading %s: %s"
+msgstr "Ошибка при чтении %s: %s"
+
+#: src/resolution_suggester/core/image_loader.py:111
+#, python-format
+msgid "Error processing EXR %s: %s"
+msgstr "Ошибка обработки EXR %s: %s"
+
+#: src/resolution_suggester/core/image_loader.py:134
+#, python-format
+msgid "File not found: %s"
+msgstr "Файл не найден: %s"
+
+#: src/resolution_suggester/core/image_loader.py:137
+#, python-format
+msgid "Unable to decode image: %s"
+msgstr "Невозможно декодировать изображение: %s"
+
+#: src/resolution_suggester/core/image_loader.py:138
+msgid "Unable to decode image"
+msgstr "Невозможно декодировать изображение"
+
+#: src/resolution_suggester/core/image_loader.py:140
+#, python-format
+msgid "Error processing raster image %s: %s"
+msgstr "Ошибка обработки растрового изображения %s: %s"
 
 #: src/resolution_suggester/core/metrics.py:104
 msgid "MS-SSIM: unsupported images dimensions"
@@ -140,6 +191,10 @@ msgstr "Непредвиденная ошибка"
 #: src/resolution_suggester/main.py:98
 msgid "Error parsing arguments"
 msgstr "Ошибка разбора аргументов"
+
+#: src/resolution_suggester/main.py:107
+msgid "Program terminated."
+msgstr "Программа завершена."
 
 #: src/resolution_suggester/main.py:114
 msgid "Dataset generated"
@@ -228,6 +283,76 @@ msgstr "Показать эту справку и выйти"
 #: src/resolution_suggester/utils/cli.py:167
 msgid "Interface language (default: auto)"
 msgstr "Язык интерфейса (по умолчанию: автоопределение)"
+
+#: src/resolution_suggester/utils/cli.py:95
+msgid ""
+"Cannot use --compare-ml together with --generate-dataset!\n"
+"The --compare-ml parameter will be ignored."
+msgstr ""
+"Нельзя использовать --compare-ml вместе с --generate-dataset!\n"
+"параметр --compare-ml будет проигнорирован."
+
+#: src/resolution_suggester/utils/cli.py:99
+msgid ""
+"Parameters --generate-dataset and --no-parallel are used simultaneously.\n"
+"The --no-parallel parameter will be ignored, and --threads will be forced to "
+"1."
+msgstr ""
+"Использованы параметры --generate-dataset и --no-parallel одновременно.\n"
+"Параметр --no-parallel будет проигнорирован, а параметр --threads будет принудительно установлен в 1."
+
+#: src/resolution_suggester/utils/cli.py:104
+msgid ""
+"Cannot use --ml together with --generate-dataset!\n"
+"The --ml parameter will be ignored."
+msgstr ""
+"Нельзя использовать --ml вместе с --generate-dataset!\n"
+"параметр --ml будет проигнорирован."
+
+#: src/resolution_suggester/utils/cli.py:108
+msgid ""
+"Cannot use --save-im-* together with --generate-dataset!\n"
+"The --save-im-* parameters will be ignored."
+msgstr ""
+"Нельзя использовать --save-im-* вместе с --generate-dataset!\n"
+"параметры --save-im-* будут проигнорированы."
+
+#: src/resolution_suggester/utils/cli.py:115
+msgid ""
+"Cannot use --ml together with --compare-ml!\n"
+"The --ml parameter will be ignored."
+msgstr ""
+"Нельзя использовать --ml вместе с --compare-ml!\n"
+"параметр --ml будет проигнорирован."
+
+#: src/resolution_suggester/utils/cli.py:120
+msgid ""
+"The --train-ml parameter only works in combination with --generate-dataset!\n"
+"The --train-ml parameter will be ignored."
+msgstr ""
+"Параметр --train-ml работает только в сочетании с --generate-dataset!\n"
+"параметр --train-ml будет проигнорирован."
+
+#: src/resolution_suggester/utils/cli.py:126
+msgid ""
+"Cannot use --save-im-* together with --ml!\n"
+"The --save-im-* parameters will be ignored."
+msgstr ""
+"Нельзя использовать --save-im-* вместе с --ml!\n"
+"параметры --save-im-* будут проигнорированы."
+
+#: src/resolution_suggester/utils/cli.py:133
+#, python-format
+msgid ""
+"Minimum size (width and height) for analysis must be >= %s. Set to default "
+"value: %s"
+msgstr ""
+"Минимальный размер (по ширине и высоте) для анализа должен быть >= %s. "
+"Установлено значение по умолчанию: %s"
+
+#: src/resolution_suggester/utils/cli.py:141
+msgid "Number of parallel processes must be >= 1. Set to minimum value: 1"
+msgstr "Число параллельных процессов должно быть >= 1. Установлено минимальное значение: 1"
 
 #: src/resolution_suggester/utils/cli.py:160
 msgid "Paths to files/directories for analysis"
@@ -365,6 +490,39 @@ msgstr "Доступные метрики качества"
 #: src/resolution_suggester/utils/cli.py:327
 msgid "Available interpolation methods"
 msgstr "Доступные методы интерполяции"
+
+#: src/resolution_suggester/utils/cli.py:343
+#, python-format
+msgid "Unsupported file extension: %s"
+msgstr "Неподдерживаемое расширение файла: %s"
+
+#: src/resolution_suggester/utils/cli.py:349
+#, python-format
+msgid "No files with supported extensions found in directory %s"
+msgstr "В директории %s не найдено файлов с поддерживаемыми расширениями"
+
+#: src/resolution_suggester/utils/cli.py:353
+#, python-format
+msgid "Invalid path: %s"
+msgstr "Неверный путь: %s"
+
+#: src/resolution_suggester/utils/cli.py:357
+msgid "No valid files with supported extensions found."
+msgstr "Не найдено ни одного валидного файла с поддерживаемым расширением."
+
+#: src/resolution_suggester/utils/cli.py:359
+msgid " Check the following paths: "
+msgstr " Проверьте следующие пути: "
+
+#: src/resolution_suggester/utils/cli.py:378
+#, python-format
+msgid "Permission error accessing directory %s: %s"
+msgstr "Ошибка доступа к директории %s: %s"
+
+#: src/resolution_suggester/utils/cli.py:380
+#, python-format
+msgid "Unexpected error walking directory %s: %s"
+msgstr "Неожиданная ошибка при обходе директории %s: %s"
 
 #: src/resolution_suggester/utils/ml_comparator.py:40
 msgid "Enabling JSON output for comparison"

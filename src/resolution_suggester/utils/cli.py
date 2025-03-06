@@ -92,54 +92,54 @@ def parse_arguments() -> argparse.Namespace:
 
     if args.generate_dataset:
         if args.compare_ml:
-            logging.warning("Нельзя использовать --compare-ml вместе с --generate-dataset!\n"
-                            "параметр --compare-ml будет проигнорирован.")
+            logging.warning(_("Cannot use --compare-ml together with --generate-dataset!\n"
+                            "The --compare-ml parameter will be ignored."))
             args.compare_ml = False
         if args.no_parallel:
-            logging.info("Использованы параметры --generate-dataset и --no-parallel одновременно.\n"
-                         "Параметр --no-parallel будет проигнорирован, а параметр --threads будет принудительно установлен в 1.")
+            logging.info(_("Parameters --generate-dataset and --no-parallel are used simultaneously.\n"
+                         "The --no-parallel parameter will be ignored, and --threads will be forced to 1."))
             args.no_parallel = False
             args.threads = 1
         if args.ml:
-            logging.warning("Нельзя использовать --ml вместе с --generate-dataset!\n"
-                            "параметр --ml будет проигнорирован.")
+            logging.warning(_("Cannot use --ml together with --generate-dataset!\n"
+                            "The --ml parameter will be ignored."))
             args.ml = False
         if args.save_im_down or args.save_im_up or args.save_im_all:
-            logging.warning("Нельзя использовать --save-im-* вместе с --generate-dataset!\n"
-                            "параметры --save-im-* будут проигнорированы.")
+            logging.warning(_("Cannot use --save-im-* together with --generate-dataset!\n"
+                            "The --save-im-* parameters will be ignored."))
             args.save_im_down = False
             args.save_im_up = False
 
     if args.compare_ml:
         if args.ml:
-            logging.warning("Нельзя использовать --ml вместе с --compare-ml!\n"
-                            "параметр --ml будет проигнорирован.")
+            logging.warning(_("Cannot use --ml together with --compare-ml!\n"
+                            "The --ml parameter will be ignored."))
             args.ml = False
 
     if args.train_ml and not args.generate_dataset:
-        logging.warning("Параметр --train-ml работает только в сочетании с --generate-dataset!\n"
-                        "параметр --train-ml будет проигнорирован.")
+        logging.warning(_("The --train-ml parameter only works in combination with --generate-dataset!\n"
+                        "The --train-ml parameter will be ignored."))
         args.train_ml = False
 
     if args.ml:
         if args.save_im_down or args.save_im_up or args.save_im_all:
-            logging.warning("Нельзя использовать --save-im-* вместе с --ml!\n"
-                            "параметры --save-im-* будут проигнорированы.")
+            logging.warning(_("Cannot use --save-im-* together with --ml!\n"
+                            "The --save-im-* parameters will be ignored."))
             args.save_im_down = False
             args.save_im_up = False
 
     if args.min_size < MIN_DOWNSCALE_SIZE:
         logging.warning(
-            "Минимальный размер (по ширине и высоте) для анализа должен быть >= %s. "
-            "Установлено значение по умолчанию: %s",
+            _("Minimum size (width and height) for analysis must be >= %s. "
+            "Set to default value: %s"),
             MIN_DOWNSCALE_SIZE, MIN_DOWNSCALE_SIZE
         )
         args.min_size = MIN_DOWNSCALE_SIZE
 
     if args.threads < 1:
         logging.warning(
-            "Число параллельных процессов должно быть >= 1. "
-            "Установлено минимальное значение: 1"
+            _("Number of parallel processes must be >= 1. "
+            "Set to minimum value: 1")
         )
         args.threads = 1
 
@@ -340,23 +340,23 @@ def validate_paths(paths: list[str]) -> list[str]:
             if os.path.splitext(path)[1].lower() in SUPPORTED_EXTENSIONS:
                 valid_paths.append(path)
             else:
-                logging.warning("Неподдерживаемое расширение файла: %s", path)
+                logging.warning(_("Unsupported file extension: %s"), path)
                 invalid_paths.append(path)
         elif os.path.isdir(path):
             # Собираем файлы с поддерживаемыми расширениями из директории
             dir_files = collect_files_from_dir(path)
             if not dir_files:
-                logging.warning("В директории %s не найдено файлов с поддерживаемыми расширениями", path)
+                logging.warning(_("No files with supported extensions found in directory %s"), path)
                 invalid_paths.append(path)
             valid_paths.extend(dir_files)
         else:
-            logging.warning("Неверный путь: %s", path)
+            logging.warning(_("Invalid path: %s"), path)
             invalid_paths.append(path)
 
     if not valid_paths:
-        error_message = "Не найдено ни одного валидного файла с поддерживаемым расширением."
+        error_message = _("No valid files with supported extensions found.")
         if invalid_paths:
-            error_message += " Проверьте следующие пути: " + ", ".join(invalid_paths)
+            error_message += _(" Check the following paths: ") + ", ".join(invalid_paths)
         logging.error(error_message)
         raise ValueError(error_message)
 
@@ -375,7 +375,7 @@ def collect_files_from_dir(directory: str) -> list[str]:
                 if os.path.splitext(f)[1].lower() in SUPPORTED_EXTENSIONS:
                     collected.append(os.path.join(root, f))
     except PermissionError as e:
-        logging.error("Ошибка доступа к директории %s: %s", directory, str(e))
+        logging.error(_("Permission error accessing directory %s: %s"), directory, str(e))
     except OSError as e:
-        logging.error("Неожиданная ошибка при обходе директории %s: %s", directory, str(e))
+        logging.error(_("Unexpected error walking directory %s: %s"), directory, str(e))
     return collected
