@@ -42,7 +42,7 @@ def parse_arguments() -> argparse.Namespace:
     """
     Parse command line arguments.
     """
-    # Создаем парсер с локализованным описанием
+    # Создаём парсер с локализованным описанием
     from ..i18n import _, setup_localization
     pre_parser = argparse.ArgumentParser(
         description=_('Texture quality analysis tool'),
@@ -66,7 +66,7 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     # Сначала парсим только аргументы языка и справки
-    pre_args, _ = pre_parser.parse_known_args()
+    pre_args, __ = pre_parser.parse_known_args()
 
     # Если указан язык, переустанавливаем локализацию
     if pre_args.lang != 'auto':
@@ -147,7 +147,7 @@ def parse_arguments() -> argparse.Namespace:
 
 def create_parser() -> argparse.ArgumentParser:
     """
-    Создает и настраивает парсер аргументов с текущими переводами.
+    Создаёт и настраивает парсер аргументов с текущими переводами.
     """
     parser = argparse.ArgumentParser(
         description=_('Texture quality analysis tool'),
@@ -370,12 +370,12 @@ def collect_files_from_dir(directory: str) -> list[str]:
     """
     collected = []
     try:
-        for root, _, files in os.walk(directory):
+        for root, __, files in os.walk(directory):
             for f in files:
                 if os.path.splitext(f)[1].lower() in SUPPORTED_EXTENSIONS:
                     collected.append(os.path.join(root, f))
     except PermissionError as e:
-        logging.error(_("Permission error accessing directory %s: %s"), directory, str(e))
+        logging.error(f"{_('Permission error accessing directory')} {directory}, {str(e)}")
     except OSError as e:
-        logging.error(_("Unexpected error walking directory %s: %s"), directory, str(e))
+        logging.error(f"{_('Unexpected error walking directory')} {directory}, {str(e)}")
     return collected

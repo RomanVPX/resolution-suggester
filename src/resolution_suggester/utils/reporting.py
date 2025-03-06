@@ -80,7 +80,7 @@ class ConsoleReporter:
     @staticmethod
     def _print_channel_table(results: list, channels: List[str], metric_type: QualityMetrics) -> None:
         """Выводит таблицу результатов с разбивкой по каналам."""
-        # Создаем таблицу
+        # Создаём таблицу
         table = Table(show_header=True, header_style="bold")
 
         # Добавляем колонки
