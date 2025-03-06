@@ -1,6 +1,6 @@
 # ResolutionSuggester
 
-[![Python application](https://github.com/RomanVPX/ResolutionSuggester/actions/workflows/python-app.yml/badge.svg)](https://github.com/RomanVPX/ResolutionSuggester/actions/workflows/python-app.yml)
+[![Python application](https://github.com/RomanVPX/resolution-suggester/actions/workflows/python-app.yml/badge.svg)](https://github.com/RomanVPX/resolution-suggester/actions/workflows/python-app.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
 
