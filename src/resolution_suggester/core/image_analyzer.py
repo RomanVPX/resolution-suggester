@@ -321,13 +321,13 @@ class ImageAnalyzer:
                     from rich.console import Console
                     from rich.text import Text
                     Console().print(
-                        Text(f"📊 {_("Graph saved")}: ", style="bold green") +
+                        Text(f"📊 {_('Graph saved')}: ", style="bold green") +
                         Text(f"{chart_path}", style="underline blue")
                     )
                 except ImportError:
                     from rich.console import Console
                     from rich.text import Text
-                    print(f"📊 {_("Graph saved")}: {chart_path}")
+                    print(f"📊 {_('Graph saved')}: {chart_path}")
 
         # Запись в репортеры
         for rep in self.reporters:
@@ -383,7 +383,7 @@ class ImageAnalyzer:
                 self.args.channels
             )
 
-            title = f"{_("Quality")} ({self.args.metric.upper()}) {_("depending on the resolution")}\n{file_basename}"
+            title = f"{_('Quality')} ({self.args.metric.upper()}) {_('depending on the resolution')}\n{file_basename}"
             theme = getattr(self.args, 'theme', 'dark')
 
             chart_file = generate_quality_chart(
@@ -396,10 +396,10 @@ class ImageAnalyzer:
                 theme=theme
             )
 
-            logging.debug(f"{_("Graph saved")}: {chart_file}")
+            logging.debug(f"{_('Graph saved')}: {chart_file}")
             return chart_file
         except Exception as e:
-            logging.error(f"{_("Error when generating chart")}: {e}")
+            logging.error(f"{_('Error when generating chart')}: {e}")
             logging.debug("Details:", exc_info=True)
             return None
 
@@ -421,7 +421,7 @@ def process_file_for_analyzer(args_dict: Dict[str, Any], file_path: str) -> Tupl
         analyzer = ImageAnalyzer(args)
         return analyzer.analyze_file(file_path)
     except Exception as e:
-        logging.error(f"{_("Error processing file")} {file_path}: {e}")
+        logging.error(f"{_('Error processing file')} {file_path}: {e}")
         logging.debug("Details:", exc_info=True)
         return None, None
 

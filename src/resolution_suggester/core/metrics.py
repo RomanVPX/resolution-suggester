@@ -2,6 +2,7 @@
 import logging
 import math
 from functools import lru_cache
+from typing import Dict, List, Tuple, Union, Optional, Any, Callable, TYPE_CHECKING
 
 import numpy as np
 import torch
@@ -14,6 +15,9 @@ from torchmetrics.image import MultiScaleStructuralSimilarityIndexMeasure
 
 from ..config import MIN_DOWNSCALE_SIZE, TINY_EPSILON, QualityMetrics
 from ..i18n import _
+
+if TYPE_CHECKING:
+    import lpips
 
 
 def get_torch_device(no_gpu: bool = False) -> torch.device:
