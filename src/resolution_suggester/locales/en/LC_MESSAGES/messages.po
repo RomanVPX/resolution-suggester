@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-06 03:25+0300\n"
+"POT-Creation-Date: 2025-03-06 09:42+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -12,22 +12,22 @@ msgstr "Original"
 #: src/resolution_suggester/config.py:53
 #: src/resolution_suggester/utils/visualization.py:598
 msgid "excellent"
-msgstr "Excellent quality"
+msgstr "Excellent"
 
 #: src/resolution_suggester/config.py:54
 #: src/resolution_suggester/utils/visualization.py:599
 msgid "very_good"
-msgstr "Very good quality"
+msgstr "Very good"
 
 #: src/resolution_suggester/config.py:55
 #: src/resolution_suggester/utils/visualization.py:600
 msgid "good"
-msgstr "Good quality"
+msgstr "Acceptable"
 
 #: src/resolution_suggester/config.py:56
 #: src/resolution_suggester/utils/visualization.py:601
 msgid "noticeable_loss"
-msgstr "Noticeable quality loss"
+msgstr "Noticeable loss"
 
 #: src/resolution_suggester/config.py:72
 msgid "Peak Signal-to-Noise Ratio"
@@ -75,31 +75,31 @@ msgstr "File"
 msgid "Resolution"
 msgstr "Resolution"
 
-#: src/resolution_suggester/core/image_analyzer.py:66
+#: src/resolution_suggester/core/image_analyzer.py:65
 msgid "ML model not found, the actual metrics will be calculated."
 msgstr "ML model not found, the actual metrics will be calculated."
 
-#: src/resolution_suggester/core/image_analyzer.py:314
-#: src/resolution_suggester/core/image_analyzer.py:320
-#: src/resolution_suggester/core/image_analyzer.py:388
+#: src/resolution_suggester/core/image_analyzer.py:324
+#: src/resolution_suggester/core/image_analyzer.py:330
+#: src/resolution_suggester/core/image_analyzer.py:399
 msgid "Graph saved"
 msgstr "Graph saved"
 
-#: src/resolution_suggester/core/image_analyzer.py:375
+#: src/resolution_suggester/core/image_analyzer.py:386
 #: src/resolution_suggester/utils/reporting.py:91
 #: src/resolution_suggester/utils/reporting.py:167
 msgid "Quality"
 msgstr "Quality"
 
-#: src/resolution_suggester/core/image_analyzer.py:375
+#: src/resolution_suggester/core/image_analyzer.py:386
 msgid "depending on the resolution"
 msgstr "depending on the resolution"
 
-#: src/resolution_suggester/core/image_analyzer.py:391
+#: src/resolution_suggester/core/image_analyzer.py:402
 msgid "Error when generating chart"
 msgstr "Error when generating chart"
 
-#: src/resolution_suggester/core/image_analyzer.py:410
+#: src/resolution_suggester/core/image_analyzer.py:424
 #: src/resolution_suggester/main.py:335
 #: src/resolution_suggester/utils/ml_comparator.py:83
 msgid "Error processing file"
@@ -109,27 +109,27 @@ msgstr "Error processing file"
 msgid "File not found"
 msgstr "File not found"
 
-#: src/resolution_suggester/core/metrics.py:100
+#: src/resolution_suggester/core/metrics.py:104
 msgid "MS-SSIM: unsupported images dimensions"
 msgstr "MS-SSIM: unsupported images dimensions"
 
-#: src/resolution_suggester/core/metrics.py:345
+#: src/resolution_suggester/core/metrics.py:362
 msgid "LPIPS package not found. Install with: pip install lpips"
 msgstr "LPIPS package not found. Install with: pip install lpips"
 
-#: src/resolution_suggester/core/metrics.py:655
+#: src/resolution_suggester/core/metrics.py:680
 msgid "SSIM: unsupported images dimensions"
 msgstr "SSIM: unsupported images dimensions"
 
-#: src/resolution_suggester/core/metrics.py:704
+#: src/resolution_suggester/core/metrics.py:729
 msgid "calculate_metrics: The shapes of the images must match!"
 msgstr "calculate_metrics: The shapes of the images must match!"
 
-#: src/resolution_suggester/core/metrics.py:706
+#: src/resolution_suggester/core/metrics.py:731
 msgid "calculate_metrics: The dimensions of the images must match!"
 msgstr "calculate_metrics: The dimensions of the images must match!"
 
-#: src/resolution_suggester/core/metrics.py:734
+#: src/resolution_suggester/core/metrics.py:759
 msgid "Unsupported quality metric"
 msgstr "Unsupported quality metric"
 
