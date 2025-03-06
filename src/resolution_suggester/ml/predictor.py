@@ -196,7 +196,7 @@ class QuickPredictor:
 
 
 @lru_cache(maxsize=32)
-def calculate_wavelet_features(img_bytes, height, width):
+def calculate_wavelet_features(img_bytes: bytes, height: int, width: int) -> float:
     """
     Кэшированное вычисление вейвлет-признаков.
 
@@ -219,7 +219,7 @@ def calculate_wavelet_features(img_bytes, height, width):
 
 
 @lru_cache(maxsize=32)
-def calculate_glcm_features(img_bytes, height, width):
+def calculate_glcm_features(img_bytes: bytes, height: int, width: int) -> tuple[float, float]:
     """
     Кэшированное вычисление GLCM-признаков.
 
@@ -292,7 +292,7 @@ def extract_features_of_original_img(img: np.ndarray) -> dict:
     return features
 
 
-def extract_perceptual_features(img: np.ndarray) -> dict:
+def extract_perceptual_features(img: np.ndarray) -> Dict[str, float]:
     """
     Extract perceptual features relevant to LPIPS prediction.
 

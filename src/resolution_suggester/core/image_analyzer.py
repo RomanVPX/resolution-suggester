@@ -6,14 +6,13 @@ import pandas as pd
 from ..i18n import _
 import argparse
 import concurrent.futures
-from typing import Tuple
+from typing import Tuple, Optional, Dict, List, Union, Any
 
 import numpy as np
 
 # from ..i18n import _
 from PIL import Image
 import logging
-from typing import Optional
 
 from ..config import INTERPOLATION_METHOD_UPSCALE, InterpolationMethods, QualityMetrics, \
     PSNR_IS_LARGE_AS_INF, INTERMEDIATE_DIR, QualityLevelHints, QUALITY_LEVEL_HINTS_DESCRIPTIONS
@@ -173,7 +172,11 @@ class ImageAnalyzer:
             logging.debug("Детали:", exc_info=True)
             return None, None
 
-    def _analyze_resize_real(self, img_original, max_val, channels, w, h, orig_width, orig_height, file_path):
+    def _analyze_resize_real(self, img_original: np.ndarray, max_val: float, channels: List[str], 
+                      w: int, h: int, orig_width: int, orig_height: int, file_path: str) -> Union[
+                          Tuple[str, Dict[str, float], float, str], 
+                          Tuple[str, float, str]
+                      ]:
         """Analyzes resize with real metrics calculation."""
 
         img_downscaled = self.resize_fn(img_original, w, h)
@@ -209,7 +212,11 @@ class ImageAnalyzer:
             return f"{w}x{h}", metric_value, hint
 
 
-    def _analyze_resize_ml(self, img_original, channels, w, h, orig_width, orig_height):
+    def _analyze_resize_ml(self, img_original: np.ndarray, channels: List[str], 
+                   w: int, h: int, orig_width: int, orig_height: int) -> Union[
+                       Tuple[str, Dict[str, float], float, str], 
+                       Tuple[str, float, str]
+                   ]:
         """Analyzes resize using ML prediction with optimized batch processing."""
         # Common features for all channels
         common_features = {
@@ -282,7 +289,10 @@ class ImageAnalyzer:
             return f"{w}x{h}", metric_value, hint
 
 
-    def _create_original_entry(self, width, height, channels):
+    def _create_original_entry(self, width: int, height: int, channels: List[str]) -> Union[
+                      Tuple[str, Dict[str, float], float, str], 
+                      Tuple[str, float, str]
+                  ]:
         """Creates an entry for the original image."""
         base_entry = (f"{width}x{height}",)
         channel_value = float('inf') if self.args.metric == QualityMetrics.PSNR else float(1.0)
@@ -292,7 +302,7 @@ class ImageAnalyzer:
         return *base_entry, channel_value, hint_original
 
 
-    def _report_results(self, file_path, results, meta):
+    def _report_results(self, file_path: str, results: List, meta: Dict[str, Any]) -> None:
         """Outputs and saves analysis results."""
         # Вывод в консоль
         ConsoleReporter.print_file_header(file_path, QualityMetrics(self.args.metric))
@@ -325,7 +335,8 @@ class ImageAnalyzer:
 
 
     @staticmethod
-    def _save_intermediate(img_array, file_path, width, height, interpolation, suffix):
+    def _save_intermediate(img_array: np.ndarray, file_path: str, width: int, height: int, 
+                           interpolation: InterpolationMethods, suffix: str) -> None:
         """Saves intermediate result as PNG."""
         file_path_dir = INTERMEDIATE_DIR
         if not os.path.exists(file_path_dir):
@@ -393,13 +404,16 @@ class ImageAnalyzer:
             return None
 
 
-def process_file_for_analyzer(args_dict, file_path):
+def process_file_for_analyzer(args_dict: Dict[str, Any], file_path: str) -> Tuple[Optional[List], Optional[Dict]]:
     """
     Wrapper function for processing a file in a separate process.
 
     Args:
         args_dict: Dictionary with arguments for creating ImageAnalyzer
         file_path: Path to the file for analysis
+        
+    Returns:
+        Tuple of (results, metadata) or (None, None) in case of error
     """
     try:
         # Создаём анализатор из словаря аргументов
@@ -412,9 +426,17 @@ def process_file_for_analyzer(args_dict, file_path):
         return None, None
 
 
-def postprocess_metric_value(metric_value, metric_type):
+def postprocess_metric_value(metric_value: Union[Dict[str, float], float], 
+                       metric_type: QualityMetrics) -> Union[Dict[str, float], float]:
     """
     Method for postprocessing metric value.
+    
+    Args:
+        metric_value: Value or dictionary of values to process
+        metric_type: Type of quality metric
+        
+    Returns:
+        Processed metric value(s)
     """
     # Для словаря (поканальные метрики)
     if isinstance(metric_value, dict):
