@@ -202,7 +202,7 @@ def create_parser() -> argparse.ArgumentParser:
         '-m', '--metric', type=QualityMetrics,
         default=QUALITY_METRIC_DEFAULT,
         choices=[m.value for m in QualityMetrics],
-        metavar='METRIC',
+        metavar='QUALITY_METRIC',
         help=format_metric_help()
     )
 
@@ -210,7 +210,8 @@ def create_parser() -> argparse.ArgumentParser:
         '--lpips-net',
         choices=['alex', 'vgg', 'squeeze'],
         default='alex',
-        help=_('LPIPS neural network backbone: alex (balanced), vgg (memory-hungry), squeeze (fast but less accurate)')
+        metavar='NEURAL_NETWORK',
+        help=_('LPIPS neural network backbone:\nalex (balanced)\nvgg (memory-hungry)\nsqueeze (fast but less accurate)')
     )
 
     parser.add_argument(
@@ -242,28 +243,28 @@ def create_parser() -> argparse.ArgumentParser:
         '--save-im-down',
         action='store_true',
         help=_('Save downscale results produced during analysis\n') +
-             _('(does not work with --ml, --train-ml and --generate-dataset)')
+             _('(ignored if --ml or --generate-dataset is used)')
     )
 
     parser.add_argument(
         '--save-im-up',
         action='store_true',
         help=_('Save upscale results produced after downscale\n') +
-             _('(does not work with --ml, --train-ml and --generate-dataset)')
+             _('(ignored if --ml or --generate-dataset is used)')
     )
 
     parser.add_argument(
         '-s', '--save-im-all',
         action='store_true',
         help=_('Save all image scaling results (downscale and upscale)\n') +
-             _('(does not work with --ml, --train-ml and --generate-dataset)')
+             _('(ignored if --ml or --generate-dataset is used)')
     )
 
     parser.add_argument(
         '--no-parallel',
         action='store_true',
-        help=_('Disable parallel processing and use a single-threaded scheme,\n') +
-             _('ignored and forces --threads 1 instead, if used with --generate-dataset')
+        help=_('Disable parallel processing and use a single-threaded scheme\n') +
+             _('(ignored and forces --threads 1 instead, if used with --generate-dataset)')
     )
 
     parser.add_argument(
@@ -275,7 +276,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '--ml',
         action='store_true',
-        help=_('Use ML model to predict metrics instead of real calculation (fast),\n') +
+        help=_('Use ML model to predict metrics instead of real calculation (fast)\n') +
              _('(ignored if --generate-dataset or --compare-ml is used)')
     )
 
