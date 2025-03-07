@@ -1,5 +1,4 @@
 # tests/core/test_image_analyzer.py
-import os
 import numpy as np
 import pytest
 from unittest.mock import patch, MagicMock
