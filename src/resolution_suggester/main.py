@@ -32,33 +32,18 @@ import concurrent.futures
 import logging
 
 import pandas as pd
-
-from .i18n import _
 from tqdm import tqdm
 
-from .config import (
-    INTERPOLATION_METHOD_UPSCALE,
-    ML_DATA_DIR,
-    ML_DATASETS_DIR,
-    InterpolationMethods,
-    QualityMetrics,
-)
-
+from .config import INTERPOLATION_METHOD_UPSCALE, ML_DATA_DIR, ML_DATASETS_DIR, InterpolationMethods, QualityMetrics
 from .core.image_analyzer import ImageAnalyzer
 from .core.image_loader import load_image
 from .core.image_processing import get_resize_function
 from .core.metrics import calculate_metrics, compute_resolutions, preload_lpips_models
+from .i18n import _
 from .ml.predictor import QuickPredictor, extract_features_of_original_img
 from .utils.cli import parse_arguments, setup_logging, validate_paths
 from .utils.ml_comparator import MLComparator
-
-from .utils.reporters import (
-    IReporter,
-    CSVReporter,
-    JSONReporter,
-    get_csv_log_filename,
-    get_json_log_filename
-)
+from .utils.reporters import CSVReporter, IReporter, JSONReporter, get_csv_log_filename, get_json_log_filename
 
 
 def main() -> None:

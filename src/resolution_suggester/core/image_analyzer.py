@@ -1,26 +1,30 @@
 # core/image_analyzer.py
-import os
-
-import pandas as pd
-
-from ..i18n import _
 import argparse
 import concurrent.futures
-from typing import Tuple, Optional, Dict, List, Union, Any
+import logging
+import os
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-
+import pandas as pd
 from PIL import Image
-import logging
 
-from ..config import INTERPOLATION_METHOD_UPSCALE, InterpolationMethods, QualityMetrics, \
-    PSNR_IS_LARGE_AS_INF, INTERMEDIATE_DIR, QualityLevelHints, QUALITY_LEVEL_HINTS_DESCRIPTIONS
+from ..config import (
+    INTERMEDIATE_DIR,
+    INTERPOLATION_METHOD_UPSCALE,
+    PSNR_IS_LARGE_AS_INF,
+    QUALITY_LEVEL_HINTS_DESCRIPTIONS,
+    InterpolationMethods,
+    QualityLevelHints,
+    QualityMetrics,
+)
 from ..core.image_processing import get_resize_function
+from ..i18n import _
 from ..ml.predictor import QuickPredictor, extract_features_of_original_img
 from ..utils.reporters import IReporter
+from ..utils.reporting import ConsoleReporter, QualityHelper
 from .image_loader import load_image
-from .metrics import compute_resolutions, calculate_metrics
-from ..utils.reporting import QualityHelper, ConsoleReporter
+from .metrics import calculate_metrics, compute_resolutions
 
 
 class ImageAnalyzer:

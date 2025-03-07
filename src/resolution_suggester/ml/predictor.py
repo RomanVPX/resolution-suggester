@@ -1,11 +1,9 @@
 # ml/predictor.py
-from ..core.metrics import detect_texture_edges
-from ..i18n import _
 import logging
 import os
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict
-from functools import lru_cache
 
 import joblib
 import numpy as np
@@ -18,7 +16,9 @@ from sklearn.ensemble import GradientBoostingRegressor, HistGradientBoostingRegr
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from ..config import ML_MODELS_DIR, QualityMetrics, PSNR_IS_LARGE_AS_INF
+from ..config import ML_MODELS_DIR, PSNR_IS_LARGE_AS_INF, QualityMetrics
+from ..core.metrics import detect_texture_edges
+from ..i18n import _
 
 
 class QuickPredictor:

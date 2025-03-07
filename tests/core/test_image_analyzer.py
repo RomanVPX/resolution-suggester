@@ -1,10 +1,11 @@
 # tests/core/test_image_analyzer.py
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
-from unittest.mock import patch, MagicMock
 
+from resolution_suggester.config import InterpolationMethods, QualityMetrics
 from resolution_suggester.core.image_analyzer import ImageAnalyzer, postprocess_metric_value
-from resolution_suggester.config import QualityMetrics, InterpolationMethods
 
 
 @pytest.fixture
@@ -186,7 +187,7 @@ def test_postprocess_metric_value():
     """Test the postprocess_metric_value function."""
     # Import constant for test
     from resolution_suggester.config import PSNR_IS_LARGE_AS_INF
-    
+
     # Test PSNR with scalars
     assert postprocess_metric_value(45.0, QualityMetrics.PSNR) == 45.0
     assert postprocess_metric_value(45.0 + 1.0, QualityMetrics.PSNR) == 45.0 + 1.0

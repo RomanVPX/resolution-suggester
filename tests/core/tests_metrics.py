@@ -2,8 +2,8 @@
 import numpy as np
 import pytest
 
-from resolution_suggester.core.metrics import compute_resolutions, calculate_metrics
 from resolution_suggester.config import MIN_DOWNSCALE_SIZE, QualityMetrics
+from resolution_suggester.core.metrics import calculate_metrics, compute_resolutions
 
 
 def test_compute_resolutions():

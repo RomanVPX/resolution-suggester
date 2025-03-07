@@ -2,8 +2,8 @@
 import numpy as np
 import pytest
 
-from resolution_suggester.core.image_processing import resize_mitchell, get_resize_function
 from resolution_suggester.config import InterpolationMethods
+from resolution_suggester.core.image_processing import get_resize_function, resize_mitchell
 
 
 def test_resize_mitchell():

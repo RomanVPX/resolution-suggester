@@ -1,7 +1,7 @@
 # tests/utils/test_reporting.py
 import pytest
 
-from resolution_suggester.config import QualityMetrics, QUALITY_LEVEL_HINTS_DESCRIPTIONS, QualityLevelHints
+from resolution_suggester.config import QUALITY_LEVEL_HINTS_DESCRIPTIONS, QualityLevelHints, QualityMetrics
 from resolution_suggester.utils.reporting import QualityHelper
 
 

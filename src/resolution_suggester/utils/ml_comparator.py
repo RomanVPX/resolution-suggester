@@ -4,18 +4,17 @@ import copy
 import json
 import logging
 import os
-import numpy as np
-from typing import Dict, Tuple, Optional
-from ..i18n import _
+from typing import Dict, Optional, Tuple
 
+import numpy as np
 from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from ..config import QualityMetrics, RICH_STYLES
-from ..utils.cli import validate_paths
+from ..config import RICH_STYLES, QualityMetrics
 from ..core.image_analyzer import ImageAnalyzer
-
+from ..i18n import _
+from ..utils.cli import validate_paths
 
 console = Console()
 

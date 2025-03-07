@@ -1,5 +1,4 @@
 # core/image_loader.py
-from ..i18n import _
 import logging
 import os
 from dataclasses import dataclass
@@ -10,6 +9,7 @@ import pyexr
 from PIL import Image, ImageFile, UnidentifiedImageError
 
 from ..config import TINY_EPSILON
+from ..i18n import _
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
