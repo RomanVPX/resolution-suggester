@@ -5,7 +5,6 @@ from resolution_suggester.core.image_loader import load_image
 def test_load_image(tmp_path):
     # Создаём тестовое изображение
     from PIL import Image
-    import numpy as np
 
     # RGB изображение
     img_rgb = Image.new('RGB', (100, 100), color=(255, 0, 0))
