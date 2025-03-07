@@ -7,7 +7,7 @@ name = "resolution_suggester"
 version = "0.1.0"
 description = "A tool for analyzing texture quality at different resolutions and suggesting optimal downsizing parameters"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
     {name = "Roman Vishnyakov", email = "dev@romanvpx.xyz"}
