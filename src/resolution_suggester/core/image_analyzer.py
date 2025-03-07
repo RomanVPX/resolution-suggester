@@ -10,7 +10,6 @@ from typing import Tuple, Optional, Dict, List, Union, Any
 
 import numpy as np
 
-# from ..i18n import _
 from PIL import Image
 import logging
 
