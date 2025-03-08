@@ -57,18 +57,39 @@ def main() -> None:
         # Получение списка файлов
         files = get_file_list(args.paths)
 
-        # Пробуем заранее загрузить LPIPS модель при необходимости
-        if args.metric == QualityMetrics.LPIPS and not args.no_parallel and not args.ml:
-            preload_lpips_models(args.lpips_net)
-
-        # Запуск нужного режима работы
-        if args.generate_dataset:
-            run_dataset_generation(files, args)
-        else:
-            run_image_analysis(files, args)
+        # Запускаем нужную подкоманду
+        if args.subcommand == 'model':
+            run_model_subcommand(files, args)
+        else:  # 'analyze' или любая другая (для обратной совместимости)
+            run_analyze_subcommand(files, args)
     except Exception as e:
         logging.error(f"{_('Unexpected error')}: {str(e)}")
         sys.exit(1)
+
+
+def run_analyze_subcommand(files: list[str], args: argparse.Namespace) -> None:
+    """
+    Запускает основной режим анализа изображений.
+    """
+    # Пробуем заранее загрузить LPIPS модель при необходимости
+    if args.metric == QualityMetrics.LPIPS and not args.no_parallel and not args.ml:
+        preload_lpips_models(args.lpips_net)
+
+    run_image_analysis(files, args)
+
+
+def run_model_subcommand(files: list[str], args: argparse.Namespace) -> None:
+    """
+    Запускает операции, связанные с ML моделями (генерация датасета, обучение).
+    """
+    if args.generate_dataset:
+        run_dataset_generation(files, args)
+    else:
+        # Если не указаны другие параметры, показываем справку по model
+        logging.info(_("No operation specified for 'model' subcommand. "
+                     "Use --generate-dataset to create a dataset or "
+                     "--generate-dataset --train-ml to also train the model."))
+        return
 
 
 def parse_and_validate_arguments() -> argparse.Namespace:
