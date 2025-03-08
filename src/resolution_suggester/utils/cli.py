@@ -92,7 +92,7 @@ def parse_arguments() -> argparse.Namespace:
         else:
             # Показываем краткую общую справку
             parser.print_usage()
-            print("\n" + _("Available subcommands:"))
+            print("\n" + _("Available subcommands") + ":")
             print("  analyze  - " + _("Analyze image quality"))
             print("  model    - " + _("ML model operations (dataset generation, training)"))
             print("\n" + _("Use '%(prog)s <subcommand> --help' for more information about a specific subcommand.") % {"prog": parser.prog})
@@ -104,7 +104,7 @@ def parse_arguments() -> argparse.Namespace:
     except SystemExit:
         # Если subcommand не указан, показываем краткую справку и выходим
         parser.print_usage()
-        print("\n" + _("Available subcommands:"))
+        print("\n" + _("Available subcommands") + ":")
         print("  analyze  - " + _("Analyze image quality"))
         print("  model    - " + _("ML model operations (dataset generation, training)"))
         print("\n" + _("Use '%(prog)s <subcommand> --help' for more information about a specific subcommand.") % {"prog": parser.prog})
