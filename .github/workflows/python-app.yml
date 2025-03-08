@@ -64,14 +64,14 @@ jobs:
       run: |
         res-suggest data/test_images/test_set_00/ -c
 
-    - name: Run on test_set_01 (MS-SSIM -c)
+    - name: Run on test_set_01 (MS-SSIM)
       run: |
-        res-suggest data/test_images/test_set_01/ -m ms_ssim -c
+        res-suggest data/test_images/test_set_01/ -m ms_ssim
 
     - name: Run on test_set_01 (SSIM -c)
       run: |
         res-suggest data/test_images/test_set_01/ -m ssim -c
 
-    - name: Run on test_set_00 (SSIM -c)
+    - name: Run on test_set_00 (SSIM -c --min-size 512)
       run: |
         res-suggest data/test_images/test_set_00/ -m ssim -c --min-size 512
