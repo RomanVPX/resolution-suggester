@@ -1,7 +1,8 @@
 # tests/core/test_metrics_lpips.py
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
-from unittest.mock import patch, MagicMock
 
 from resolution_suggester.core.metrics import calculate_lpips, calculate_lpips_channels
 

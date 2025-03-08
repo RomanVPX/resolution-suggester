@@ -2,21 +2,19 @@
 """
 Module for visualization of image quality analysis results.
 """
-from ..i18n import _
 import os
 import re
 from typing import Dict, List, Optional, Tuple
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from matplotlib.patches import Patch
 from matplotlib.ticker import FuncFormatter
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
-from ..config import (
-    QualityMetrics, LOGS_DIR, QUALITY_LEVEL_HINTS_DESCRIPTIONS,
-    QualityLevelHints, QUALITY_METRIC_THRESHOLDS
-)
 
+from ..config import LOGS_DIR, QUALITY_LEVEL_HINTS_DESCRIPTIONS, QUALITY_METRIC_THRESHOLDS, QualityLevelHints, QualityMetrics
+from ..i18n import _
 
 THEMES = {
     'light': {

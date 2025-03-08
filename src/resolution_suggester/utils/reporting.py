@@ -1,6 +1,5 @@
 # utils/reporting.py
 import os
-from ..i18n import _
 from typing import List, Optional
 
 from rich.console import Console
@@ -11,10 +10,11 @@ from rich.text import Text
 from ..config import (
     QUALITY_LEVEL_HINTS_DESCRIPTIONS,
     QUALITY_METRIC_THRESHOLDS,
+    RICH_STYLES,
     QualityLevelHints,
     QualityMetrics,
-    RICH_STYLES,
 )
+from ..i18n import _
 
 console = Console()
 

@@ -2,13 +2,11 @@
 """
 Command line interface for ResolutionSuggester.
 """
-from ..i18n import _
 import argparse
-import sys
-
 import logging
 import multiprocessing
 import os
+import sys
 
 from ..config import (
     INTERPOLATION_METHOD_DEFAULT,
@@ -20,6 +18,7 @@ from ..config import (
     InterpolationMethods,
     QualityMetrics,
 )
+from ..i18n import _
 
 
 def setup_logging():

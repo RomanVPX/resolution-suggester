@@ -1,5 +1,4 @@
 # core/image_loader.py
-from ..i18n import _
 import logging
 import os
 from dataclasses import dataclass
@@ -10,6 +9,7 @@ import pyexr
 from PIL import Image, ImageFile, UnidentifiedImageError
 
 from ..config import TINY_EPSILON
+from ..i18n import _
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -120,13 +120,16 @@ def load_raster(image_path: str) -> ImageLoadResult:
         with Image.open(image_path) as img:
             if img.mode not in MODE_CHANNEL_MAP:
                 img = img.convert('RGB') # Конвертация в RGB для неподдерживаемых режимов
+
             mode = img.mode  # фиксируем режим после возможного преобразования
             divisor = BIT_DEPTH_16 if img.mode.startswith('I;16') else BIT_DEPTH_8
             img_array = np.array(img).astype(np.float32) / divisor
+
             # Проверяем, что изображение имеет как минимум 3 измерения
             if img_array.ndim == 2:
                 img_array = img_array[:, :, np.newaxis]
             channels = MODE_CHANNEL_MAP.get(mode, ['R', 'G', 'B'])
+
             # Максимальное значение после нормализации всегда равно 1,0
             return ImageLoadResult(img_array, 1.0, channels)
 
@@ -135,7 +138,9 @@ def load_raster(image_path: str) -> ImageLoadResult:
         return ImageLoadResult(None, None, None, f"{_('File not found')}: {image_path}")
     except UnidentifiedImageError:
         logging.error(f"{_('Unable to decode image')}: {image_path}")
+        img.close()
         return ImageLoadResult(None, None, None, f"{_('Unable to decode image')}: {image_path}")
     except Exception as e:
         logging.error(f"{_('Error processing raster image')}: {image_path}, {e}")
+        img.close()
         return ImageLoadResult(None, None, None, str(e))

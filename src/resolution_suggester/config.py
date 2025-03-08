@@ -5,11 +5,11 @@ Configuration constants for the image quality analysis tool.
 This module provides constants for configuration and output formatting.
 """
 
-from .i18n import _
 from enum import Enum
 from pathlib import Path
 from typing import Final
 
+from .i18n import _
 
 SUPPORTED_EXTENSIONS: Final = frozenset({'.exr', '.tga', '.png', '.jpg', '.jpeg'})
 CSV_SEPARATOR: Final = ';'

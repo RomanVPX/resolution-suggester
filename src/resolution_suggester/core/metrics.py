@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
-from rich.console import Console
 from numba import njit, prange
+from rich.console import Console
 from skimage.feature import canny
 from skimage.filters import sobel
 from skimage.morphology import dilation, footprint_rectangle
