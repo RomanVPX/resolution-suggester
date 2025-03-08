@@ -83,12 +83,33 @@ def run_model_subcommand(files: list[str], args: argparse.Namespace) -> None:
     Запускает операции, связанные с ML моделями (генерация датасета, обучение).
     """
     if args.generate_dataset:
-        run_dataset_generation(files, args)
+        features_path, targets_path = run_dataset_generation(files, args)
+        
+        if args.train_ml:
+            # Обучаем модель на только что созданном датасете
+            predictor = QuickPredictor()
+            predictor.train(features_path, targets_path)
+            logging.info(_("Model trained!"))
+    elif args.train_ml:
+        # Обучаем модель на существующем датасете
+        from pathlib import Path
+        features_path = ML_DATASETS_DIR / 'features.csv'
+        targets_path = ML_DATASETS_DIR / 'targets.csv'
+        
+        if not features_path.exists() or not targets_path.exists():
+            logging.error(_("Dataset files not found. Please generate a dataset first with --generate-dataset "
+                         "or provide valid dataset files at {0} and {1}").format(
+                             str(features_path), str(targets_path)))
+            return
+            
+        predictor = QuickPredictor()
+        predictor.train(str(features_path), str(targets_path))
+        logging.info(_("Model trained!"))
     else:
-        # Если не указаны другие параметры, показываем справку по model
+        # Если не указаны другие параметры, показываем информацию по командам model
         logging.info(_("No operation specified for 'model' subcommand. "
                      "Use --generate-dataset to create a dataset or "
-                     "--generate-dataset --train-ml to also train the model."))
+                     "--train-ml to train a model on existing dataset."))
         return
 
 
@@ -114,15 +135,17 @@ def get_file_list(paths: list[str]) -> list[str]:
         sys.exit(1)
 
 
-def run_dataset_generation(files: list[str], args: argparse.Namespace) -> None:
-    """Launches dataset generation and optionally trains the model."""
+def run_dataset_generation(files: list[str], args: argparse.Namespace) -> tuple[str, str]:
+    """
+    Launches dataset generation.
+    
+    Returns:
+        Tuple of paths to features and targets CSV files.
+    """
     features_path, targets_path = generate_dataset(files, args)
     logging.info(f"{_('Dataset generated')}: features={features_path}, targets={targets_path}")
-
-    if args.train_ml:
-        predictor = QuickPredictor()
-        predictor.train(features_path, targets_path)
-        logging.info(_("Model trained!"))
+    
+    return features_path, targets_path
 
 
 def run_image_analysis(files: list[str], args: argparse.Namespace) -> None:
