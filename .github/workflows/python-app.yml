@@ -22,7 +22,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        lfs: true  
+        lfs: true
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -36,7 +36,7 @@ jobs:
     - name: Run isort
       run: |
         # Run isort on all .py (using .toml settings)
-        isort . --verbose 
+        isort . --verbose
     
     - name: Run pylint
       if: runner.os != 'Windows'
@@ -72,6 +72,10 @@ jobs:
       run: |
         res-suggest data/test_images/test_set_01/ -m ssim -c
 
-    - name: Run on test_set_00 (SSIM -c --min-size 512)
+    - name: Run on test_set_00 (TDPR -c --min-size 512)
       run: |
-        res-suggest data/test_images/test_set_00/ -m ssim -c --min-size 512
+        res-suggest data/test_images/test_set_00/ -m tdpr -c --min-size 512
+
+    - name: Run on test_set_00 (LPIPS -c --min-size 512)
+      run: |
+        res-suggest data/test_images/test_set_00/ -m lpips -c --min-size 512
