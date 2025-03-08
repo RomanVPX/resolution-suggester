@@ -76,6 +76,6 @@ jobs:
       run: |
         res-suggest data/test_images/test_set_00/ -m tdpr -c --min-size 512
 
-    - name: Run on test_set_00 (LPIPS -c --min-size 512)
+    - name: Run on test_set_00 (LPIPS -c --lpips-net squeeze)
       run: |
-        res-suggest data/test_images/test_set_00/ -m lpips -c --min-size 512
+        res-suggest data/test_images/test_set_00/ -m lpips -c --lpips-net squeeze
