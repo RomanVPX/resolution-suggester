@@ -447,8 +447,7 @@ msgstr "Сохранять результаты апскейла, произве
 #: src/resolution_suggester/utils/cli.py:288
 msgid "Save all image scaling results (downscale and upscale)"
 msgstr ""
-"Сохранять результаты все результаты масштабирования изображений (даунскейл и "
-"апскейл)"
+"Сохранять все результаты масштабирования изображений (даунскейл и апскейл)"
 
 #: src/resolution_suggester/utils/cli.py:294
 msgid "Disable parallel processing and use a single-threaded scheme"
@@ -479,9 +478,7 @@ msgstr "Сгенерировать датасет (features/targets) для об
 
 #: src/resolution_suggester/utils/cli.py:340
 msgid "Train ML model (can be used independently from --generate-dataset)"
-msgstr ""
-"Обучить ML-модель (можно использовать как вместе с --generate-dataset, так и "
-"без него)"
+msgstr "Обучить ML-модель (можно использовать независимо от --generate-dataset)"
 
 #: src/resolution_suggester/utils/cli.py:363
 msgid "Disable parallel processing and use a single-threaded scheme\n"
