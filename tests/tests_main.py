@@ -1,12 +1,13 @@
 # tests/tests_main.py
+import argparse
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
-import argparse
-from unittest.mock import patch, MagicMock
 
-from resolution_suggester.config import PSNR_IS_LARGE_AS_INF, QualityMetrics, ML_DATASETS_DIR
+from resolution_suggester.config import ML_DATASETS_DIR, PSNR_IS_LARGE_AS_INF, QualityMetrics
 from resolution_suggester.core.image_analyzer import postprocess_metric_value
-from resolution_suggester.main import run_model_subcommand, run_dataset_generation
+from resolution_suggester.main import run_dataset_generation, run_model_subcommand
 
 
 @pytest.mark.parametrize("value, metric_type, expected", [

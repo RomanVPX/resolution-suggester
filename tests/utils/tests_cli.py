@@ -1,15 +1,12 @@
 # tests/utils/test_cli.py
 import argparse
-import pytest
-import sys
 import logging
-from unittest.mock import patch, MagicMock
+import sys
+from unittest.mock import MagicMock, patch
 
-from resolution_suggester.utils.cli import (
-    validate_paths, 
-    parse_arguments,
-    create_parser
-)
+import pytest
+
+from resolution_suggester.utils.cli import create_parser, parse_arguments, validate_paths
 
 
 def test_validate_paths(tmp_path):
