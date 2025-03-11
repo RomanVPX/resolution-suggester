@@ -1,9 +1,13 @@
 # tests/tests_main.py
+import argparse
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
 
-from resolution_suggester.config import PSNR_IS_LARGE_AS_INF, QualityMetrics
+from resolution_suggester.config import ML_DATASETS_DIR, PSNR_IS_LARGE_AS_INF, QualityMetrics
 from resolution_suggester.core.image_analyzer import postprocess_metric_value
+from resolution_suggester.main import run_dataset_generation, run_model_subcommand
 
 
 @pytest.mark.parametrize("value, metric_type, expected", [
@@ -76,3 +80,113 @@ def test_postprocess_metric_value_nan():
     result_dict = postprocess_metric_value(metrics_with_nan, QualityMetrics.PSNR)
     assert np.isnan(result_dict['R'])
     assert result_dict['G'] == 100.0
+
+
+@patch('resolution_suggester.main.generate_dataset')
+@patch('resolution_suggester.main.logging')
+def test_run_dataset_generation(mock_logging, mock_generate_dataset):
+    """Test dataset generation function"""
+    # Подготовка мок-объектов
+    mock_generate_dataset.return_value = ('features.csv', 'targets.csv')
+    
+    # Создаём тестовые аргументы
+    args = argparse.Namespace()
+    files = ['/path/to/test.png']
+    
+    # Вызов тестируемой функции
+    result = run_dataset_generation(files, args)
+    
+    # Проверки
+    mock_generate_dataset.assert_called_once_with(files, args)
+    mock_logging.info.assert_called_once()
+    assert result == ('features.csv', 'targets.csv')
+
+
+@patch('resolution_suggester.main.run_dataset_generation')
+@patch('resolution_suggester.main.QuickPredictor')
+@patch('resolution_suggester.main.logging')
+@patch('pathlib.Path.exists')
+def test_run_model_subcommand_generate_and_train(mock_path_exists, mock_logging, mock_predictor, mock_run_dataset):
+    """Test model subcommand with dataset generation and training"""
+    # Подготовка мок-объектов
+    mock_run_dataset.return_value = ('features.csv', 'targets.csv')
+    mock_predictor_instance = MagicMock()
+    mock_predictor.return_value = mock_predictor_instance
+    
+    # Создаём тестовые аргументы
+    args = argparse.Namespace()
+    args.generate_dataset = True
+    args.train_ml = True
+    files = ['/path/to/test.png']
+    
+    # Вызов тестируемой функции
+    run_model_subcommand(files, args)
+    
+    # Проверки
+    mock_run_dataset.assert_called_once_with(files, args)
+    mock_predictor.assert_called_once()
+    mock_predictor_instance.train.assert_called_once_with('features.csv', 'targets.csv')
+    mock_logging.info.assert_called()
+
+
+@patch('resolution_suggester.main.QuickPredictor')
+@patch('resolution_suggester.main.logging')
+@patch('pathlib.Path.exists')
+def test_run_model_subcommand_train_only(mock_path_exists, mock_logging, mock_predictor):
+    """Test model subcommand with training only (existing dataset)"""
+    # Подготовка мок-объектов
+    mock_path_exists.return_value = True
+    mock_predictor_instance = MagicMock()
+    mock_predictor.return_value = mock_predictor_instance
+    
+    # Создаём тестовые аргументы
+    args = argparse.Namespace()
+    args.generate_dataset = False
+    args.train_ml = True
+    files = ['/path/to/test.png']
+    
+    # Вызов тестируемой функции
+    run_model_subcommand(files, args)
+    
+    # Проверки
+    mock_predictor.assert_called_once()
+    mock_predictor_instance.train.assert_called_once()
+    mock_logging.info.assert_called()
+
+
+@patch('resolution_suggester.main.QuickPredictor')
+@patch('resolution_suggester.main.logging')
+@patch('pathlib.Path.exists')
+def test_run_model_subcommand_train_only_no_dataset(mock_path_exists, mock_logging, mock_predictor):
+    """Test model subcommand with training only but missing dataset"""
+    # Подготовка мок-объектов
+    mock_path_exists.return_value = False
+    
+    # Создаём тестовые аргументы
+    args = argparse.Namespace()
+    args.generate_dataset = False
+    args.train_ml = True
+    files = ['/path/to/test.png']
+    
+    # Вызов тестируемой функции
+    run_model_subcommand(files, args)
+    
+    # Проверки
+    mock_predictor.assert_not_called()
+    mock_logging.error.assert_called_once()
+
+
+@patch('resolution_suggester.main.logging')
+def test_run_model_subcommand_no_operation(mock_logging):
+    """Test model subcommand with no operation specified"""
+    # Создаём тестовые аргументы
+    args = argparse.Namespace()
+    args.generate_dataset = False
+    args.train_ml = False
+    files = ['/path/to/test.png']
+    
+    # Вызов тестируемой функции
+    run_model_subcommand(files, args)
+    
+    # Проверки
+    mock_logging.info.assert_called_once()

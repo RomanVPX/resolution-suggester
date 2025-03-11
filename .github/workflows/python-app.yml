@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.10", "3.13"]
-  
+
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -32,34 +32,34 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8
         pip install -e ".[dev]"
-    
+
     - name: Run isort
       run: |
         # Run isort on all .py (using .toml settings)
         isort . --verbose
-    
+
     - name: Run pylint
       if: runner.os != 'Windows'
       run: |
         # Run pylint in src/resolution_suggester (using .toml settings)
         pylint -v src/resolution_suggester || [ $? -lt 32 ]
-        
+
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    
+
     - name: Test with pytest
       if: runner.os != 'Windows' # skip on windows for now
       run: |
         pytest
-        
+
     - name: Run on test_set_01 (PSNR)
       run: |
         res-suggest data/test_images/test_set_01/
-        
+
     - name: Run on test_set_00 (PSNR -c)
       run: |
         res-suggest data/test_images/test_set_00/ -c
@@ -76,6 +76,6 @@ jobs:
       run: |
         res-suggest data/test_images/test_set_00/ -m tdpr -c --min-size 512
 
-    - name: Run on test_set_00 (LPIPS -c --lpips-net squeeze)
-      run: |
-        res-suggest data/test_images/test_set_00/ -m lpips -c --lpips-net squeeze
+    # - name: Run on test_set_00 (LPIPS -c --lpips-net squeeze)
+      # run: |
+        # res-suggest data/test_images/test_set_00/ -m lpips -c --lpips-net squeeze

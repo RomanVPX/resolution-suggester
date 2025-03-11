@@ -36,6 +36,7 @@ class ImageLoadResult:
     channels: list[str] | None
     error: str | None = None
 
+
 def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
     """
     Loads an image from a file and returns a numpy array, max value, and channels.
@@ -48,34 +49,40 @@ def load_image(file_path: str, normalize_exr: bool = False) -> ImageLoadResult:
     Returns:
         ImageLoadResult: fields (data, max_value, channels, error)
     """
+    # Existence check
+    if not os.path.exists(file_path):
+        error_msg = f"{_('File not found')}: {file_path}"
+        logging.error(error_msg)
+        return ImageLoadResult(None, None, None, error_msg)
+
+    ext = os.path.splitext(file_path)[1].lower()
+
+    # Size check
+    file_size = os.path.getsize(file_path)
+    if file_size < 16:
+        error_msg = _("File may be corrupted or is not an image: {}") + f" {file_path} " + _("(file size: {} bytes)").format(file_size)
+        logging.error(error_msg)
+        return ImageLoadResult(None, None, None, error_msg)
+
     try:
-        # Existence check
-        if not os.path.exists(file_path):
-            return ImageLoadResult(None, None, None, f"{_('File not found')}: {file_path}")
-
-        ext = os.path.splitext(file_path)[1].lower()
-
-        # Size check
-        file_size = os.path.getsize(file_path)
-        if file_size < 16:
-            return ImageLoadResult(None, None, None,
-               _("File may be corrupted or is not an image: {}") + f" {file_path} " + _("(file size: {} bytes)").format(file_size))
-
         if ext == '.exr':
             return load_exr(file_path, normalize_exr)
         elif ext in {'.png', '.tga', '.jpg', '.jpeg'}:
             return load_raster(file_path)
         else:
-            msg = _("Unsupported file format: {}").format(file_path)
-            logging.warning(msg)
-            return ImageLoadResult(None, None, None, msg)
+            error_msg = _("Unsupported file format: {}").format(file_path)
+            logging.warning(error_msg)
+            return ImageLoadResult(None, None, None, error_msg)
 
     except MemoryError:
-        logging.error(f"{_('Not enough memory to load image')}: {file_path}")
-        return ImageLoadResult(None, None, None, _("Not enough memory to load image"))
+        error_msg = f"{_('Not enough memory to load image')}: {file_path}"
+        logging.error(error_msg)
+        return ImageLoadResult(None, None, None, error_msg)
     except Exception as e:
-        logging.error(f"{_('Error reading')} {file_path}, {str(e)}")
+        error_msg = f"{_('Error reading')} {file_path}, {str(e)}"
+        logging.error(error_msg)
         return ImageLoadResult(None, None, None, str(e))
+
 
 def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult | None:
     """Loads an EXR file with channel processing (optionally normalizing to [0, 1])."""
@@ -108,39 +115,39 @@ def load_exr(file_path: str, normalize_exr: bool) -> ImageLoadResult | None:
         finally:
             exr_file.close()  # Ensure EXR file is closed
     except Exception as e:
-        logging.error(_("Error processing EXR %s: %s"), file_path, str(e))
-        return ImageLoadResult(None, None, None, str(e))
+        # Не логируем ошибку здесь, она будет обработана в load_image
+        return ImageLoadResult(None, None, None, f"{_('Error processing EXR')}: {str(e)}")
+
 
 def load_raster(image_path: str) -> ImageLoadResult:
     """
     Loads PNG/TGA/JPG images and normalizes data to range [0, 1].
     If the image is grayscale, expands to (H, W, 1) for consistency.
     """
+    img = None
     try:
-        with Image.open(image_path) as img:
-            if img.mode not in MODE_CHANNEL_MAP:
-                img = img.convert('RGB') # Конвертация в RGB для неподдерживаемых режимов
+        img = Image.open(image_path)
+        if img.mode not in MODE_CHANNEL_MAP:
+            img = img.convert('RGB') # Конвертация в RGB для неподдерживаемых режимов
 
-            mode = img.mode  # фиксируем режим после возможного преобразования
-            divisor = BIT_DEPTH_16 if img.mode.startswith('I;16') else BIT_DEPTH_8
-            img_array = np.array(img).astype(np.float32) / divisor
+        mode = img.mode  # фиксируем режим после возможного преобразования
+        divisor = BIT_DEPTH_16 if img.mode.startswith('I;16') else BIT_DEPTH_8
+        img_array = np.array(img).astype(np.float32) / divisor
 
-            # Проверяем, что изображение имеет как минимум 3 измерения
-            if img_array.ndim == 2:
-                img_array = img_array[:, :, np.newaxis]
-            channels = MODE_CHANNEL_MAP.get(mode, ['R', 'G', 'B'])
+        # Проверяем, что изображение имеет как минимум 3 измерения
+        if img_array.ndim == 2:
+            img_array = img_array[:, :, np.newaxis]
+        channels = MODE_CHANNEL_MAP.get(mode, ['R', 'G', 'B'])
 
-            # Максимальное значение после нормализации всегда равно 1,0
-            return ImageLoadResult(img_array, 1.0, channels)
+        # Максимальное значение после нормализации всегда равно 1,0
+        return ImageLoadResult(img_array, 1.0, channels)
 
     except FileNotFoundError:
-        logging.error(f"{_('File not found')}: {image_path}")
-        return ImageLoadResult(None, None, None, f"{_('File not found')}: {image_path}")
+        return ImageLoadResult(None, None, None, f"{_('File not found')}")
     except UnidentifiedImageError:
-        logging.error(f"{_('Unable to decode image')}: {image_path}")
-        img.close()
-        return ImageLoadResult(None, None, None, f"{_('Unable to decode image')}: {image_path}")
+        return ImageLoadResult(None, None, None, f"{_('Unable to decode image')}")
     except Exception as e:
-        logging.error(f"{_('Error processing raster image')}: {image_path}, {e}")
-        img.close()
         return ImageLoadResult(None, None, None, str(e))
+    finally:
+        if img is not None and hasattr(img, 'close'):
+            img.close()

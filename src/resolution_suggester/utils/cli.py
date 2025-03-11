@@ -37,90 +37,84 @@ cpu_count = multiprocessing.cpu_count()
 default_threads_count = (cpu_count - 2, cpu_count)[cpu_count < 8]
 
 
+class CustomArgumentParser(argparse.ArgumentParser):
+    """Custom argument parser with translatable help messages."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._optionals.title = _('options')
+        self._positionals.title = _('positional arguments')
+
+        # Переопределяем сообщение справки для аргумента -h/--help
+        for action in self._actions:
+            if isinstance(action, argparse._HelpAction):
+                action.help = _('show this help message and exit')
+
+
 def parse_arguments() -> argparse.Namespace:
     """
     Parse command line arguments.
     """
-    # Создаём парсер с локализованным описанием
     from ..i18n import _, setup_localization
-    pre_parser = argparse.ArgumentParser(
-        description=_('Texture quality analysis tool'),
-        formatter_class=argparse.RawTextHelpFormatter,
-        add_help=False
-    )
 
-    # Добавляем аргумент справки вручную
-    pre_parser.add_argument(
-        '-h', '--help',
-        action='store_true',
-        help=_('Show this help message and exit')
-    )
-
-    # Добавляем аргумент для выбора языка (должен быть обработан рано)
+    # Создаём предварительный парсер только для обработки языка
+    pre_parser = CustomArgumentParser(add_help=False)
     pre_parser.add_argument(
         '--lang',
         choices=['en', 'ru', 'auto'],
         default='auto',
+        required=False,
         help=_('Interface language (default: auto)')
     )
 
-    # Сначала парсим только аргументы языка и справки
-    pre_args, __ = pre_parser.parse_known_args()
+    try:
+        # Получаем значение языка, не обрабатывая остальные аргументы
+        pre_args, remaining_args = pre_parser.parse_known_args()
 
-    # Если указан язык, переустанавливаем локализацию
-    if pre_args.lang != 'auto':
-        setup_localization(pre_args.lang)
+        # Устанавливаем локализацию сразу, если указан язык
+        if pre_args.lang != 'auto':
+            setup_localization(pre_args.lang)
+    except Exception as e:
+        # В случае любой ошибки при обработке языка, используем значение по умолчанию
+        logging.warning(_("Error processing language argument, using default"))
+        pre_args = argparse.Namespace(lang='auto')
+        remaining_args = sys.argv[1:]
 
+    # Создаём основной парсер и парсим оставшиеся аргументы
     parser = create_parser()
 
-    # Если запрошена справка, показываем её и выходим
-    if pre_args.help:
-        parser.print_help()
-        sys.exit(0)
+    try:
+        # Используем оставшиеся аргументы для основного парсера
+        args = parser.parse_args(remaining_args)
+        # Добавляем значение языка к аргументам
+        args.lang = pre_args.lang
+    except SystemExit as e:
+        # Если это вызов --help, позволяем argparse показать стандартную справку
+        if '--help' in remaining_args or '-h' in remaining_args:
+            sys.exit(e.code)
+        # В остальных случаях (например, отсутствие подкоманды) показываем краткую справку
+        print("\n" + _("Available subcommands") + ":")
+        print("  analyze  - " + _("Analyze image quality"))
+        print("  model    - " + _("ML model operations (dataset generation, training)"))
+        print("\n" + _("Use '%(prog)s <subcommand> --help' for more information about a specific subcommand.") % {"prog": parser.prog})
+        sys.exit(1)
 
-    # Теперь парсим все аргументы
-    args = parser.parse_args()
-
-    if args.lang != 'auto':
-        from ..i18n import setup_localization
-        setup_localization(args.lang)
-
-    if args.save_im_all:
+    if hasattr(args, 'save_im_all') and args.save_im_all:
         args.save_im_down = True
         args.save_im_up = True
 
-    if args.generate_dataset:
-        if args.compare_ml:
-            logging.warning(_("Cannot use --compare-ml together with --generate-dataset!\n"
-                            "The --compare-ml parameter will be ignored."))
-            args.compare_ml = False
-        if args.no_parallel:
-            logging.info(_("Parameters --generate-dataset and --no-parallel are used simultaneously.\n"
-                         "The --no-parallel parameter will be ignored, and --threads will be forced to 1."))
-            args.no_parallel = False
-            args.threads = 1
-        if args.ml:
-            logging.warning(_("Cannot use --ml together with --generate-dataset!\n"
-                            "The --ml parameter will be ignored."))
-            args.ml = False
-        if args.save_im_down or args.save_im_up or args.save_im_all:
-            logging.warning(_("Cannot use --save-im-* together with --generate-dataset!\n"
-                            "The --save-im-* parameters will be ignored."))
-            args.save_im_down = False
-            args.save_im_up = False
+    # Model subcommand validation
+    if args.subcommand == 'model' and args.no_parallel and args.generate_dataset:
+        logging.info(_("Parameters --generate-dataset and --no-parallel are used simultaneously.\n"
+                    "The --no-parallel parameter will be ignored, and --threads will be forced to 1."))
+        args.no_parallel = False
+        args.threads = 1
+    # Main command validation
+    elif args.subcommand == 'analyze' and args.compare_ml and args.ml:
+        logging.warning(_("Cannot use --ml together with --compare-ml!\n"
+                        "The --ml parameter will be ignored."))
+        args.ml = False
 
-    if args.compare_ml:
-        if args.ml:
-            logging.warning(_("Cannot use --ml together with --compare-ml!\n"
-                            "The --ml parameter will be ignored."))
-            args.ml = False
-
-    if args.train_ml and not args.generate_dataset:
-        logging.warning(_("The --train-ml parameter only works in combination with --generate-dataset!\n"
-                        "The --train-ml parameter will be ignored."))
-        args.train_ml = False
-
-    if args.ml:
+    if args.subcommand == 'analyze' and args.ml:
         if args.save_im_down or args.save_im_up or args.save_im_all:
             logging.warning(_("Cannot use --save-im-* together with --ml!\n"
                             "The --save-im-* parameters will be ignored."))
@@ -144,60 +138,78 @@ def parse_arguments() -> argparse.Namespace:
 
     return args
 
+
+
 def create_parser() -> argparse.ArgumentParser:
     """
     Создаёт и настраивает парсер аргументов с текущими переводами.
+    Включает поддержку подкоманд.
     """
-    parser = argparse.ArgumentParser(
+    parser = CustomArgumentParser(
         description=_('Texture quality analysis tool'),
-        formatter_class=argparse.RawTextHelpFormatter
+        formatter_class=argparse.RawTextHelpFormatter,
+        usage='%(prog)s {analyze,model} [options]'
     )
 
-    parser.add_argument(
+    # Общие аргументы для всех команд будут добавляться здесь при необходимости
+
+    # Создаём подпарсеры для разных команд
+    subparsers = parser.add_subparsers(
+        dest='subcommand',
+        help=_('Available subcommands'),
+        required=True,
+        parser_class=CustomArgumentParser
+    )
+
+    # Парсер для основного режима анализа
+    main_parser = subparsers.add_parser(
+        'analyze',
+        help=_('Analyze image quality'),
+        description=_('Analyze image quality'),
+        formatter_class=argparse.RawTextHelpFormatter,
+        add_help=True,
+        prog='res-suggest analyze'
+    )
+
+    # Добавляем аргументы для основного режима анализа
+    main_parser.add_argument(
         'paths',
         nargs='+',
         help=_('Paths to files/directories for analysis')
     )
 
-    parser.add_argument(
-        '--lang',
-        choices=['en', 'ru', 'auto'],
-        default='auto',
-        help=_('Interface language (default: auto)')
-    )
-
-    parser.add_argument(
+    main_parser.add_argument(
         '-c', '--channels',
         action='store_true',
         help=_('Analysis by color channels')
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '-o', '--csv-output',
         action='store_true',
         help=_('Export results to CSV')
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '-j', '--json-output',
         action='store_true',
         help=_('Export results to JSON')
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '--chart',
         action='store_true',
         help=_('Generate quality vs. resolution charts')
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '--theme',
         choices=['light', 'dark'],
         default='dark',
         help=_('Charts theme (default: dark)')
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '-m', '--metric', type=QualityMetrics,
         default=QUALITY_METRIC_DEFAULT,
         choices=[m.value for m in QualityMetrics],
@@ -205,7 +217,7 @@ def create_parser() -> argparse.ArgumentParser:
         help=format_metric_help()
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '--lpips-net',
         choices=['alex', 'vgg', 'squeeze'],
         default='alex',
@@ -213,7 +225,7 @@ def create_parser() -> argparse.ArgumentParser:
         help=_('LPIPS neural network backbone:\nalex (balanced)\nvgg (memory-hungry)\nsqueeze (fast but less accurate)')
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '-i', '--interpolation', type=InterpolationMethods,
         default=INTERPOLATION_METHOD_DEFAULT,
         choices=[m.value for m in InterpolationMethods],
@@ -221,7 +233,7 @@ def create_parser() -> argparse.ArgumentParser:
         help=format_interpolation_help()
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '--min-size',
         type=int,
         default=MIN_DOWNSCALE_SIZE,
@@ -230,7 +242,7 @@ def create_parser() -> argparse.ArgumentParser:
              str(MIN_DOWNSCALE_SIZE) + ")"
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '-t', '--threads',
         type=int,
         default=default_threads_count,
@@ -238,63 +250,113 @@ def create_parser() -> argparse.ArgumentParser:
         help=format_threads_help()
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '--save-im-down',
         action='store_true',
-        help=_('Save downscale results produced during analysis\n') +
-             _('(ignored if --ml or --generate-dataset is used)')
+        help=_('Save downscale results produced during analysis')
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '--save-im-up',
         action='store_true',
-        help=_('Save upscale results produced after downscale\n') +
-             _('(ignored if --ml or --generate-dataset is used)')
+        help=_('Save upscale results produced after downscale')
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '-s', '--save-im-all',
         action='store_true',
-        help=_('Save all image scaling results (downscale and upscale)\n') +
-             _('(ignored if --ml or --generate-dataset is used)')
+        help=_('Save all image scaling results (downscale and upscale)')
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '--no-parallel',
         action='store_true',
-        help=_('Disable parallel processing and use a single-threaded scheme\n') +
-             _('(ignored and forces --threads 1 instead, if used with --generate-dataset)')
+        help=_('Disable parallel processing and use a single-threaded scheme')
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '--no-gpu',
         action='store_true',
         help=_('Do not use GPU for metrics calculation (in case of problems with CUDA, MPS, etc. in PyTorch)')
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
         '--ml',
         action='store_true',
-        help=_('Use ML model to predict metrics instead of real calculation (fast)\n') +
-             _('(ignored if --generate-dataset or --compare-ml is used)')
+        help=_('Use ML model to predict metrics instead of real calculation (fast)')
     )
 
-    parser.add_argument(
+    main_parser.add_argument(
+        '--compare-ml',
+        action='store_true',
+        help=_('Run comparison of real and ML results')
+    )
+
+    # Парсер для подкоманды model (работа с ML моделями)
+    model_parser = subparsers.add_parser(
+        'model',
+        help=_('ML model operations (dataset generation, training)'),
+        description=_('ML model operations (dataset generation, training)'),
+        formatter_class=argparse.RawTextHelpFormatter,
+        add_help=True,
+        prog='res-suggest model'
+    )
+
+    # Аргументы для подкоманды model
+    model_parser.add_argument(
+        'paths',
+        nargs='+',
+        help=_('Paths to files/directories for analysis')
+    )
+
+    model_parser.add_argument(
         '--generate-dataset',
         action='store_true',
         help=_('Generate dataset (features/targets) for model training')
     )
 
-    parser.add_argument(
+    model_parser.add_argument(
         '--train-ml',
         action='store_true',
-        help=_('Train ML model after dataset generation')
+        help=_('Train ML model (can be used independently from --generate-dataset)')
     )
 
-    parser.add_argument(
-        '--compare-ml',
+    model_parser.add_argument(
+        '--min-size',
+        type=int,
+        default=MIN_DOWNSCALE_SIZE,
+        metavar='SIZE',
+        help=_("Minimum size (width and height) for analysis (default and minimum: ") +
+             str(MIN_DOWNSCALE_SIZE) + ")"
+    )
+
+    model_parser.add_argument(
+        '-t', '--threads',
+        type=int,
+        default=default_threads_count,
+        metavar='N',
+        help=format_threads_help()
+    )
+
+    model_parser.add_argument(
+        '--no-parallel',
         action='store_true',
-        help=_('Run comparison of real and ML results, ignored if --generate-dataset is used')
+        help=_('Disable parallel processing and use a single-threaded scheme\n') +
+             _('(ignored and forces --threads 1 instead, when used with --generate-dataset)')
+    )
+
+    model_parser.add_argument(
+        '--no-gpu',
+        action='store_true',
+        help=_('Do not use GPU for metrics calculation (in case of problems with CUDA, MPS, etc. in PyTorch)')
+    )
+
+    model_parser.add_argument(
+        '--lpips-net',
+        choices=['alex', 'vgg', 'squeeze'],
+        default='alex',
+        metavar='NEURAL_NETWORK',
+        help=_('LPIPS neural network backbone:\nalex (balanced)\nvgg (memory-hungry)\nsqueeze (fast but less accurate)')
     )
 
     return parser

@@ -14,17 +14,26 @@ def detect_language_from_args() -> Optional[str]:
     до инициализации argparse.
 
     Returns:
-        Код языка ('en', 'ru') или None, если язык не указан
+        Код языка ('en', 'ru') или None, если язык не указан или некорректен
     """
-    for i, arg in enumerate(sys.argv[1:], 1):
-        if arg == '--lang' and i < len(sys.argv):
-            lang = sys.argv[i + 1]
-            if lang in ['en', 'ru']:
-                return lang
-        elif arg.startswith('--lang='):
-            lang = arg.split('=')[1]
-            if lang in ['en', 'ru']:
-                return lang
+    try:
+        for i, arg in enumerate(sys.argv[1:], 1):
+            if arg == '--lang':
+                # Проверяем, есть ли следующий аргумент
+                if i < len(sys.argv) - 1:
+                    lang = sys.argv[i + 1]
+                    if lang in ['en', 'ru']:
+                        return lang
+                return None  # Возвращаем None если значение не указано
+            elif arg.startswith('--lang='):
+                try:
+                    lang = arg.split('=')[1]
+                    if lang in ['en', 'ru']:
+                        return lang
+                except IndexError:
+                    return None
+    except Exception:
+        return None
     return None
 
 
