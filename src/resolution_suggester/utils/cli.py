@@ -41,22 +41,10 @@ def parse_arguments() -> argparse.Namespace:
     """
     Parse command line arguments.
     """
-    # Создаём парсер с локализованным описанием
     from ..i18n import _, setup_localization
-    pre_parser = argparse.ArgumentParser(
-        description=_('Texture quality analysis tool'),
-        formatter_class=argparse.RawTextHelpFormatter,
-        add_help=False
-    )
 
-    # Добавляем аргумент справки вручную
-    pre_parser.add_argument(
-        '-h', '--help',
-        action='store_true',
-        help=_('Show this help message and exit')
-    )
-
-    # Добавляем аргумент для выбора языка (должен быть обработан рано)
+    # Создаём предварительный парсер только для обработки языка
+    pre_parser = argparse.ArgumentParser(add_help=False)
     pre_parser.add_argument(
         '--lang',
         choices=['en', 'ru', 'auto'],
@@ -64,55 +52,29 @@ def parse_arguments() -> argparse.Namespace:
         help=_('Interface language (default: auto)')
     )
 
-    # Сначала парсим только аргументы языка и справки
+    # Получаем значение языка, не обрабатывая остальные аргументы
     pre_args, remaining_args = pre_parser.parse_known_args()
 
-    # Если указан язык, переустанавливаем локализацию
+    # Устанавливаем локализацию сразу, если указан язык
     if pre_args.lang != 'auto':
         setup_localization(pre_args.lang)
 
+    # Создаём основной парсер и парсим оставшиеся аргументы
     parser = create_parser()
 
-    # Если запрошена справка, показываем справку для соответствующей команды и выходим
-    if pre_args.help:
-        # Проверяем, запрошена ли справка для конкретной подкоманды
-        subcommand = None
-        for arg in remaining_args:
-            if arg in ['analyze', 'model']:
-                subcommand = arg
-                break
-        
-        if subcommand:
-            # Получаем субпарсер для указанной команды и показываем его справку
-            for action in parser._actions:
-                if isinstance(action, argparse._SubParsersAction):
-                    if subcommand in action.choices:
-                        action.choices[subcommand].print_help()
-                        sys.exit(0)
-        else:
-            # Показываем краткую общую справку
-            parser.print_usage()
-            print("\n" + _("Available subcommands") + ":")
-            print("  analyze  - " + _("Analyze image quality"))
-            print("  model    - " + _("ML model operations (dataset generation, training)"))
-            print("\n" + _("Use '%(prog)s <subcommand> --help' for more information about a specific subcommand.") % {"prog": parser.prog})
-            sys.exit(0)
-
-    # Теперь парсим все аргументы
     try:
-        args = parser.parse_args()
+        # Используем оставшиеся аргументы для основного парсера
+        args = parser.parse_args(remaining_args)
+        # Добавляем значение языка к аргументам
+        args.lang = pre_args.lang
     except SystemExit:
-        # Если subcommand не указан, показываем краткую справку и выходим
+        # Если команда не указана, показываем краткую справку
         parser.print_usage()
         print("\n" + _("Available subcommands") + ":")
         print("  analyze  - " + _("Analyze image quality"))
         print("  model    - " + _("ML model operations (dataset generation, training)"))
         print("\n" + _("Use '%(prog)s <subcommand> --help' for more information about a specific subcommand.") % {"prog": parser.prog})
         sys.exit(1)
-
-    if args.lang != 'auto':
-        from ..i18n import setup_localization
-        setup_localization(args.lang)
 
     if hasattr(args, 'save_im_all') and args.save_im_all:
         args.save_im_down = True
@@ -167,30 +129,24 @@ def create_parser() -> argparse.ArgumentParser:
         usage='%(prog)s {analyze,model} [options]'
     )
 
-    # Аргументы, общие для всех команд
-    parser.add_argument(
-        '--lang',
-        choices=['en', 'ru', 'auto'],
-        default='auto',
-        help=_('Interface language (default: auto)')
-    )
+    # Общие аргументы для всех команд будут добавляться здесь при необходимости
 
     # Создаём подпарсеры для разных команд
     subparsers = parser.add_subparsers(
-        dest='subcommand', 
+        dest='subcommand',
         help=_('Available subcommands'),
         required=True
     )
-    
+
     # Парсер для основного режима анализа
     main_parser = subparsers.add_parser(
-        'analyze', 
+        'analyze',
         help=_('Analyze image quality'),
         description=_('Analyze image quality'),
         formatter_class=argparse.RawTextHelpFormatter,
         add_help=True
     )
-    
+
     # Добавляем аргументы для основного режима анализа
     main_parser.add_argument(
         'paths',
@@ -311,7 +267,7 @@ def create_parser() -> argparse.ArgumentParser:
         action='store_true',
         help=_('Run comparison of real and ML results')
     )
-    
+
     # Парсер для подкоманды model (работа с ML моделями)
     model_parser = subparsers.add_parser(
         'model',
@@ -320,26 +276,26 @@ def create_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawTextHelpFormatter,
         add_help=True
     )
-    
+
     # Аргументы для подкоманды model
     model_parser.add_argument(
         'paths',
         nargs='+',
         help=_('Paths to files/directories for analysis')
     )
-    
+
     model_parser.add_argument(
         '--generate-dataset',
         action='store_true',
         help=_('Generate dataset (features/targets) for model training')
     )
-    
+
     model_parser.add_argument(
         '--train-ml',
         action='store_true',
         help=_('Train ML model (can be used independently from --generate-dataset)')
     )
-    
+
     model_parser.add_argument(
         '--min-size',
         type=int,
@@ -348,7 +304,7 @@ def create_parser() -> argparse.ArgumentParser:
         help=_("Minimum size (width and height) for analysis (default and minimum: ") +
              str(MIN_DOWNSCALE_SIZE) + ")"
     )
-    
+
     model_parser.add_argument(
         '-t', '--threads',
         type=int,
@@ -356,20 +312,20 @@ def create_parser() -> argparse.ArgumentParser:
         metavar='N',
         help=format_threads_help()
     )
-    
+
     model_parser.add_argument(
         '--no-parallel',
         action='store_true',
         help=_('Disable parallel processing and use a single-threaded scheme\n') +
              _('(ignored and forces --threads 1 instead, when used with --generate-dataset)')
     )
-    
+
     model_parser.add_argument(
         '--no-gpu',
         action='store_true',
         help=_('Do not use GPU for metrics calculation (in case of problems with CUDA, MPS, etc. in PyTorch)')
     )
-    
+
     model_parser.add_argument(
         '--lpips-net',
         choices=['alex', 'vgg', 'squeeze'],
@@ -377,7 +333,7 @@ def create_parser() -> argparse.ArgumentParser:
         metavar='NEURAL_NETWORK',
         help=_('LPIPS neural network backbone:\nalex (balanced)\nvgg (memory-hungry)\nsqueeze (fast but less accurate)')
     )
-    
+
     return parser
 
 def format_threads_help() -> str:
