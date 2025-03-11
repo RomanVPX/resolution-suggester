@@ -37,6 +37,19 @@ cpu_count = multiprocessing.cpu_count()
 default_threads_count = (cpu_count - 2, cpu_count)[cpu_count < 8]
 
 
+class CustomArgumentParser(argparse.ArgumentParser):
+    """Custom argument parser with translatable help messages."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._optionals.title = _('options')
+        self._positionals.title = _('positional arguments')
+
+        # Переопределяем сообщение справки для аргумента -h/--help
+        for action in self._actions:
+            if isinstance(action, argparse._HelpAction):
+                action.help = _('show this help message and exit')
+
+
 def parse_arguments() -> argparse.Namespace:
     """
     Parse command line arguments.
@@ -44,20 +57,27 @@ def parse_arguments() -> argparse.Namespace:
     from ..i18n import _, setup_localization
 
     # Создаём предварительный парсер только для обработки языка
-    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser = CustomArgumentParser(add_help=False)
     pre_parser.add_argument(
         '--lang',
         choices=['en', 'ru', 'auto'],
         default='auto',
+        required=False,
         help=_('Interface language (default: auto)')
     )
 
-    # Получаем значение языка, не обрабатывая остальные аргументы
-    pre_args, remaining_args = pre_parser.parse_known_args()
+    try:
+        # Получаем значение языка, не обрабатывая остальные аргументы
+        pre_args, remaining_args = pre_parser.parse_known_args()
 
-    # Устанавливаем локализацию сразу, если указан язык
-    if pre_args.lang != 'auto':
-        setup_localization(pre_args.lang)
+        # Устанавливаем локализацию сразу, если указан язык
+        if pre_args.lang != 'auto':
+            setup_localization(pre_args.lang)
+    except Exception as e:
+        # В случае любой ошибки при обработке языка, используем значение по умолчанию
+        logging.warning(_("Error processing language argument, using default"))
+        pre_args = argparse.Namespace(lang='auto')
+        remaining_args = sys.argv[1:]
 
     # Создаём основной парсер и парсим оставшиеся аргументы
     parser = create_parser()
@@ -67,9 +87,11 @@ def parse_arguments() -> argparse.Namespace:
         args = parser.parse_args(remaining_args)
         # Добавляем значение языка к аргументам
         args.lang = pre_args.lang
-    except SystemExit:
-        # Если команда не указана, показываем краткую справку
-        parser.print_usage()
+    except SystemExit as e:
+        # Если это вызов --help, позволяем argparse показать стандартную справку
+        if '--help' in remaining_args or '-h' in remaining_args:
+            sys.exit(e.code)
+        # В остальных случаях (например, отсутствие подкоманды) показываем краткую справку
         print("\n" + _("Available subcommands") + ":")
         print("  analyze  - " + _("Analyze image quality"))
         print("  model    - " + _("ML model operations (dataset generation, training)"))
@@ -123,7 +145,7 @@ def create_parser() -> argparse.ArgumentParser:
     Создаёт и настраивает парсер аргументов с текущими переводами.
     Включает поддержку подкоманд.
     """
-    parser = argparse.ArgumentParser(
+    parser = CustomArgumentParser(
         description=_('Texture quality analysis tool'),
         formatter_class=argparse.RawTextHelpFormatter,
         usage='%(prog)s {analyze,model} [options]'
@@ -135,7 +157,8 @@ def create_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(
         dest='subcommand',
         help=_('Available subcommands'),
-        required=True
+        required=True,
+        parser_class=CustomArgumentParser
     )
 
     # Парсер для основного режима анализа
@@ -144,7 +167,8 @@ def create_parser() -> argparse.ArgumentParser:
         help=_('Analyze image quality'),
         description=_('Analyze image quality'),
         formatter_class=argparse.RawTextHelpFormatter,
-        add_help=True
+        add_help=True,
+        prog='res-suggest analyze'
     )
 
     # Добавляем аргументы для основного режима анализа
@@ -274,7 +298,8 @@ def create_parser() -> argparse.ArgumentParser:
         help=_('ML model operations (dataset generation, training)'),
         description=_('ML model operations (dataset generation, training)'),
         formatter_class=argparse.RawTextHelpFormatter,
-        add_help=True
+        add_help=True,
+        prog='res-suggest model'
     )
 
     # Аргументы для подкоманды model
