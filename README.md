@@ -46,13 +46,28 @@ pip install -e ".[dev]"
 
 ResolutionSuggester provides two command-line interfaces and two subcommands:
 
-- `resolution_suggester {analyze, model}` - main command
-- `res-suggest {analyze, model}` - shorthand alias
+- `resolution_suggester {analyze, model} [options] PATHS` - main command
+- `res-suggest {analyze, model} [options] PATHS` - shorthand alias
+
+Interface language could be chosen if not detected automatically:
+
+- `res-suggest analyze {analyze, model} --lang en [options] PATHS` - force English as an interface language
+- `res-suggest analyze {analyze, model} --lang ru [options] PATHS` - force Russian as an interface language 
+
+### Show Halp Message
+
+```bash
+# Show help on [analyze] subcommand
+res-suggest analyze --help
+
+# Show help on [model] subcommand
+res-suggest model --help
+````
 
 ### Basic Usage
 
 ```bash
-res-suggest /path/to/image.png
+res-suggest analyze /path/to/image.png
 ```
 
 ### Analyze Multiple Images
