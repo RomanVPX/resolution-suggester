@@ -194,8 +194,11 @@ res-suggest analyze image.png --compare-ml
 ### GPU Acceleration Control
 
 ```bash
-# Disable GPU acceleration
-res-suggest {analyze, model} image.png --no-gpu
+# Disable GPU acceleration during analysis
+res-suggest analyze image.png --no-gpu
+
+# Disable GPU acceleration during dataset generation
+res-suggest model --generate-dataset --no-gpu /path/to/training/images/
 ```
 
 ## 🔧 Supported File Formats
