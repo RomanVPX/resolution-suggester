@@ -44,10 +44,10 @@ pip install -e ".[dev]"
 
 ## 💻 Usage
 
-ResolutionSuggester provides two command-line interfaces:
+ResolutionSuggester provides two command-line interfaces and two subcommands:
 
-- `resolution_suggester` - main command
-- `res-suggest` - shorthand alias
+- `resolution_suggester {analyze, model}` - main command
+- `res-suggest {analyze, model}` - shorthand alias
 
 ### Basic Usage
 
@@ -58,97 +58,97 @@ res-suggest /path/to/image.png
 ### Analyze Multiple Images
 
 ```bash
-res-suggest /path/to/textures/folder/
+res-suggest analyze /path/to/textures/folder/
 ```
 
 ### Select Quality Metric
 
 ```bash
 # Choose from: psnr, ssim, ms_ssim, tdpr, lpips
-res-suggest image.png -m ssim
+res-suggest analyze image.png -m ssim
 ```
 
 ### Choose LPIPS Neural Network
 
 ```bash
 # Choose from: alex (default/balanced), vgg (memory-hungry), squeeze (fast)
-res-suggest image.png -m lpips --lpips-net vgg
+res-suggest analyze image.png -m lpips --lpips-net vgg
 ```
 
 ### Choose Interpolation Method
 
 ```bash
 # Choose from: bilinear, bicubic, mitchell (default)
-res-suggest image.png -i bilinear
+res-suggest analyze image.png -i bilinear
 ```
 
 ### Per-Channel Analysis
 
 ```bash
-res-suggest image.png -c
+res-suggest analyze image.png -c
 ```
 
 ### Generate Visualization Chart
 
 ```bash
-res-suggest image.png --chart
+res-suggest analyze image.png --chart
 ```
 
 ### Switch Theme for Charts
 
 ```bash
 # Choose from: dark (default), light
-res-suggest image.png --chart --theme light
+res-suggest analyze image.png --chart --theme light
 ```
 
 ### Export Results
 
 ```bash
-res-suggest image.png -o # .csv
-res-suggest image.png -j # .json
+res-suggest analyze image.png -o # .csv
+res-suggest analyze image.png -j # .json
 ```
 
 ### Use ML Model for Fast Estimation
 
 ```bash
-res-suggest image.png --ml
+res-suggest analyze image.png --ml
 ```
 
 ### Set Minimum Analysis Size
 
 ```bash
 # Default and minimum is 16
-res-suggest image.png --min-size 32
+res-suggest analyze image.png --min-size 32
 ```
 
 ### Control Parallel Processing
 
 ```bash
 # Disable parallel processing
-res-suggest image.png --no-parallel
+res-suggest analyze image.png --no-parallel
 
 # Set specific number of threads
-res-suggest image.png -t 4
+res-suggest analyze image.png -t 4
 ```
 
 ### Save Generated Images
 
 ```bash
 # Save downscaled images
-res-suggest image.png --save-im-down
+res-suggest analyze image.png --save-im-down
 
 # Save upscaled images after downscaling
-res-suggest image.png --save-im-up
+res-suggest analyze image.png --save-im-up
 
 # Save all generated images
-res-suggest image.png -s
+res-suggest analyze image.png -s
 ```
 
 ### Switch Language
 
 ```bash
 # Choose from: en, ru, auto (default)
-res-suggest image.png --lang ru
+res-suggest analyze image.png --lang ru
 ```
 
 ## 📊 Example Output
@@ -172,29 +172,30 @@ res-suggest image.png --lang ru
 
 ## 🛠️ Advanced Features
 
-### Generate ML Training Dataset
+### Generate Dataset and Train ML Model
 
-```bash
-res-suggest --generate-dataset /path/to/training/images/
 ```
+# Genarate dataset
+res-suggest model --generate-dataset /path/to/training/images/
 
-### Train ML Model After Dataset Generation
+# Train ML model using generated dataset
+res-suggest model --train-ml /path/to/training/images/
 
-```bash
-res-suggest --generate-dataset /path/to/training/images/ --train-ml
+# Generate dataset and train ML model in one go
+res-suggest model --generate-dataset --train-ml /path/to/training/images/
 ```
 
 ### Compare Real and ML-Predicted Results
 
 ```bash
-res-suggest image.png --compare-ml
+res-suggest analyze image.png --compare-ml
 ```
 
 ### GPU Acceleration Control
 
 ```bash
 # Disable GPU acceleration
-res-suggest image.png --no-gpu
+res-suggest {analyze, model} image.png --no-gpu
 ```
 
 ## 🔧 Supported File Formats
