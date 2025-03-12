@@ -174,7 +174,7 @@ res-suggest analyze image.png --lang ru
 
 ### Generate Dataset and Train ML Model
 
-```
+```bash
 # Genarate dataset
 res-suggest model --generate-dataset /path/to/training/images/
 
