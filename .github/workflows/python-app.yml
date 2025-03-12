@@ -58,24 +58,24 @@ jobs:
 
     - name: Run on test_set_01 (PSNR)
       run: |
-        res-suggest data/test_images/test_set_01/
+        res-suggest analyze data/test_images/test_set_01/
 
     - name: Run on test_set_00 (PSNR -c)
       run: |
-        res-suggest data/test_images/test_set_00/ -c
+        res-suggest analyze -c data/test_images/test_set_00/
 
     - name: Run on test_set_01 (MS-SSIM)
       run: |
-        res-suggest data/test_images/test_set_01/ -m ms_ssim
+        res-suggest analyze -m ms_ssim data/test_images/test_set_01/
 
     - name: Run on test_set_01 (SSIM -c)
       run: |
-        res-suggest data/test_images/test_set_01/ -m ssim -c
+        res-suggest analyze -m ssim -c data/test_images/test_set_01/
 
     - name: Run on test_set_00 (TDPR -c --min-size 512)
       run: |
-        res-suggest data/test_images/test_set_00/ -m tdpr -c --min-size 512
+        res-suggest analyze -m tdpr -c --min-size 512 data/test_images/test_set_00/
 
     # - name: Run on test_set_00 (LPIPS -c --lpips-net squeeze)
       # run: |
-        # res-suggest data/test_images/test_set_00/ -m lpips -c --lpips-net squeeze
+        # res-suggest analyze -m lpips -c --lpips-net squeeze data/test_images/test_set_00/
