@@ -180,37 +180,119 @@ def calculate_lpips(
         original = original.astype(np.float32)
         processed = processed.astype(np.float32)
 
-    # Convert to RGB if needed (LPIPS expects 3-channel images)
-    if original.ndim == 2:
-        # For grayscale images, replicate to 3 channels
-        original = np.stack([original] * 3, axis=2)
-        processed = np.stack([processed] * 3, axis=2)
-    elif original.ndim == 3 and original.shape[2] == 1:
-        # For single-channel images, replicate to 3 channels
-        original = np.concatenate([original] * 3, axis=2)
-        processed = np.concatenate([processed] * 3, axis=2)
-    elif original.ndim == 3 and original.shape[2] == 4:
-        # For RGBA images, drop the alpha channel
-        original = original[..., :3]
-        processed = processed[..., :3]
-
-    # Convert from [0,1] to [-1,1] range as expected by LPIPS
-    original = 2 * original - 1
-    processed = 2 * processed - 1
-
-    # Convert HWC to NCHW format (batch, channels, height, width)
-    original = original.transpose(2, 0, 1)[None, ...]
-    processed = processed.transpose(2, 0, 1)[None, ...]
-
-    # Get device
+    # Get device early so we can optimize tensor creation
     torch_device = get_torch_device(no_gpu)
+    
+    # Determine data format and prepare for LPIPS
+    if original.ndim == 2:
+        # For grayscale images, we'll create the tensor directly 
+        h, w = original.shape
+        # Convert to [-1, 1] range expected by LPIPS
+        original = 2 * original - 1
+        processed = 2 * processed - 1
+        
+        # Create tensors directly in NCHW format with the right channels
+        original_tensor = torch.zeros((1, 3, h, w), dtype=torch.float16 if torch_device.type != 'cpu' else torch.float32,
+                                      device=torch_device)
+        processed_tensor = torch.zeros((1, 3, h, w), dtype=torch.float16 if torch_device.type != 'cpu' else torch.float32,
+                                       device=torch_device)
+        
+        # Fill all three channels with the same grayscale data
+        for c in range(3):
+            original_tensor[0, c, :, :] = torch.from_numpy(original)
+            processed_tensor[0, c, :, :] = torch.from_numpy(processed)
+            
+    elif original.ndim == 3:
+        h, w, c = original.shape
+        
+        # Handle different channel configurations
+        if c == 1:
+            # Single-channel images (convert to 3-channel directly on tensor)
+            # Convert to [-1, 1] range expected by LPIPS
+            original = 2 * original[:, :, 0] - 1  # Remove the extra dimension
+            processed = 2 * processed[:, :, 0] - 1
+            
+            # Create tensors directly in NCHW format
+            original_tensor = torch.zeros((1, 3, h, w), dtype=torch.float16 if torch_device.type != 'cpu' else torch.float32,
+                                         device=torch_device) 
+            processed_tensor = torch.zeros((1, 3, h, w), dtype=torch.float16 if torch_device.type != 'cpu' else torch.float32,
+                                          device=torch_device)
+            
+            # Fill all three channels with the same grayscale data
+            for c in range(3):
+                original_tensor[0, c, :, :] = torch.from_numpy(original)
+                processed_tensor[0, c, :, :] = torch.from_numpy(processed)
+                
+        elif c == 3:
+            # Regular RGB, just convert format
+            # Convert to [-1, 1] range
+            original = 2 * original - 1
+            processed = 2 * processed - 1
+            
+            # Convert HWC to NCHW format
+            original = original.transpose(2, 0, 1)[None, ...]
+            processed = processed.transpose(2, 0, 1)[None, ...]
+            
+            # Create tensors
+            original_tensor = torch.from_numpy(original).to(torch_device)
+            processed_tensor = torch.from_numpy(processed).to(torch_device)
+            
+            # Use half precision if on GPU
+            if torch_device.type != 'cpu':
+                original_tensor = original_tensor.half()
+                processed_tensor = processed_tensor.half()
+                
+        elif c == 4:
+            # RGBA - use just the RGB channels
+            # Convert to [-1, 1] range
+            original = 2 * original[:, :, :3] - 1
+            processed = 2 * processed[:, :, :3] - 1
+            
+            # Convert HWC to NCHW format
+            original = original.transpose(2, 0, 1)[None, ...]
+            processed = processed.transpose(2, 0, 1)[None, ...]
+            
+            # Create tensors
+            original_tensor = torch.from_numpy(original).to(torch_device)
+            processed_tensor = torch.from_numpy(processed).to(torch_device)
+            
+            # Use half precision if on GPU
+            if torch_device.type != 'cpu':
+                original_tensor = original_tensor.half()
+                processed_tensor = processed_tensor.half()
+        else:
+            # For other multi-channel formats, use first 3 or replicate single channel
+            if c >= 3:
+                # Use first 3 channels
+                original = 2 * original[:, :, :3] - 1
+                processed = 2 * processed[:, :, :3] - 1
+            else:
+                # Replicate first channel to 3 channels (unusual case)
+                first_channel_orig = original[:, :, 0]
+                first_channel_proc = processed[:, :, 0]
+                
+                original = np.stack([first_channel_orig] * 3, axis=2)
+                processed = np.stack([first_channel_proc] * 3, axis=2)
+                original = 2 * original - 1
+                processed = 2 * processed - 1
+                
+            # Convert HWC to NCHW format
+            original = original.transpose(2, 0, 1)[None, ...]
+            processed = processed.transpose(2, 0, 1)[None, ...]
+            
+            # Create tensors
+            original_tensor = torch.from_numpy(original).to(torch_device)
+            processed_tensor = torch.from_numpy(processed).to(torch_device)
+            
+            # Use half precision if on GPU
+            if torch_device.type != 'cpu':
+                original_tensor = original_tensor.half()
+                processed_tensor = processed_tensor.half()
+    else:
+        raise ValueError(f"Unsupported image dimensions: {original.ndim}")
 
     # Create LPIPS model
     loss_fn = get_lpips_model(net_type=net_type, device=torch_device, memory_efficient=True)
-
-    # Convert to tensors
-    original_tensor = torch.from_numpy(original).to(torch_device)
-    processed_tensor = torch.from_numpy(processed).to(torch_device)
 
     # Calculate LPIPS
     try:
@@ -258,6 +340,11 @@ def calculate_lpips_channels(
     # Create LPIPS model ONCE for all channels
     loss_fn = get_lpips_model(net_type=net_type, device=torch_device, memory_efficient=True)
 
+    # Pre-allocate memory for tensors to avoid repeated allocations
+    h, w = original.shape[0], original.shape[1]
+    dummy_tensor = torch.zeros((1, 3, h, w), dtype=torch.float16 if torch_device.type != 'cpu' else torch.float32, 
+                                device=torch_device)
+    
     try:
         # Process each channel with the same model
         for i, ch in enumerate(channels):
@@ -275,21 +362,24 @@ def calculate_lpips_channels(
                 orig_ch = orig_ch.astype(np.float32)
                 proc_ch = proc_ch.astype(np.float32)
 
-            # Convert to 3-channel for LPIPS
-            orig_3ch = np.stack([orig_ch] * 3, axis=2)
-            proc_3ch = np.stack([proc_ch] * 3, axis=2)
+            # Convert to [-1, 1] range expected by LPIPS while still in NumPy
+            orig_ch = 2 * orig_ch - 1
+            proc_ch = 2 * proc_ch - 1
 
-            # Convert to [-1, 1] range expected by LPIPS
-            orig_3ch = 2 * orig_3ch - 1
-            proc_3ch = 2 * proc_3ch - 1
+            # Reuse pre-allocated tensors with in-place operations
+            # First channel
+            dummy_tensor.zero_()
+            orig_tensor = dummy_tensor.clone()
+            orig_tensor[0, 0, :, :] = torch.from_numpy(orig_ch)
+            orig_tensor[0, 1, :, :] = torch.from_numpy(orig_ch)
+            orig_tensor[0, 2, :, :] = torch.from_numpy(orig_ch)
 
-            # Convert HWC to NCHW format
-            orig_3ch = orig_3ch.transpose(2, 0, 1)[None, ...]
-            proc_3ch = proc_3ch.transpose(2, 0, 1)[None, ...]
-
-            # Convert to tensors
-            orig_tensor = torch.from_numpy(orig_3ch).to(torch_device)
-            proc_tensor = torch.from_numpy(proc_3ch).to(torch_device)
+            # Second channel
+            dummy_tensor.zero_()
+            proc_tensor = dummy_tensor.clone()
+            proc_tensor[0, 0, :, :] = torch.from_numpy(proc_ch)
+            proc_tensor[0, 1, :, :] = torch.from_numpy(proc_ch)
+            proc_tensor[0, 2, :, :] = torch.from_numpy(proc_ch)
 
             # Calculate LPIPS
             with torch.no_grad():
@@ -302,10 +392,14 @@ def calculate_lpips_channels(
 
             results[ch] = float(lpips_similarity)
 
-            # Clean up tensors but keep the model
-            del orig_tensor, proc_tensor
+            # No need to delete tensors - we're reusing them
     finally:
-        # Clean up model at the end
+        # Clean up model and tensors at the end
+        del dummy_tensor
+        if 'orig_tensor' in locals():
+            del orig_tensor
+        if 'proc_tensor' in locals():
+            del proc_tensor
         del loss_fn
         if torch_device.type == 'mps':
             if hasattr(torch.mps, 'empty_cache'):
