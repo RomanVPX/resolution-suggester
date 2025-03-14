@@ -64,13 +64,15 @@ jobs:
       run: |
         res-suggest analyze -c data/test_images/test_set_00/
 
-    - name: Run on test_set_01 (MS-SSIM)
+    - name: Run on test_set_01 (MS-SSIM --no-gpu)
+      if: runner.os == 'macOS' # --no-gpu on macOS
       run: |
-        if [[ "${{ runner.os }}" == "macOS" ]]; then
-          res-suggest analyze -m ms_ssim --no-gpu data/test_images/test_set_01/
-        else
-          res-suggest analyze -m ms_ssim data/test_images/test_set_01/
-        fi
+        res-suggest analyze -m ms_ssim --no-gpu data/test_images/test_set_01/
+
+    - name: Run on test_set_01 (MS-SSIM)
+      if: runner.os != 'macOS' # automatically deal with GPU if not on macOS
+      run: |
+        res-suggest analyze -m ms_ssim data/test_images/test_set_01/
 
     - name: Run on test_set_01 (SSIM -c)
       run: |
