@@ -44,7 +44,7 @@ def get_torch_device(no_gpu: bool = False) -> torch.device:
         logging.debug("Используется ускорение CUDA")
     else:
         device = torch.device("cpu")
-        logging.debug("Используется CPU (GPU не доступен)")
+        logging.debug("Используется CPU (GPU недоступен)")
 
     return device
 
