@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-12 02:37+0300\n"
+"POT-Creation-Date: 2025-03-12 02:38+0300\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
@@ -151,23 +151,23 @@ msgstr "Невозможно декодировать изображение"
 msgid "MS-SSIM: unsupported images dimensions"
 msgstr "Неподдерживаемая размерность изображения для MS SSIM"
 
-#: src/resolution_suggester/core/metrics.py:362
+#: src/resolution_suggester/core/metrics.py:456
 msgid "LPIPS package not found. Install with: pip install lpips"
 msgstr "Пакет LPIPS не нашёлся. Установите его с помощью: pip install lpips"
 
-#: src/resolution_suggester/core/metrics.py:680
+#: src/resolution_suggester/core/metrics.py:774
 msgid "SSIM: unsupported images dimensions"
 msgstr "Неподдерживаемая размерность изображения для SSIM"
 
-#: src/resolution_suggester/core/metrics.py:729
+#: src/resolution_suggester/core/metrics.py:823
 msgid "calculate_metrics: The shapes of the images must match!"
 msgstr "calculate_metrics: Размеры изображений должны совпадать!"
 
-#: src/resolution_suggester/core/metrics.py:731
+#: src/resolution_suggester/core/metrics.py:825
 msgid "calculate_metrics: The dimensions of the images must match!"
 msgstr "calculate_metrics: Размерности изображений должны совпадать!"
 
-#: src/resolution_suggester/core/metrics.py:759
+#: src/resolution_suggester/core/metrics.py:853
 msgid "Unsupported quality metric"
 msgstr "Метрика не поддерживается"
 
@@ -426,7 +426,7 @@ msgid ""
 msgstr ""
 "Нейронная сеть, используемая метрикой LPIPS:\n"
 "vgg      Требует много памяти\n"
-"squeeze  Быстрая, но менее точная\n"
+"squeeze  Быстрая, но менее точная, НЕСТАБИЛЬНА на Apple Silicon GPU!\n"
 "alex     Сбалансированный вариант (по умолчанию)"
 
 #: src/resolution_suggester/utils/cli.py:241
