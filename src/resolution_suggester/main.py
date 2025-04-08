@@ -18,7 +18,6 @@ warnings.filterwarnings(
     category=UserWarning
 )
 
-
 import sys
 
 if sys.platform == 'win32':

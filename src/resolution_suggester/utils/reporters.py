@@ -155,7 +155,7 @@ class JSONReporter(IReporter):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.file is not None:
-            # Сохраняем в JSON людей-читаемом формате
+            # Сохраняем в JSON в human-readable формате
             import json
             json.dump(self.data, self.file, ensure_ascii=False, indent=2)
             self.file.close()
