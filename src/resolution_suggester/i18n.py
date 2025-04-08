@@ -5,7 +5,9 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-_ = lambda s: s
+
+def _(s):
+    return s
 
 
 def detect_language_from_args() -> Optional[str]:
