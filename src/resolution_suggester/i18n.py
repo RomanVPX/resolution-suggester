@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 
-def _(s):
+def _(s: str) -> str:
     return s
 
 

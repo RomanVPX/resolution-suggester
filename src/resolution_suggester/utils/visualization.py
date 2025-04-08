@@ -290,7 +290,7 @@ def _setup_background_shading(ax: Axes, pixel_counts: List[float], theme_setting
                           alpha=0.1, color=theme_settings['section_shading'], zorder=0)
 
 
-def _format_pixels(x: float, pos) -> str:
+def _format_pixels(x: float, pos: Optional[int]) -> str:
     """Format pixel counts for readability."""
     if x >= 1e6:
         return f'{x/1e6:.1f}M'
@@ -671,6 +671,7 @@ def _add_legends(
         # If we have two legends, make sure they both show
         if analyze_channels and channels:
             ax.add_artist(legend)
+            # ax.add_artist(quality_legend) # This line is commented out because it kinda does nothing
 
 
 def _add_secondary_axis(ax: Axes, pixel_counts: List[float], resolutions: List[str]) -> Axes:

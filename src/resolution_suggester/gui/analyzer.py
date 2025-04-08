@@ -1,20 +1,22 @@
 """GUI analyzer module for Resolution Suggester."""
 
 import argparse
-from typing import Optional, List, Dict, Any
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 import dearpygui.dearpygui as dpg
 import numpy as np
 from PIL import Image
 
+from resolution_suggester.config import InterpolationMethods, QualityMetrics
 from resolution_suggester.core.image_analyzer import ImageAnalyzer
 from resolution_suggester.core.image_loader import load_image
 from resolution_suggester.core.metrics import compute_resolutions
-from resolution_suggester.config import QualityMetrics, InterpolationMethods
 from resolution_suggester.i18n import _
+from resolution_suggester.main import get_file_list, parse_and_validate_arguments, run_image_analysis
 from resolution_suggester.utils.reporting import QualityHelper
-from resolution_suggester.main import parse_and_validate_arguments, get_file_list, run_image_analysis
+
+
 def create_cli_args(paths: List[str], metric: QualityMetrics,
                    interpolation: InterpolationMethods,
                    analyze_channels: bool = False,

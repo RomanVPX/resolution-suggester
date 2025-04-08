@@ -1,12 +1,13 @@
 """Main window implementation."""
 
-from typing import Callable, Optional, Dict
+from typing import Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
-from ...i18n import _
 from ...config import InterpolationMethods, QualityMetrics
+from ...i18n import _
 from ..analyzer import GUIAnalyzer
+
 
 class MainWindow:
     """Main window of the application."""
