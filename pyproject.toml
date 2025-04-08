@@ -44,6 +44,7 @@ dependencies = [
     "rich~=13.9.4",
     "matplotlib~=3.10.0",
     "lpips~=0.1.4",
+    "dearpygui~=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -64,6 +65,7 @@ dev = [
 [project.scripts]
 resolution_suggester = "resolution_suggester.main:main"
 res-suggest = "resolution_suggester.main:main"
+res-suggest-gui = "resolution_suggester.gui.__main__:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
