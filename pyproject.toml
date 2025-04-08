@@ -40,8 +40,8 @@ dependencies = [
     "tqdm~=4.67.1",
     "PyWavelets~=1.8.0",
     "torch~=2.6.0",
-    "torchmetrics~=1.6.1",
     "rich~=14.0.0",
+    "torchmetrics~=1.7.0",
     "matplotlib~=3.10.0",
     "lpips~=0.1.4",
 ]
