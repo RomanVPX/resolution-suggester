@@ -295,18 +295,11 @@ def calculate_lpips(
     loss_fn = get_lpips_model(net_type=net_type, device=torch_device, memory_efficient=True)
 
     # Calculate LPIPS
-    try:
-        with torch.no_grad():
-            with torch.autocast(device_type=torch_device.type, dtype=torch.float16):
-                lpips_dist = loss_fn(original_tensor, processed_tensor).item()
-    finally:
-        # Clean up
-        del original_tensor, processed_tensor, loss_fn
-        if torch_device.type == 'mps':
-            if hasattr(torch.mps, 'empty_cache'):
-                torch.mps.empty_cache()
-        elif torch_device.type == 'cuda':
-            torch.cuda.empty_cache()
+    with torch.no_grad():
+        with torch.autocast(device_type=torch_device.type, dtype=torch.float16):
+            lpips_dist = loss_fn(original_tensor, processed_tensor).item()
+
+    del original_tensor, processed_tensor
 
     # Invert the similarity score (1 - distance) for consistency with other metrics
     lpips_similarity = 1.0 - lpips_dist
@@ -345,74 +338,67 @@ def calculate_lpips_channels(
     dummy_tensor = torch.zeros((1, 3, h, w), dtype=torch.float16 if torch_device.type != 'cpu' else torch.float32, 
                                 device=torch_device)
     
-    try:
-        # Process each channel with the same model
-        for i, ch in enumerate(channels):
-            if i >= original.shape[2]:
-                continue
+    # Process each channel with the same model
+    for i, ch in enumerate(channels):
+        if i >= original.shape[2]:
+            continue
 
-            orig_ch = original[..., i]
-            proc_ch = processed[..., i]
+        orig_ch = original[..., i]
+        proc_ch = processed[..., i]
 
-            # Normalize to [0, 1]
-            if max_val > 1.0 + TINY_EPSILON:
-                orig_ch = orig_ch.astype(np.float32) / max_val
-                proc_ch = proc_ch.astype(np.float32) / max_val
-            else:
-                orig_ch = orig_ch.astype(np.float32)
-                proc_ch = proc_ch.astype(np.float32)
+        # Normalize to [0, 1]
+        if max_val > 1.0 + TINY_EPSILON:
+            orig_ch = orig_ch.astype(np.float32) / max_val
+            proc_ch = proc_ch.astype(np.float32) / max_val
+        else:
+            orig_ch = orig_ch.astype(np.float32)
+            proc_ch = proc_ch.astype(np.float32)
 
-            # Convert to [-1, 1] range expected by LPIPS while still in NumPy
-            orig_ch = 2 * orig_ch - 1
-            proc_ch = 2 * proc_ch - 1
+        # Convert to [-1, 1] range expected by LPIPS while still in NumPy
+        orig_ch = 2 * orig_ch - 1
+        proc_ch = 2 * proc_ch - 1
 
-            # Reuse pre-allocated tensors with in-place operations
-            # First channel
-            dummy_tensor.zero_()
-            orig_tensor = dummy_tensor.clone()
-            orig_tensor[0, 0, :, :] = torch.from_numpy(orig_ch)
-            orig_tensor[0, 1, :, :] = torch.from_numpy(orig_ch)
-            orig_tensor[0, 2, :, :] = torch.from_numpy(orig_ch)
+        # Reuse pre-allocated tensors with in-place operations
+        # First channel
+        dummy_tensor.zero_()
+        orig_tensor = dummy_tensor.clone()
+        orig_tensor[0, 0, :, :] = torch.from_numpy(orig_ch)
+        orig_tensor[0, 1, :, :] = torch.from_numpy(orig_ch)
+        orig_tensor[0, 2, :, :] = torch.from_numpy(orig_ch)
 
-            # Second channel
-            dummy_tensor.zero_()
-            proc_tensor = dummy_tensor.clone()
-            proc_tensor[0, 0, :, :] = torch.from_numpy(proc_ch)
-            proc_tensor[0, 1, :, :] = torch.from_numpy(proc_ch)
-            proc_tensor[0, 2, :, :] = torch.from_numpy(proc_ch)
+        # Second channel
+        dummy_tensor.zero_()
+        proc_tensor = dummy_tensor.clone()
+        proc_tensor[0, 0, :, :] = torch.from_numpy(proc_ch)
+        proc_tensor[0, 1, :, :] = torch.from_numpy(proc_ch)
+        proc_tensor[0, 2, :, :] = torch.from_numpy(proc_ch)
 
-            # Calculate LPIPS
-            with torch.no_grad():
-                with torch.autocast(device_type=torch_device.type, dtype=torch.float16):
-                    lpips_dist = loss_fn(orig_tensor, proc_tensor).item()
+        # Calculate LPIPS
+        with torch.no_grad():
+            with torch.autocast(device_type=torch_device.type, dtype=torch.float16):
+                lpips_dist = loss_fn(orig_tensor, proc_tensor).item()
 
-            # Convert to similarity score (1 - distance)
-            lpips_similarity = 1.0 - lpips_dist
-            lpips_similarity = max(0.0, min(1.0, lpips_similarity))
+        # Convert to similarity score (1 - distance)
+        lpips_similarity = 1.0 - lpips_dist
+        lpips_similarity = max(0.0, min(1.0, lpips_similarity))
 
-            results[ch] = float(lpips_similarity)
+        results[ch] = float(lpips_similarity)
 
-            # No need to delete tensors - we're reusing them
-    finally:
-        # Clean up model and tensors at the end
-        del dummy_tensor
-        if 'orig_tensor' in locals():
-            del orig_tensor
-        if 'proc_tensor' in locals():
-            del proc_tensor
-        del loss_fn
-        if torch_device.type == 'mps':
-            if hasattr(torch.mps, 'empty_cache'):
-                torch.mps.empty_cache()
-        elif torch_device.type == 'cuda':
-            torch.cuda.empty_cache()
+    del dummy_tensor
+    if 'orig_tensor' in locals():
+        del orig_tensor
+    if 'proc_tensor' in locals():
+        del proc_tensor
 
     return results
 
 
+_lpips_model_cache: dict[tuple, 'lpips.LPIPS'] = {}
+
+
 def get_lpips_model(net_type: str = 'alex', device: torch.device = None, memory_efficient: bool = False) -> 'lpips.LPIPS':
     """
-    Load LPIPS model.
+    Load or retrieve a cached LPIPS model.
     
     Args:
         net_type: Neural network backbone ('alex', 'vgg', or 'squeeze')
@@ -420,8 +406,11 @@ def get_lpips_model(net_type: str = 'alex', device: torch.device = None, memory_
         memory_efficient: Whether to use half-precision to save memory
         
     Returns:
-        LPIPS model instance
+        LPIPS model instance (cached)
     """
+    key = (net_type, str(device), memory_efficient)
+    if key in _lpips_model_cache:
+        return _lpips_model_cache[key]
 
     import lpips
     model = lpips.LPIPS(net=net_type, verbose=False)
@@ -430,9 +419,20 @@ def get_lpips_model(net_type: str = 'alex', device: torch.device = None, memory_
         model = model.to(device)
 
     if memory_efficient and hasattr(model, 'half'):
-        model = model.half()  # Use half precision
+        model = model.half()
 
+    _lpips_model_cache[key] = model
     return model
+
+
+def clear_lpips_cache() -> None:
+    """Release all cached LPIPS models and free GPU/MPS memory."""
+    _lpips_model_cache.clear()
+    if torch.backends.mps.is_available() if hasattr(torch.backends, 'mps') else False:
+        if hasattr(torch.mps, 'empty_cache'):
+            torch.mps.empty_cache()
+    elif torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 def preload_lpips_models(net_type: str) -> None:
@@ -445,11 +445,9 @@ def preload_lpips_models(net_type: str) -> None:
     console = Console()
 
     try:
-        import lpips
-
+        device = get_torch_device()
         console.print(f"[bold cyan]Preloading LPIPS model ({net_type})...[/]")
-        # Триггерим загрузку модели из Интернетов, если она ещё не:
-        lpips.LPIPS(net=net_type, verbose=False)
+        get_lpips_model(net_type=net_type, device=device, memory_efficient=True)
         console.print("[bold green]LPIPS model loaded successfully![/]")
 
     except ImportError:
