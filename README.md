@@ -22,9 +22,10 @@ A powerful tool for evaluating texture quality loss during scaling. Essentially,
 
 - Python 3.10+
 - NumPy, OpenCV, Pillow for image processing
-- PyTorch (optional, for GPU acceleration and LPIPS)
+- PyTorch, torchmetrics, and LPIPS for perceptual and neural metrics
 - Matplotlib for visualization
 - Scikit-learn for ML features
+- GPU is optional; CPU execution is supported
 
 ## 🔧 Installation
 
