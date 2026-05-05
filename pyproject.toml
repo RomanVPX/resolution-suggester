@@ -18,20 +18,26 @@ maintainers = [
 keywords = ["image", "texture", "quality", "resolution", "analysis", "optimization"]
 classifiers = [
     "Development Status :: 4 - Beta",
+    "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Multimedia :: Graphics",
     "Topic :: Scientific/Engineering :: Image Processing",
     "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Utilities",
 ]
 dependencies = [
     "numba==0.61.2",
     "numpy==2.1.3",
     "opencv-python==4.11.0.86",
-    "pillow==11.3.0",
+    "pillow==12.0.0",
     "pyexr==0.5.0",
     "scikit-image~=0.25.2",
     "pandas~=2.3.1",
@@ -58,7 +64,8 @@ dev = [
 
 [project.urls]
 "Homepage" = "https://github.com/RomanVPX/resolution-suggester"
-"Bug Tracker" = "https://github.com/RomanVPX/resolution-suggester/issues"
+"Repository" = "https://github.com/RomanVPX/resolution-suggester"
+"Issues" = "https://github.com/RomanVPX/resolution-suggester/issues"
 "Documentation" = "https://github.com/RomanVPX/resolution-suggester/wiki"
 
 [project.scripts]
@@ -116,7 +123,7 @@ disallow_incomplete_defs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = ["tests_*.py"]
+python_files = ["test_*.py"]
 addopts = "-ra -q"
 filterwarnings = [
     "ignore::DeprecationWarning:sewar.*:"
