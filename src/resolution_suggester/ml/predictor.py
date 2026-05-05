@@ -183,12 +183,7 @@ class QuickPredictor:
                 if self.combined_model is None:
                     raise ValueError(_("Combined model is not loaded"))
                 pred = self.combined_model.predict(processed)[0]
-                return {
-                    'psnr': pred[0],
-                    'ssim': pred[1],
-                    'ms_ssim': pred[2],
-                    'tdpr': pred[3]
-                }
+                return {m.value: val for m, val in zip(QualityMetrics, pred)}
         except Exception as e:
             logging.error(f"Ошибка при предсказании: {e}")
             logging.debug(f"Размерность входных данных: {processed.shape}, ключи признаков: {list(features.keys())}")
