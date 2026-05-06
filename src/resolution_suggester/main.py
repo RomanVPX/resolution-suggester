@@ -245,6 +245,15 @@ def process_file_for_dataset(
     if not resolutions_to_test:
         return features_all, all_targets
 
+    features_combined = extract_features_of_original_img(img_original)
+
+    per_channel_images = {}
+    features_per_channel = {}
+    for c in channels:
+        ch_img = img_original[..., channels.index(c)] if img_original.ndim == 3 else img_original
+        per_channel_images[c] = ch_img
+        features_per_channel[c] = extract_features_of_original_img(ch_img)
+
     for method in interpolations_methods:
         try:
             resize_fn = get_resize_function(method)
@@ -275,15 +284,13 @@ def process_file_for_dataset(
                 if analyze_channels:
                     # Теперь итерируемся по каждому каналу
                     for c in channels:
-                        features_entry = features_dict_base.copy()  # используем базовый словарь
+                        features_entry = features_dict_base.copy()
                         features_entry['analyze_channels'] = analyze_channels
                         features_entry['channel'] = c
+                        features_entry.update(features_per_channel[c])
 
-                        img_channel = img_original[..., channels.index(c)] if img_original.ndim == 3 else img_original
+                        img_channel = per_channel_images[c]
                         img_upscaled_channel = img_upscaled[..., channels.index(c)] if img_upscaled.ndim == 3 else img_original
-
-                        channel_features = extract_features_of_original_img(img_channel)
-                        features_entry.update(channel_features)  # Добавляем канальные фичи
 
                         targets_entry = {}
                         for metric in QualityMetrics:
@@ -294,11 +301,9 @@ def process_file_for_dataset(
                         features_all.append(features_entry)
                         all_targets.append(targets_entry)
                 else:
-                    features_entry = features_dict_base.copy()  # используем базовый словарь
+                    features_entry = features_dict_base.copy()
                     features_entry['analyze_channels'] = analyze_channels
-
-                    features_original = extract_features_of_original_img(img_original)
-                    features_entry.update(features_original)  # Добавляем общие фичи
+                    features_entry.update(features_combined)
 
                     metrics_combined = {
                         'psnr': calculate_metrics(QualityMetrics.PSNR, img_original, img_upscaled, max_val, no_gpu=args.no_gpu),
